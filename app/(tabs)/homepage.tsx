@@ -329,7 +329,7 @@ const HomeScreen: React.FC = () => {
 
       try {
         const response = await fetch(
-          `https://thevanapp-node.onrender.com/driverparam?email=${userEmail}`
+          `https://api.thevanapp.com/api/driver-loc`
         );
 
         if (!response.ok) {
@@ -339,14 +339,23 @@ const HomeScreen: React.FC = () => {
         const data = await response.json();
 
         if (!data || !Array.isArray(data) || data.length === 0) {
+          console.log("No driver data found");
+          setDriverData(null);
+          return;
+        }
+
+        const currentDriver = data.find((driver) => driver.email === userEmail);
+
+        if (!currentDriver) {
           console.log("No driver data found for email:", userEmail);
           setDriverData(null);
           return;
         }
 
-        setDriverData(data[0]);
-        if (data[0].id) {
-          setmyID(data[0].id);
+        setDriverData(currentDriver);
+
+        if (currentDriver.id) {
+          setmyID(currentDriver.id);
         } else {
           console.error("Driver data missing ID field");
         }
@@ -423,102 +432,134 @@ const HomeScreen: React.FC = () => {
   }, [location]);
 
   useEffect(() => {
-    if (!userEmail || !location) return;
+    let isMounted = true;
 
-    const updateDriverData = async () => {
+    const fetchOrders = async () => {
+      if (!apiToken) return;
+
       try {
-        const payload = {
-          live_location: { lat: location.latitude, lng: location.longitude },
-          status: modeRef.current,
-        };
+        console.log("Fetching orders...");
+        const res = await fetch("https://api.thevanapp.com/api/paidorders", {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiToken}`,
+          },
+        });
 
-        const { error } = await supabase
-          .from("drivers")
-          .update(payload)
-          .eq("email", userEmail);
+        if (!res.ok) {
+          throw new Error(`API response error: ${res.status}`);
+        }
 
-        if (error) {
-          throw error;
+        const data = await res.json();
+        console.log("Orders data received:", data);
+
+        if (!isMounted) {
+          console.log("Component unmounted, skipping state update");
+          return;
+        }
+
+        if (Array.isArray(data)) {
+          const processedOrders = data.map((order) => ({
+            ...order,
+            id: order.id || Math.random().toString(),
+            price: Number(order.price) || 0,
+            order_status: order.order_status || "PENDING",
+            destination_name: order.destination_name || "",
+            pickup_name: order.pickup_name || "",
+          }));
+
+          setOrders(processedOrders);
+
+          setTimeout(() => {
+            if (isMounted) {
+              console.log("Current orders state:", processedOrders);
+            }
+          }, 100);
+        } else {
+          console.log("Data is not an array, setting empty array");
+          setOrders([]);
         }
       } catch (error) {
-        console.error("Error updating driver data in Supabase:", error);
+        console.error("Error fetching orders:", error);
+        if (isMounted) {
+          setOrders([]);
+        }
       }
     };
 
-    updateDriverData();
-  }, [userEmail, location, mode]);
+    fetchOrders();
 
-  useEffect(() => {
-    if (!driverData?.id) return;
-
-    const getOrders = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("driver_id", driverData.id)
-          .eq("status", "PAID")
-          .eq("live", true);
-
-        if (error) {
-          throw error;
-        }
-
-        setOrders(data || []);
-      } catch (error) {
-        console.error("Error Fetching order data:", error);
-      }
+    return () => {
+      isMounted = false;
     };
-
-    getOrders();
-  }, [driverData]);
-
+  }, [apiToken]);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
 
-    if (driverData?.id) {
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("driver_id", driverData.id)
-          .eq("live", true);
+    try {
+      // if (!apiToken) {
+      //   throw new Error("Missing API token");
+      // }
 
-        if (!error) {
-          setOrders(data || []);
+      const res = await fetch(
+        "https://api.thevanapp.com/api/paidorders/checker",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiToken}`,
+          },
+          body: JSON.stringify({
+            id: "eifmimsdaisndis93",
+          }),
         }
-      } catch (error) {
-        console.error("Error refreshing orders:", error);
+      );
+
+      if (!res.ok) {
+        throw new Error(`API response error: ${res.status}`);
       }
+
+      const data = await res.json();
+
+      if (
+        data &&
+        (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)
+      ) {
+        setOrders(data);
+      } else {
+        setOrders([]);
+        console.log("No orders found");
+      }
+    } catch (error) {
+      console.error("Error refreshing orders:", error);
+      setOrders([]);
+    } finally {
+      setRefreshing(false);
     }
+  }, [apiToken, driverData]);
 
-    setRefreshing(false);
-  }, [driverData]);
+  const handleAccept = async (orderId: string) => {
+    if (!driverData?.id || !apiToken) return;
 
-  const handleAccept = async (orderId: string, answer: string) => {
-    if (driverData?.id) {
-      try {
-        const { error } = await supabase
-          .from("orders")
-          .update({ order_status: answer })
-          .eq("id", orderId)
-          .eq("driver_id", driverData.id)
-          .eq("live", true);
-
-        if (!error) {
-          const { data, error: fetchError } = await supabase
-            .from("orders")
-            .select("*")
-            .eq("driver_id", driverData.id)
-            .eq("live", true);
-
-          if (!fetchError) {
-            setOrders(data || []);
-          }
+    try {
+      const response = await fetch(
+        `https://api.thevanapp.com/api/paidorders/${orderId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
         }
-      } catch (error) {
-        console.error("Error updating order status:", error);
+      );
+
+      if (!response.ok) {
+        throw new Error(`API response error: ${response.status}`);
       }
+
+      onRefresh();
+    } catch (error) {
+      console.log("error");
     }
   };
 
@@ -612,7 +653,7 @@ const HomeScreen: React.FC = () => {
             <Drivermodecomponent />
           </ModeContainer>
 
-          <SectionTitle>Available Jobs</SectionTitle>
+          <SectionTitle>Available Orders</SectionTitle>
           <JobsContainer>
             {loadingData ? (
               <LoadingContainer>
@@ -632,15 +673,15 @@ const HomeScreen: React.FC = () => {
                   orderMode={"Items"}
                   destination={order.destination_name || ""}
                   pickupLocation={order.pickup_name || ""}
-                  price={order.price || 0}
+                  price={Number(order.price) || 0}
                   time={new Date(order.created_at).toLocaleString()}
-                  onAccept={() => handleAccept(order.id, "ACCEPTED")}
-                  onDecline={() => handleAccept(order.id, "DECLIENED")}
+                  onAccept={() => handleAccept(order.id)}
+                  onDecline={() => handleAccept(order.id)}
                 />
               ))
             ) : (
               <NoJobsText>
-                No available jobs at the moment. Pull down to refresh.
+                No available Orders at the moment. Pull down to refresh.
               </NoJobsText>
             )}
           </JobsContainer>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Platform } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import styled from "styled-components/native";
 import { useAuthStore } from "@/infrastructure/store/store";
@@ -152,7 +152,7 @@ const OrderScreen = () => {
   return (
     <Container>
       <StyledMap
-        provider={PROVIDER_GOOGLE}
+        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
         initialRegion={{
           latitude: 35.894509,
           longitude: 14.479826,

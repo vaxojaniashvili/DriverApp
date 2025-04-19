@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import styled from 'styled-components/native';
-import { Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from "react";
+import styled from "styled-components/native";
+import { Text, TouchableOpacity, View } from "react-native";
 
 // Define the props interface for better type safety
 interface JobOfferProps {
@@ -11,19 +11,26 @@ interface JobOfferProps {
   pickupLocation: string;
   price: number;
   time: string;
-  order_status: string,
+  order_status: string;
   onAccept: (id: string) => void;
-  onDecline: (id: string) => void;
+  onDecline?: (id: string) => void;
 }
 
 // Container for the job offer
 const JobOfferContainer = styled.View`
   width: 100%;
-  padding: 15px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  padding-inline: 24px;
   margin: 10px 0;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background-color: #f9f9f9;
+  border-radius: 30px;
+  elevation: 3;
+  shadow-radius: 12px;
+  shadow-color: #000;
+  shadow-offset: 0px 4px;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.35);
+  background-color: white;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
 `;
 
@@ -54,13 +61,16 @@ const ActionsContainer = styled.View`
 `;
 
 // Styled button for accept and decline
-const ActionButton = styled(TouchableOpacity)<{ actionType: 'accept' | 'decline' }>`
+const ActionButton = styled(TouchableOpacity)<{
+  actionType: "accept" | "decline";
+}>`
   flex: 1;
   padding: 12px;
   margin: 0 5px;
   border-radius: 5px;
   align-items: center;
-  background-color: ${({ actionType }) => (actionType === 'accept' ? '#4CAF50' : '#F44336')};
+  background-color: ${({ actionType }) =>
+    actionType === "accept" ? "#4CAF50" : "#F44336"};
 `;
 
 // Expand/Collapse Button
@@ -80,6 +90,13 @@ const ExpandButtonText = styled.Text`
 const ButtonText = styled.Text`
   color: white;
   font-weight: bold;
+`;
+
+const OrderText = styled.Text`
+  font-size: 18;
+  margin-bottom: 10;
+  font-weight: 600;
+  color: green;
 `;
 
 const JobOfferComponent: React.FC<JobOfferProps> = ({
@@ -102,21 +119,26 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
 
   return (
     <JobOfferContainer>
+      {order_status !== "PENDING" ? (
+        <OrderText>Ongoing order</OrderText>
+      ) : (
+        <OrderText>Availabe order</OrderText>
+      )}
       <JobDetail>
         <Label>Order Number:</Label>
         <Value>{orderNumber}</Value>
       </JobDetail>
-      
+
       <JobDetail>
         <Label>Price:</Label>
         <Value>€{price.toFixed(2)}</Value>
       </JobDetail>
-      {order_status == "ACCEPTED" ? 
-      <>
-        <Label>STATUS:</Label>
-        <Value>Accepted, check Current order's page</Value>
-      </> : null
-    }
+      {order_status == "ACCEPTED" ? (
+        <>
+          <Label>STATUS:</Label>
+          <Value>Accepted, check Current order's page</Value>
+        </>
+      ) : null}
 
       {isExpanded && (
         <>
@@ -140,31 +162,27 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
             <Value>{time}</Value>
           </JobDetail>
 
-        {order_status == "ACCEPTED" ? <Text>
-          This is ongoing order.
-        </Text> : 
-          <ActionsContainer>
-          <ActionButton 
-            actionType="accept" 
-            onPress={() => onAccept(id)}
-          >
-            <ButtonText>Accept</ButtonText>
-          </ActionButton>
-          <ActionButton 
-            actionType="decline" 
-            onPress={() => onDecline(id)}
-          >
-            <ButtonText>Decline</ButtonText>
-          </ActionButton>
-        </ActionsContainer>
-        
-        }
+          {order_status !== "PENDING" ? (
+            <Text></Text>
+          ) : (
+            <ActionsContainer>
+              <ActionButton actionType="accept" onPress={() => onAccept(id)}>
+                <ButtonText>Accept</ButtonText>
+              </ActionButton>
+              {/* <ActionButton
+                actionType="decline"
+                // onPress={() => onDecline(id)}
+              >
+                <ButtonText>Decline</ButtonText>
+              </ActionButton> */}
+            </ActionsContainer>
+          )}
         </>
       )}
 
       <ExpandButton onPress={toggleExpand}>
         <ExpandButtonText>
-          {isExpanded ? 'Collapse' : 'Expand'}
+          {isExpanded ? "Collapse" : "Expand"}
         </ExpandButtonText>
       </ExpandButton>
     </JobOfferContainer>

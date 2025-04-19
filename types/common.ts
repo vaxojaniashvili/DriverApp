@@ -39,9 +39,10 @@ export interface DriverData {
 export interface OrderData {
   id: string;
   driver_id: string;
+  isActive?: any;
   status: string;
   live: boolean;
-  order_status?: string;
+  order_status?: any;
   destination_name?: string;
   pickup_name?: string;
   price?: number;

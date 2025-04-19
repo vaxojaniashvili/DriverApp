@@ -123,7 +123,7 @@ const StatusText = styled.Text<StatusProps>`
 const ModeContainer = styled.View`
   width: 100%;
   padding: 24px;
-  background-color: ${DriverModeColors.cardBg};
+  background-color: white;
   border-radius: 30px;
   margin-bottom: 24px;
   elevation: 3;
@@ -229,7 +229,7 @@ const GradientHeader = styled(LinearGradient)`
   top: 0;
   left: 0;
   right: 0;
-  height: ${Platform.OS === "android" ? "280px" : "305px"};
+  height: ${Platform.OS === "android" ? "295px" : "335px"};
   border-bottom-left-radius: 20px;
   border-bottom-right-radius: 20px;
 `;
@@ -238,9 +238,11 @@ const HomeScreen: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>("");
   const [driverData, setDriverData] = useState<DriverData | null>(null);
   const [orders, setOrders] = useState<OrderData[]>([]);
+  const [activeOrder, setActiveOrder] = useState<OrderData | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [apiToken, setApiToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const { setMode, mode, setmyID } =
     useAuthStore() as unknown as AuthStoreState;
@@ -278,7 +280,7 @@ const HomeScreen: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching user:", error);
+        // console.log("Error fetching user:", error);
       }
     };
 
@@ -431,76 +433,10 @@ const HomeScreen: React.FC = () => {
     }
   }, [location]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchOrders = async () => {
-      if (!apiToken) return;
-
-      try {
-        console.log("Fetching orders...");
-        const res = await fetch("https://api.thevanapp.com/api/paidorders", {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiToken}`,
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error(`API response error: ${res.status}`);
-        }
-
-        const data = await res.json();
-        console.log("Orders data received:", data);
-
-        if (!isMounted) {
-          console.log("Component unmounted, skipping state update");
-          return;
-        }
-
-        if (Array.isArray(data)) {
-          const processedOrders = data.map((order) => ({
-            ...order,
-            id: order.id || Math.random().toString(),
-            price: Number(order.price) || 0,
-            order_status: order.order_status || "PENDING",
-            destination_name: order.destination_name || "",
-            pickup_name: order.pickup_name || "",
-          }));
-
-          setOrders(processedOrders);
-
-          setTimeout(() => {
-            if (isMounted) {
-              console.log("Current orders state:", processedOrders);
-            }
-          }, 100);
-        } else {
-          console.log("Data is not an array, setting empty array");
-          setOrders([]);
-        }
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-        if (isMounted) {
-          setOrders([]);
-        }
-      }
-    };
-
-    fetchOrders();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [apiToken]);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
 
     try {
-      // if (!apiToken) {
-      //   throw new Error("Missing API token");
-      // }
-
       const res = await fetch(
         "https://api.thevanapp.com/api/paidorders/checker",
         {
@@ -520,23 +456,148 @@ const HomeScreen: React.FC = () => {
       }
 
       const data = await res.json();
+      console.log("Checker response data:", data);
 
       if (
         data &&
         (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)
       ) {
-        setOrders(data);
+        // Check if all orders are COMPLETED
+        if (Array.isArray(data)) {
+          const allCompleted = data.every(
+            (order) =>
+              order.order_status === "COMPLETED" ||
+              order.order_status === "CANCELLED"
+          );
+
+          if (allCompleted) {
+            console.log(
+              "All orders are COMPLETED or CANCELLED, need to fetch pending orders"
+            );
+            setActiveOrder(null);
+            // Return false to trigger the fallback api call to get pending orders
+            setRefreshing(false);
+            return false;
+          }
+        }
+
+        // Otherwise process orders normally
+        processOrders(data);
+        setRefreshing(false);
+        return true;
       } else {
-        setOrders([]);
-        console.log("No orders found");
+        console.log("No orders found from checker request");
+        setRefreshing(false);
+        return false;
       }
     } catch (error) {
       console.error("Error refreshing orders:", error);
-      setOrders([]);
-    } finally {
       setRefreshing(false);
+      return false;
     }
   }, [apiToken, driverData]);
+
+  const processOrders = (ordersData: any[]) => {
+    if (!Array.isArray(ordersData)) {
+      setOrders([]);
+      setActiveOrder(null);
+      return;
+    }
+
+    const processedOrders = ordersData.map((order) => ({
+      ...order,
+      id: order.id || Math.random().toString(),
+      price: Number(order.price) || 0,
+      order_status: order.order_status || "PENDING",
+      destination_name: order.destination_name || "",
+      pickup_name: order.pickup_name || "",
+    }));
+
+    const active = processedOrders.find(
+      (order) =>
+        order.order_status !== "PENDING" &&
+        order.order_status !== "COMPLETED" &&
+        order.order_status !== "CANCELLED"
+    );
+
+    const pendingOrders = processedOrders.filter(
+      (order) => order.order_status === "PENDING"
+    );
+
+    setActiveOrder(active || null);
+    setOrders(pendingOrders);
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadData = async () => {
+      if (!apiToken) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      const refreshSuccess = await onRefresh();
+
+      if (!refreshSuccess && isMounted) {
+        try {
+          const res = await fetch("https://api.thevanapp.com/api/paidorders", {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiToken}`,
+            },
+          });
+
+          if (!res.ok) {
+            throw new Error(`API response error: ${res.status}`);
+          }
+
+          const data = await res.json();
+
+          if (!isMounted) {
+            console.log("Component unmounted, skipping state update");
+            return;
+          }
+
+          if (Array.isArray(data)) {
+            processOrders(data);
+
+            setTimeout(() => {
+              if (isMounted) {
+                console.log("Current orders state:", processOrders);
+              }
+            }, 100);
+          } else {
+            console.log(
+              "Data from second request is not an array, setting empty array"
+            );
+            setOrders([]);
+            setActiveOrder(null);
+          }
+        } catch (error) {
+          console.error("Error fetching orders:", error);
+          if (isMounted) {
+            setOrders([]);
+            setActiveOrder(null);
+          }
+        } finally {
+          if (isMounted) {
+            setIsLoading(false);
+          }
+        }
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [apiToken, onRefresh]);
 
   const handleAccept = async (orderId: string) => {
     if (!driverData?.id || !apiToken) return;
@@ -550,6 +611,9 @@ const HomeScreen: React.FC = () => {
             Authorization: `Bearer ${apiToken}`,
             "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            id: "eifmimsdaisndis93",
+          }),
         }
       );
 
@@ -653,38 +717,60 @@ const HomeScreen: React.FC = () => {
             <Drivermodecomponent />
           </ModeContainer>
 
-          <SectionTitle>Available Orders</SectionTitle>
-          <JobsContainer>
-            {loadingData ? (
-              <LoadingContainer>
-                <ActivityIndicator
-                  size="large"
-                  color={DriverModeColors.primary}
-                />
-                <LoadingText>Loading your jobs...</LoadingText>
-              </LoadingContainer>
-            ) : orders && orders.length > 0 ? (
-              orders.map((order: OrderData) => (
+          {activeOrder && (
+            <>
+              <JobsContainer>
                 <JobOfferComponent
-                  key={order.id}
-                  id={order.id}
-                  order_status={order.order_status || ""}
-                  orderNumber={`Order #${order.id.toString().slice(-3)}`}
+                  key={activeOrder.id}
+                  id={activeOrder.id}
+                  order_status={activeOrder.order_status}
+                  orderNumber={`Order #${activeOrder.id.toString().slice(-3)}`}
                   orderMode={"Items"}
-                  destination={order.destination_name || ""}
-                  pickupLocation={order.pickup_name || ""}
-                  price={Number(order.price) || 0}
-                  time={new Date(order.created_at).toLocaleString()}
-                  onAccept={() => handleAccept(order.id)}
-                  onDecline={() => handleAccept(order.id)}
+                  destination={activeOrder.destination_name || ""}
+                  pickupLocation={activeOrder.pickup_name || ""}
+                  price={Number(activeOrder.price) || 0}
+                  time={new Date(activeOrder.created_at).toLocaleString()}
+                  onAccept={() => {}}
                 />
-              ))
-            ) : (
-              <NoJobsText>
-                No available Orders at the moment. Pull down to refresh.
-              </NoJobsText>
-            )}
-          </JobsContainer>
+              </JobsContainer>
+            </>
+          )}
+          {!activeOrder && (
+            <>
+              <JobsContainer>
+                <SectionTitle>Available Orders</SectionTitle>
+                {loadingData ? (
+                  <LoadingContainer>
+                    <ActivityIndicator
+                      size="large"
+                      color={DriverModeColors.primary}
+                    />
+                    <LoadingText>Loading your jobs...</LoadingText>
+                  </LoadingContainer>
+                ) : orders && orders.length > 0 ? (
+                  orders.map((order: OrderData) => (
+                    <JobOfferComponent
+                      key={order.id}
+                      id={order.id}
+                      order_status={order.order_status}
+                      orderNumber={`Order #${order.id.toString().slice(-3)}`}
+                      orderMode={"Items"}
+                      destination={order.destination_name || ""}
+                      pickupLocation={order.pickup_name || ""}
+                      price={Number(order.price) || 0}
+                      time={new Date(order.created_at).toLocaleString()}
+                      onAccept={() => handleAccept(order.id)}
+                      // onDecline={() => handleAccept(order.id)}
+                    />
+                  ))
+                ) : (
+                  <NoJobsText>
+                    No available Orders at the moment. Pull down to refresh.
+                  </NoJobsText>
+                )}
+              </JobsContainer>
+            </>
+          )}
         </Innercontainer>
       </ScrollableContent>
     </Container>

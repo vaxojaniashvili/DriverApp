@@ -2,16 +2,30 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Platform } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import styled from "styled-components/native";
-import { useAuthStore } from "@/infrastructure/store/store";
-import { supabase } from "@/infrastructure/db/supabase";
+// import { useAuthStore } from "@/infrastructure/store/store";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { supabase } from "@/infrastructure/db/supabase";
 
 const OrderScreen = () => {
-  let { my_id } = useAuthStore();
-  const [orders, setOrders]: any = useState([]);
-  const [loading, setLoading]: any = useState(true);
+  let my_id = "eifmimsdaisndis93";
+  const [orders, setOrders] = useState<any>([]);
+  const [loading, setLoading] = useState<any>(true);
+  const [apiToken, setApiToken] = useState(null);
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.access_token) {
+          setApiToken(sessionData.session.access_token as any);
+        }
+      } catch (error) {
+        console.log("Error fetching token:", error);
+      }
+    };
 
-  // Define all possible steps for order delivery
+    fetchToken();
+  }, []);
+
   const DELIVERY_STEPS = [
     { id: "ACCEPTED", label: "Order Accepted", icon: "checkmark-circle" },
     { id: "GOING TO DESTINATION", label: "Going to Pickup", icon: "navigate" },
@@ -23,20 +37,31 @@ const OrderScreen = () => {
   ];
 
   useEffect(() => {
-    if (!my_id) return;
+    if (!my_id || !apiToken) return;
 
     const getOrders = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("driver_id", my_id)
-          .eq("live", true);
+        const res = await fetch(
+          "https://api.thevanapp.com/api/paidorders/checker",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiToken}`,
+            },
+            body: JSON.stringify({
+              id: my_id,
+            }),
+          }
+        );
 
-        if (error) {
-          throw error;
+        if (!res.ok) {
+          throw new Error(`API response error: ${res.status}`);
         }
+
+        const data = await res.json();
+
         setOrders(data || []);
       } catch (error) {
         console.error("Error Fetching order data:", error);
@@ -46,29 +71,14 @@ const OrderScreen = () => {
     };
 
     getOrders();
-
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel("order-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `driver_id=eq.${my_id}`,
-        },
-        (payload) => {
-          // Update orders when changes occur
-          getOrders();
-        }
-      )
-      .subscribe();
+    const timeoutId = setTimeout(() => {
+      getOrders();
+    }, 30);
 
     return () => {
-      subscription.unsubscribe();
+      clearTimeout(timeoutId);
     };
-  }, [my_id]);
+  }, [my_id, apiToken]);
 
   async function handleStepDone(orderId: any, currentStatus: any) {
     let updated_status;
@@ -95,31 +105,45 @@ const OrderScreen = () => {
         updated_status = "PENDING";
     }
 
-    if (my_id) {
+    if (my_id && apiToken) {
       try {
-        const { error } = await supabase
-          .from("orders")
-          .update({ order_status: updated_status })
-          .eq("id", orderId)
-          .eq("driver_id", my_id)
-          .eq("status", "PAID")
-          .eq("live", true);
+        const response = await fetch(
+          `https://api.thevanapp.com/api/paidorders/complex/statusupdate/${orderId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiToken}`,
+            },
+            body: JSON.stringify({
+              status: updated_status,
+            }),
+          }
+        );
 
-        if (error) {
-          throw error;
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
         }
 
-        // Refresh orders after update
-        const { data, fetchError }: any = await supabase
-          .from("orders")
-          .select("*")
-          .eq("driver_id", my_id)
-          .eq("live", true);
+        const fetchRes = await fetch(
+          "https://api.thevanapp.com/api/paidorders/checker",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiToken}`,
+            },
+            body: JSON.stringify({
+              id: my_id,
+            }),
+          }
+        );
 
-        if (fetchError) {
-          throw fetchError;
+        if (!fetchRes.ok) {
+          throw new Error(`API response error: ${fetchRes.status}`);
         }
 
+        const data = await fetchRes.json();
         setOrders(data || []);
       } catch (error) {
         console.error("Error updating order status:", error);
@@ -127,10 +151,29 @@ const OrderScreen = () => {
     }
   }
 
-  // Get the current active order (assuming the first one is active)
-  const activeOrder = orders.length > 0 ? orders[0] : null;
+  const getActiveOrder = () => {
+    if (!orders || orders.length === 0) return null;
 
-  // Find the current step index based on order status
+    const activeOrders = orders.filter(
+      (order) => order.order_status !== "COMPLETED"
+    );
+
+    if (activeOrders.length === 0) {
+      const mostRecentOrder = [...orders].sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      )[0];
+      return mostRecentOrder;
+    }
+
+    const sortedActiveOrders = [...activeOrders].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    return sortedActiveOrders[0];
+  };
+
+  const activeOrder = getActiveOrder();
+
   const getCurrentStepIndex = () => {
     if (!activeOrder) return -1;
     return DELIVERY_STEPS.findIndex(
@@ -140,13 +183,12 @@ const OrderScreen = () => {
 
   const currentStepIndex = getCurrentStepIndex();
 
-  // Order details (could be calculated from actual data)
   const orderDetails = {
     remainingDistance: activeOrder?.distance
-      ? `${activeOrder.distance} km`
+      ? `${activeOrder.distance}`
       : "-- km",
-    speed: "45 km/h", // Example speed (could be fetched from location service)
-    eta: activeOrder?.eta || "-- min", // ETA from order or default
+    speed: "45 km/h",
+    eta: activeOrder?.eta || "-- min",
   };
 
   return (
@@ -163,8 +205,14 @@ const OrderScreen = () => {
         {activeOrder && activeOrder.pickup_lat && (
           <Marker
             coordinate={{
-              latitude: activeOrder.pickup_lat,
-              longitude: activeOrder.pickup_lng,
+              latitude:
+                typeof activeOrder.pickup_lat === "string"
+                  ? parseFloat(activeOrder.pickup_lat)
+                  : activeOrder.pickup_lat,
+              longitude:
+                typeof activeOrder.pickup_lng === "string"
+                  ? parseFloat(activeOrder.pickup_lng)
+                  : activeOrder.pickup_lng,
             }}
             title="Pickup"
             description="Order pickup point"
@@ -174,11 +222,18 @@ const OrderScreen = () => {
             </MarkerContainer>
           </Marker>
         )}
+
         {activeOrder && activeOrder.destination_lat && (
           <Marker
             coordinate={{
-              latitude: activeOrder.destination_lat,
-              longitude: activeOrder.destination_lng,
+              latitude:
+                typeof activeOrder.destination_lat === "string"
+                  ? parseFloat(activeOrder.destination_lat)
+                  : activeOrder.destination_lat,
+              longitude:
+                typeof activeOrder.destination_lng === "string"
+                  ? parseFloat(activeOrder.destination_lng)
+                  : activeOrder.destination_lng,
             }}
             title="Destination"
             description="Order Destination point"
@@ -190,315 +245,320 @@ const OrderScreen = () => {
         )}
       </StyledMap>
 
-      {loading ? (
-        <LoadingOverlay>
-          <LoadingText>Loading order information...</LoadingText>
-        </LoadingOverlay>
-      ) : activeOrder ? (
-        <OrderDetailsContainer>
-          {/* Order Info Header */}
-          <OrderHeader>
-            <OrderIdText>Order #{activeOrder.id}</OrderIdText>
-            <OrderStatusBadge>
-              <OrderStatusText>
-                {activeOrder.order_status.replace(/_/g, " ")}
-              </OrderStatusText>
-            </OrderStatusBadge>
-          </OrderHeader>
+      <OrderDetailsContainer showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <LoadingOverlay>
+            <LoadingText>Loading order information...</LoadingText>
+          </LoadingOverlay>
+        ) : activeOrder ? (
+          <>
+            <OrderHeader>
+              <OrderIdText>Order #{activeOrder.id}</OrderIdText>
+              <OrderStatusBadge>
+                <OrderStatusText>
+                  {activeOrder.order_status.replace(/_/g, " ")}
+                </OrderStatusText>
+              </OrderStatusBadge>
+            </OrderHeader>
 
-          {/* Order Details Row */}
-          <OrderDetailsRow>
-            <DetailItem>
-              <DetailIcon>
-                <Ionicons name="navigate" size={18} color="#555" />
-              </DetailIcon>
-              <DetailLabel>Distance</DetailLabel>
-              <DetailValue>{orderDetails.remainingDistance}</DetailValue>
-            </DetailItem>
+            <OrderCreationTime>
+              Created: {new Date(activeOrder.created_at).toLocaleString()}
+            </OrderCreationTime>
 
-            <DetailSeparator />
+            <OrderDetailsRow>
+              <DetailItem>
+                <DetailIcon>
+                  <Ionicons name="navigate" size={18} color="#555" />
+                </DetailIcon>
+                <DetailLabel>Distance</DetailLabel>
+                <DetailValue>{orderDetails.remainingDistance}</DetailValue>
+              </DetailItem>
 
-            <DetailItem>
-              <DetailIcon>
-                <Ionicons name="speedometer" size={18} color="#555" />
-              </DetailIcon>
-              <DetailLabel>Speed</DetailLabel>
-              <DetailValue>{orderDetails.speed}</DetailValue>
-            </DetailItem>
+              <DetailSeparator />
 
-            <DetailSeparator />
+              <DetailItem>
+                <DetailIcon>
+                  <Ionicons name="speedometer" size={18} color="#555" />
+                </DetailIcon>
+                <DetailLabel>Speed</DetailLabel>
+                <DetailValue>{orderDetails.speed}</DetailValue>
+              </DetailItem>
 
-            <DetailItem>
-              <DetailIcon>
-                <Ionicons name="time" size={18} color="#555" />
-              </DetailIcon>
-              <DetailLabel>ETA</DetailLabel>
-              <DetailValue>{orderDetails.eta}</DetailValue>
-            </DetailItem>
-          </OrderDetailsRow>
+              <DetailSeparator />
 
-          {/* Delivery Steps */}
-          <DeliveryStepsContainer>
-            {DELIVERY_STEPS.map((step, index) => {
-              const isCompleted = index < currentStepIndex;
-              const isCurrent = index === currentStepIndex;
-              const isPending = index > currentStepIndex;
+              <DetailItem>
+                <DetailIcon>
+                  <Ionicons name="time" size={18} color="#555" />
+                </DetailIcon>
+                <DetailLabel>ETA</DetailLabel>
+                <DetailValue>{orderDetails.eta}</DetailValue>
+              </DetailItem>
+            </OrderDetailsRow>
 
-              return (
-                <DeliveryStep
-                  key={step.id}
-                  isCompleted={isCompleted}
-                  isCurrent={isCurrent}
-                  isPending={isPending}
-                >
-                  <StepIconContainer
+            {/* Delivery Steps */}
+            <DeliveryStepsContainer>
+              {DELIVERY_STEPS.map((step, index) => {
+                const isCompleted = index < currentStepIndex;
+                const isCurrent = index === currentStepIndex;
+                const isPending = index > currentStepIndex;
+
+                return (
+                  <DeliveryStep
+                    key={step.id}
                     isCompleted={isCompleted}
                     isCurrent={isCurrent}
                     isPending={isPending}
                   >
-                    <Ionicons
-                      name={step.icon}
-                      size={18}
-                      color={isCompleted ? "#fff" : isCurrent ? "#fff" : "#AAA"}
-                    />
-                  </StepIconContainer>
-
-                  <StepLabel
-                    isCompleted={isCompleted}
-                    isCurrent={isCurrent}
-                    isPending={isPending}
-                  >
-                    {step.label}
-                  </StepLabel>
-
-                  {index < DELIVERY_STEPS.length - 1 && (
-                    <StepConnector
+                    <StepIconContainer
                       isCompleted={isCompleted}
-                      isCurrent={false}
-                      isPending={true}
-                    />
-                  )}
-                </DeliveryStep>
-              );
-            })}
-          </DeliveryStepsContainer>
+                      isCurrent={isCurrent}
+                      isPending={isPending}
+                    >
+                      <Ionicons
+                        name={step.icon}
+                        size={18}
+                        color={
+                          isCompleted ? "#fff" : isCurrent ? "#fff" : "#AAA"
+                        }
+                      />
+                    </StepIconContainer>
 
-          {/* Action Button */}
-          {currentStepIndex < DELIVERY_STEPS.length - 1 && (
-            <ActionButton
-              onPress={() =>
-                handleStepDone(activeOrder.id, activeOrder.order_status)
-              }
-            >
-              <ActionButtonText>
-                {`Complete: ${DELIVERY_STEPS[currentStepIndex]?.label}`}
-              </ActionButtonText>
-            </ActionButton>
-          )}
-        </OrderDetailsContainer>
-      ) : (
-        <NoOrderContainer>
-          <Ionicons name="car" size={50} color="#CCC" />
-          <NoOrderText>No active orders assigned to you</NoOrderText>
-        </NoOrderContainer>
-      )}
+                    <StepLabel
+                      isCompleted={isCompleted}
+                      isCurrent={isCurrent}
+                      isPending={isPending}
+                    >
+                      {step.label}
+                    </StepLabel>
+
+                    {index < DELIVERY_STEPS.length - 1 && (
+                      <StepConnector
+                        isCompleted={isCompleted}
+                        isCurrent={false}
+                        isPending={true}
+                      />
+                    )}
+                  </DeliveryStep>
+                );
+              })}
+            </DeliveryStepsContainer>
+
+            {currentStepIndex < DELIVERY_STEPS.length - 1 && (
+              <ActionButton
+                onPress={() =>
+                  handleStepDone(activeOrder.id, activeOrder.order_status)
+                }
+              >
+                <ActionButtonText>
+                  {`Complete: ${DELIVERY_STEPS[currentStepIndex]?.label}`}
+                </ActionButtonText>
+              </ActionButton>
+            )}
+
+            {activeOrder.order_status === "COMPLETED" && (
+              <CompletedMessage>
+                This order has been completed. Waiting for new orders...
+              </CompletedMessage>
+            )}
+          </>
+        ) : (
+          <NoOrderContainer>
+            <Ionicons name="car" size={50} color="#CCC" />
+            <NoOrderText>No active orders assigned to you</NoOrderText>
+          </NoOrderContainer>
+        )}
+      </OrderDetailsContainer>
     </Container>
   );
 };
 
-// Styled components
 const Container = styled.View`
+  flex: 1;
+  background-color: #f5f5f5;
+`;
+
+const StyledMap = styled(MapView)`
+  height: 45%;
+  width: 100%;
+`;
+
+const MarkerContainer = styled.View`
+  background-color: #fff;
+  padding: 5px;
+  border-radius: 20px;
+  border-width: 2px;
+  border-color: #4caf50;
+`;
+
+const OrderDetailsContainer = styled.ScrollView`
+  flex: 1;
+  background-color: #fff;
+  border-top-left-radius: 25px;
+  border-top-right-radius: 25px;
+  margin-top: -20px;
+  padding: 20px;
+  shadow-color: #000;
+  shadow-offset: 0px -2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 3px;
+  elevation: 5;
+`;
+
+const LoadingOverlay = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
 `;
 
-const StyledMap = styled(MapView)`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+const LoadingText = styled.Text`
+  font-size: 16px;
+  color: #777;
 `;
 
-const MarkerContainer = styled.View`
-  background-color: white;
-  border-radius: 50px;
-  padding: 4px;
-  border-width: 2px;
-  border-color: white;
-  shadow-color: #000;
-  shadow-opacity: 0.3;
-  shadow-offset: 0px 2px;
-  shadow-radius: 5px;
-  elevation: 5;
+const NoOrderContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
 `;
 
-const OrderDetailsContainer = styled.View`
-  width: 95%;
-  padding: 16px;
-  border-radius: 12px;
-  background-color: white;
-  position: absolute;
-  bottom: 20px;
-  elevation: 5;
-  shadow-color: #000;
-  shadow-opacity: 0.2;
-  shadow-offset: 0px 3px;
-  shadow-radius: 6px;
+const NoOrderText = styled.Text`
+  font-size: 18px;
+  color: #777;
+  margin-top: 15px;
+  text-align: center;
 `;
 
 const OrderHeader = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 `;
 
 const OrderIdText = styled.Text`
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
   color: #333;
 `;
 
 const OrderStatusBadge = styled.View`
-  background-color: #4285f4;
-  padding: 6px 12px;
-  border-radius: 20px;
+  background-color: #4caf50;
+  padding: 5px 10px;
+  border-radius: 10px;
 `;
 
 const OrderStatusText = styled.Text`
-  font-size: 12px;
-  font-weight: bold;
   color: white;
+  font-weight: bold;
+  font-size: 12px;
+`;
+
+const OrderCreationTime = styled.Text`
+  font-size: 12px;
+  color: #777;
+  margin-bottom: 15px;
 `;
 
 const OrderDetailsRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  margin-bottom: 16px;
-  border-top-width: 1px;
-  border-bottom-width: 1px;
-  border-color: #eeeeee;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
 `;
 
 const DetailItem = styled.View`
-  flex-direction: row;
-  align-items: center;
   flex: 1;
-  justify-content: center;
+  align-items: center;
 `;
 
 const DetailIcon = styled.View`
-  margin-right: 4px;
+  margin-bottom: 5px;
 `;
 
 const DetailLabel = styled.Text`
-  font-size: 11px;
+  font-size: 12px;
   color: #777;
-  margin-right: 4px;
+  margin-bottom: 3px;
 `;
 
 const DetailValue = styled.Text`
-  font-size: 12px;
+  font-size: 14px;
   font-weight: bold;
   color: #333;
 `;
 
 const DetailSeparator = styled.View`
   width: 1px;
-  height: 20px;
-  background-color: #eeeeee;
+  background-color: #ddd;
+  height: 30px;
+  margin-top: 5px;
 `;
 
 const DeliveryStepsContainer = styled.View`
-  margin-vertical: 12px;
+  margin-bottom: 20px;
 `;
 
 const DeliveryStep = styled.View`
   flex-direction: row;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
   position: relative;
 `;
 
 const StepIconContainer = styled.View`
-  width: 30px;
-  height: 30px;
-  border-radius: 15px;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background-color: ${(props) =>
+    props.isCompleted ? "#4CAF50" : props.isCurrent ? "#2196F3" : "#EEEEEE"};
   justify-content: center;
   align-items: center;
-  background-color: ${(props) =>
-    props.isCompleted ? "#4CAF50" : props.isCurrent ? "#4285F4" : "#EEEEEE"};
-  z-index: 2;
+  margin-right: 10px;
 `;
 
 const StepLabel = styled.Text`
-  margin-left: 12px;
-  font-size: 13px;
-  font-weight: ${(props) => (props.isCurrent ? "bold" : "normal")};
+  font-size: 14px;
   color: ${(props) =>
-    props.isCompleted ? "#4CAF50" : props.isCurrent ? "#4285F4" : "#888"};
+    props.isCompleted ? "#4CAF50" : props.isCurrent ? "#2196F3" : "#999999"};
+  font-weight: ${(props) =>
+    props.isCompleted || props.isCurrent ? "bold" : "normal"};
 `;
 
 const StepConnector = styled.View`
   position: absolute;
   left: 15px;
-  top: 30px;
+  top: 32px;
   width: 2px;
   height: 20px;
   background-color: ${(props) => (props.isCompleted ? "#4CAF50" : "#EEEEEE")};
-  z-index: 1;
 `;
 
 const ActionButton = styled.TouchableOpacity`
-  background-color: #4285f4;
-  padding: 14px;
-  border-radius: 8px;
+  background-color: #2196f3;
+  padding: 15px;
+  border-radius: 10px;
   align-items: center;
-  justify-content: center;
-  margin-top: 8px;
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 3px;
+  elevation: 2;
+  ${Platform.OS === "android" ? "margin-bottom:40px" : "margin-bottom:20px"}
 `;
 
 const ActionButtonText = styled.Text`
   color: white;
-  font-size: 14px;
   font-weight: bold;
-`;
-
-const LoadingOverlay = styled.View`
-  position: absolute;
-  bottom: 20px;
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  elevation: 5;
-  align-items: center;
-`;
-
-const LoadingText = styled.Text`
-  font-size: 14px;
-  color: #555;
-`;
-
-const NoOrderContainer = styled.View`
-  position: absolute;
-  bottom: 20px;
-  background-color: white;
-  padding: 24px;
-  border-radius: 8px;
-  elevation: 5;
-  align-items: center;
-  width: 90%;
-`;
-
-const NoOrderText = styled.Text`
   font-size: 16px;
-  color: #777;
-  margin-top: 12px;
+`;
+
+const CompletedMessage = styled.Text`
   text-align: center;
+  margin-top: 15px;
+  color: #888;
+  font-style: italic;
 `;
 
 export default OrderScreen;

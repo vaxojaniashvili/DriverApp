@@ -545,7 +545,7 @@ const ActionButton = styled.TouchableOpacity`
   shadow-opacity: 0.1;
   shadow-radius: 3px;
   elevation: 2;
-  ${Platform.OS === "android" ? "margin-bottom:40px" : "margin-bottom:20px"}
+  ${Platform.OS === "android" ? "margin-bottom:30px" : "margin-bottom:30px"}
 `;
 
 const ActionButtonText = styled.Text`

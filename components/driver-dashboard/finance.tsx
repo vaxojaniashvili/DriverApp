@@ -78,11 +78,10 @@ export default FinanceDetails;
 
 // Styled Components
 const Container = styled.View`
-  margin-top: 24px;
   background-color: #ffffff;
   border-radius: 16px;
   padding: 20px;
-  margin-bottom: 24px;
+  margin-bottom: 55px;
   elevation: 2;
   shadow-color: #000;
   shadow-opacity: 0.1;

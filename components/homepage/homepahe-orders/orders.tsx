@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components/native";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Platform, Text, TouchableOpacity, View } from "react-native";
 
 // Define the props interface for better type safety
 interface JobOfferProps {
@@ -21,7 +21,7 @@ const JobOfferContainer = styled.View`
   width: 100%;
   padding-top: 15px;
   padding-bottom: 15px;
-  padding-inline: 24px;
+  padding-horizontal: 24px;
   margin: 10px 0;
   border-radius: 30px;
   elevation: 3;
@@ -31,7 +31,9 @@ const JobOfferContainer = styled.View`
   border-width: 1px;
   border-color: rgba(255, 255, 255, 0.35);
   background-color: white;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: ${Platform.OS === "ios"
+    ? "0px 4px 8px rgba(0, 0, 0, 0.1)"
+    : "0px 4px 8px rgba(0, 0, 0, 1)"};
 `;
 
 // Styled component for job details

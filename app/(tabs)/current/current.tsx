@@ -194,7 +194,7 @@ const OrderScreen = () => {
   return (
     <Container>
       <StyledMap
-        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+        provider={PROVIDER_GOOGLE}
         initialRegion={{
           latitude: 35.894509,
           longitude: 14.479826,
@@ -395,7 +395,7 @@ const OrderDetailsContainer = styled.ScrollView`
   background-color: #fff;
   border-top-left-radius: 25px;
   border-top-right-radius: 25px;
-  margin-top: -20px;
+  margin-top: 0px;
   padding: 20px;
   shadow-color: #000;
   shadow-offset: 0px -2px;

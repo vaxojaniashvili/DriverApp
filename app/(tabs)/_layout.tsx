@@ -31,6 +31,7 @@ export default function TabLayout() {
           title: "Panel",
         }}
       />
+      <Tabs.Screen name="orderHistory" options={{ title: "orderHistory" }} />
       <Tabs.Screen
         name="settings/index"
         options={{

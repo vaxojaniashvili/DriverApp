@@ -4,6 +4,7 @@ import styled from "styled-components/native";
 import { LineChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
 import FinanceDetails from "@/components/driver-dashboard/finance";
+import { useRouter } from "expo-router";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -43,7 +44,7 @@ const StatsGrid = styled.View`
   margin-bottom: 8px;
 `;
 
-const StatCard = styled.View`
+const StatCard = styled.TouchableOpacity`
   background-color: #ffffff;
   padding: 20px;
   border-radius: 16px;
@@ -153,9 +154,11 @@ const DriverDashboard = () => {
     { title: "Income", value: "$1,240", icon: "wallet-outline" },
     { title: "Your %", value: "25%", icon: "pie-chart-outline" },
     { title: "Dashboard", value: "Active", icon: "speedometer-outline" },
-    { title: "Trip History", value: "View Details", icon: "time-outline" },
+    { title: "Order History", value: "View Details", icon: "time-outline" },
     { title: "Feedback", value: "3.5", icon: "star-outline" },
   ];
+
+  const router = useRouter();
 
   return (
     <Container>
@@ -168,7 +171,16 @@ const DriverDashboard = () => {
 
         <StatsGrid>
           {statCards.map((stat, index) => (
-            <StatCard key={index}>
+            <StatCard
+              onPress={() => {
+                if (stat.value === "View Details") {
+                  router.push(
+                    "/(tabs)/driver-panel/order-history/OrderHistory"
+                  );
+                }
+              }}
+              key={index}
+            >
               <StatIcon
                 style={{
                   backgroundColor: cardColors[index % cardColors.length].bg,

@@ -736,9 +736,9 @@ const HomeScreen: React.FC = () => {
                 <JobOfferComponent
                   key={activeOrder.id}
                   id={activeOrder.id}
+                  items={activeOrder.items}
                   order_status={activeOrder.order_status}
                   orderNumber={`Order #${activeOrder.id.toString().slice(-3)}`}
-                  orderMode={"Items"}
                   destination={activeOrder.destination_name || ""}
                   pickupLocation={activeOrder.pickup_name || ""}
                   price={Number(activeOrder.price) || 0}
@@ -765,9 +765,9 @@ const HomeScreen: React.FC = () => {
                     <JobOfferComponent
                       key={order.id}
                       id={order.id}
+                      items={order.items}
                       order_status={order.order_status}
                       orderNumber={`Order #${order.id.toString().slice(-3)}`}
-                      orderMode={"Items"}
                       destination={order.destination_name || ""}
                       pickupLocation={order.pickup_name || ""}
                       price={Number(order.price) || 0}

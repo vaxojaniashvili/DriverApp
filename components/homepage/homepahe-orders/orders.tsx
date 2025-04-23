@@ -2,16 +2,28 @@ import React, { useState } from "react";
 import styled from "styled-components/native";
 import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
 
-// Define the props interface for better type safety
+// Item interface to match your backend data
+interface Item {
+  id: number;
+  name: string;
+  size: string;
+  price: number;
+  category: string;
+  quantity: number;
+  created_at: string;
+  sub_category: string;
+}
+
+// Updated props interface to include items
 interface JobOfferProps {
   id: string;
   orderNumber: string;
-  orderMode: string;
   destination: string;
   pickupLocation: string;
   price: number;
   time: string;
   order_status: string;
+  items: Item[]; // Added items array
   onAccept: (id: string) => void;
   onDecline?: (id: string) => void;
 }
@@ -101,15 +113,58 @@ const OrderText = styled.Text`
   color: green;
 `;
 
+// New styled components for items section
+const ItemsContainer = styled.View`
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top-width: 1px;
+  border-top-color: #eee;
+`;
+
+const ItemsHeader = styled.Text`
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 10px;
+  color: #333;
+`;
+
+const ItemRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 8px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+  margin-bottom: 5px;
+`;
+
+const ItemInfo = styled.View`
+  flex: 1;
+`;
+
+const ItemName = styled.Text`
+  font-weight: 500;
+  color: #333;
+`;
+
+const ItemDetails = styled.Text`
+  color: #666;
+  font-size: 12px;
+`;
+
+const ItemPrice = styled.Text`
+  font-weight: bold;
+  color: #333;
+`;
+
 const JobOfferComponent: React.FC<JobOfferProps> = ({
   id,
   orderNumber,
-  orderMode,
   destination,
   pickupLocation,
   price,
   time,
   order_status,
+  items,
   onAccept,
   onDecline,
 }) => {
@@ -124,7 +179,7 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
       {order_status !== "PENDING" ? (
         <OrderText>Ongoing order</OrderText>
       ) : (
-        <OrderText>Availabe order</OrderText>
+        <OrderText>Available order</OrderText>
       )}
       <JobDetail>
         <Label>Order Number:</Label>
@@ -144,10 +199,10 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
 
       {isExpanded && (
         <>
-          <JobDetail>
+          {/* <JobDetail>
             <Label>Order Mode:</Label>
             <Value>{orderMode}</Value>
-          </JobDetail>
+          </JobDetail> */}
 
           <JobDetail>
             <Label>Pickup Location:</Label>
@@ -163,6 +218,25 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
             <Label>Time:</Label>
             <Value>{time}</Value>
           </JobDetail>
+
+          {/* Items section */}
+          {items && items.length > 0 && (
+            <ItemsContainer>
+              <ItemsHeader>Items ({items.length})</ItemsHeader>
+              {items.map((item, index) => (
+                <ItemRow key={`${item.id}-${index}`}>
+                  <ItemInfo>
+                    <ItemName>{item.name}</ItemName>
+                    <ItemDetails>
+                      {item.category} - {item.sub_category} - {item.size} - Qty:{" "}
+                      {item.quantity}
+                    </ItemDetails>
+                  </ItemInfo>
+                  <ItemPrice>€{item.price.toFixed(2)}</ItemPrice>
+                </ItemRow>
+              ))}
+            </ItemsContainer>
+          )}
 
           {order_status !== "PENDING" ? (
             <Text></Text>

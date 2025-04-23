@@ -257,7 +257,11 @@ const DriverDashboard = () => {
             fromZero
           />
         </ChartContainer>
-        <View style={{ marginBottom: 30 }}>
+        <View
+          style={
+            Platform.OS === "ios" ? { marginBottom: 30 } : { marginBottom: 0 }
+          }
+        >
           <FinanceDetails />
         </View>
       </InternalContainer>

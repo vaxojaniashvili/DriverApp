@@ -62,3 +62,34 @@ export interface TabItemType {
   icon: string;
   activeIcon?: string;
 }
+
+export interface OrderItem {
+  id: number;
+  name: string;
+  size: string;
+  price: number;
+  category: string;
+  quantity: number;
+  created_at: string;
+  sub_category: string;
+}
+
+export interface OrderHistoryType {
+  id: number;
+  created_at: string;
+  pickup_name: string;
+  destination_name: string;
+  pickup_lat: string;
+  pickup_lng: string;
+  destination_lat: string;
+  destination_lng: string;
+  email: string;
+  items: OrderItem[];
+  price: string;
+  distance: string;
+  status: string;
+  driver_id: number;
+  order_status: string;
+  live: boolean;
+  assigned_driver: string;
+}

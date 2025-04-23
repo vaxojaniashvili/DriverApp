@@ -171,7 +171,7 @@ export function OrderHistory() {
     return `₾${amount.toFixed(2)}`;
   };
 
-  console.log("data", orders);
+  console.log("dataa", orders);
 
   const renderOrderItem = (order) => (
     <View key={order.id} style={styles.orderItem}>

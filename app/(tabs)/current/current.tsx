@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Platform } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import styled from "styled-components/native";
 // import { useAuthStore } from "@/infrastructure/store/store";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { supabase } from "@/infrastructure/db/supabase";
+import { useFocusEffect } from "expo-router";
 
 const OrderScreen = () => {
   let my_id = "eifmimsdaisndis93";
   const [orders, setOrders] = useState<any>([]);
   const [loading, setLoading] = useState<any>(true);
   const [apiToken, setApiToken] = useState(null);
+
   useEffect(() => {
     const fetchToken = async () => {
       try {
@@ -36,44 +38,59 @@ const OrderScreen = () => {
     { id: "COMPLETED", label: "Completed", icon: "checkmark-done-circle" },
   ];
 
+  const getOrders = async () => {
+    if (!my_id || !apiToken) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch(
+        "https://api.thevanapp.com/api/paidorders/checker",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiToken}`,
+          },
+          body: JSON.stringify({
+            id: my_id,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`API response error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log("Orders fetched:", data);
+      setOrders(data || []);
+    } catch (error) {
+      console.error("Error Fetching order data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("OrderScreen focused - fetching current orders");
+      if (apiToken) {
+        getOrders();
+      }
+
+      return () => {
+        console.log("OrderScreen lost focus");
+      };
+    }, [apiToken, my_id])
+  );
+
   useEffect(() => {
     if (!my_id || !apiToken) return;
 
-    const getOrders = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          "https://api.thevanapp.com/api/paidorders/checker",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiToken}`,
-            },
-            body: JSON.stringify({
-              id: my_id,
-            }),
-          }
-        );
-
-        if (!res.ok) {
-          throw new Error(`API response error: ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        setOrders(data || []);
-      } catch (error) {
-        console.error("Error Fetching order data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     getOrders();
-    const timeoutId = setTimeout(() => {
+    const timeoutId = setInterval(() => {
       getOrders();
-    }, 30);
+    }, 300000);
 
     return () => {
       clearTimeout(timeoutId);
@@ -556,7 +573,8 @@ const ActionButtonText = styled.Text`
 
 const CompletedMessage = styled.Text`
   text-align: center;
-  margin-top: 15px;
+  /* margin-top: 15px; */
+  margin-bottom: 20px;
   color: #888;
   font-style: italic;
 `;

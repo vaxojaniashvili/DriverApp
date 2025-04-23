@@ -23,6 +23,7 @@ import {
   StatusProps,
   ThemeProps,
 } from "@/types/common";
+import { useFocusEffect } from "expo-router";
 
 const Container = styled.View`
   flex: 1;
@@ -464,7 +465,6 @@ const HomeScreen: React.FC = () => {
         data &&
         (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)
       ) {
-        // Check if all orders are COMPLETED
         if (Array.isArray(data)) {
           const allCompleted = data.every(
             (order) =>
@@ -477,18 +477,45 @@ const HomeScreen: React.FC = () => {
               "All orders are COMPLETED or CANCELLED, need to fetch pending orders"
             );
             setActiveOrder(null);
-            // Return false to trigger the fallback api call to get pending orders
+          } else {
+            processOrders(data);
             setRefreshing(false);
-            return false;
+            return true;
           }
+        } else {
+          processOrders([data]);
+          setRefreshing(false);
+          return true;
         }
+      }
 
-        // Otherwise process orders normally
-        processOrders(data);
+      console.log("Fetching pending orders from main endpoint");
+
+      const pendingRes = await fetch(
+        "https://api.thevanapp.com/api/paidorders",
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiToken}`,
+          },
+        }
+      );
+
+      if (!pendingRes.ok) {
+        throw new Error(`API response error: ${pendingRes.status}`);
+      }
+
+      const pendingData = await pendingRes.json();
+      console.log("Pending orders data:", pendingData);
+
+      if (Array.isArray(pendingData) && pendingData.length > 0) {
+        processOrders(pendingData);
         setRefreshing(false);
         return true;
       } else {
-        console.log("No orders found from checker request");
+        console.log("No pending orders found");
+        setOrders([]);
+        setActiveOrder(null);
         setRefreshing(false);
         return false;
       }
@@ -497,10 +524,11 @@ const HomeScreen: React.FC = () => {
       setRefreshing(false);
       return false;
     }
-  }, [apiToken, driverData]);
+  }, [apiToken]);
 
   const processOrders = (ordersData: any[]) => {
     if (!Array.isArray(ordersData)) {
+      console.log("Order data is not an array:", ordersData);
       setOrders([]);
       setActiveOrder(null);
       return;
@@ -526,9 +554,23 @@ const HomeScreen: React.FC = () => {
       (order) => order.order_status === "PENDING"
     );
 
+    console.log("Active order:", active);
+    console.log("Pending orders:", pendingOrders);
+
     setActiveOrder(active || null);
     setOrders(pendingOrders);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("HomePage is focused - refreshing orders");
+      onRefresh();
+
+      return () => {
+        console.log("HomePage lost focus");
+      };
+    }, [onRefresh])
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -541,63 +583,33 @@ const HomeScreen: React.FC = () => {
 
       setIsLoading(true);
 
-      const refreshSuccess = await onRefresh();
-
-      if (!refreshSuccess && isMounted) {
-        try {
-          const res = await fetch("https://api.thevanapp.com/api/paidorders", {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiToken}`,
-            },
-          });
-
-          if (!res.ok) {
-            throw new Error(`API response error: ${res.status}`);
-          }
-
-          const data = await res.json();
-
-          if (!isMounted) {
-            console.log("Component unmounted, skipping state update");
-            return;
-          }
-
-          if (Array.isArray(data)) {
-            processOrders(data);
-
-            setTimeout(() => {
-              if (isMounted) {
-                console.log("Current orders state:", processOrders);
-              }
-            }, 100);
-          } else {
-            console.log(
-              "Data from second request is not an array, setting empty array"
-            );
-            setOrders([]);
-            setActiveOrder(null);
-          }
-        } catch (error) {
-          console.error("Error fetching orders:", error);
-          if (isMounted) {
-            setOrders([]);
-            setActiveOrder(null);
-          }
-        } finally {
-          if (isMounted) {
-            setIsLoading(false);
-          }
+      try {
+        await onRefresh();
+      } catch (error) {
+        console.error("Error loading data:", error);
+        if (isMounted) {
+          setOrders([]);
+          setActiveOrder(null);
         }
-      } else {
-        setIsLoading(false);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadData();
 
+    const refreshInterval = setInterval(() => {
+      if (isMounted) {
+        console.log("Refreshing orders automatically");
+        onRefresh();
+      }
+    }, 300000);
+
     return () => {
       isMounted = false;
+      clearInterval(refreshInterval);
     };
   }, [apiToken, onRefresh]);
 

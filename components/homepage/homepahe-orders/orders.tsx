@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components/native";
-import { Platform, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
 
 // Define the props interface for better type safety
 interface JobOfferProps {
@@ -171,12 +171,15 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
               <ActionButton actionType="accept" onPress={() => onAccept(id)}>
                 <ButtonText>Accept</ButtonText>
               </ActionButton>
-              {/* <ActionButton
+              <ActionButton
+                onPress={() => {
+                  Alert.alert("Declined order");
+                }}
                 actionType="decline"
                 // onPress={() => onDecline(id)}
               >
                 <ButtonText>Decline</ButtonText>
-              </ActionButton> */}
+              </ActionButton>
             </ActionsContainer>
           )}
         </>

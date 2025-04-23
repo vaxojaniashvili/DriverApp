@@ -574,7 +574,7 @@ const ActionButtonText = styled.Text`
 const CompletedMessage = styled.Text`
   text-align: center;
   /* margin-top: 15px; */
-  margin-bottom: 20px;
+  margin-bottom: 25px;
   color: #888;
   font-style: italic;
 `;

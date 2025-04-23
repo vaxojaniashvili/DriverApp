@@ -160,7 +160,7 @@ const NoJobsText = styled.Text`
   padding: 32px;
   background-color: ${DriverModeColors.cardBg};
   border-radius: 20px;
-  elevation: 2;
+  /* elevation: 2; */
   shadow-opacity: 0.1;
   shadow-radius: 6px;
   shadow-color: #000;
@@ -204,7 +204,6 @@ const LoadingContainer = styled.View`
   padding: 32px;
   align-items: center;
   justify-content: center;
-  elevation: 2;
   shadow-opacity: 0.1;
   shadow-radius: 6px;
   shadow-color: #000;

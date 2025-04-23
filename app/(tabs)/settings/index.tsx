@@ -107,7 +107,7 @@ const Settings = () => {
             <LogoutText>Log Out</LogoutText>
           </LogoutButton>
 
-          <FooterText>App Version 1.0.0</FooterText>
+          <FooterText>App Version 3.0.5</FooterText>
         </BottomContainer>
       </ContentContainer>
     </Container>

@@ -31,6 +31,8 @@ interface AuthStoreState {
   mode: "active" | "off" | "break";
   setMode: (mode: "active" | "off" | "break") => void;
   setmyID?: (id: string) => void;
+  isAutomatic: boolean;
+  setIsAutomatic: (isAuto: boolean) => void;
 }
 
 const SectionTitle = styled.Text`
@@ -92,28 +94,28 @@ const JobSelectionContainer = styled.View`
   justify-content: space-between;
 `;
 
-// const JobSelectionButton = styled.TouchableOpacity<JobSelectionButtonProps>`
-//   flex: 1;
-//   padding: 14px 10px;
-//   margin: 0 6px;
-//   border-radius: 12px;
-//   align-items: center;
-//   justify-content: center;
-//   background-color: ${(props) =>
-//     props.selected ? DriverModeColors.primary : "rgba(224, 224, 224, 0.5)"};
-//   elevation: ${(props) =>
-//     Platform.OS === "android" ? (props.selected ? 6 : 2) : 0};
-//   shadow-opacity: ${(props) =>
-//     Platform.OS === "ios" ? (props.selected ? 0.2 : 0.1) : 0};
-//   shadow-radius: ${(props) =>
-//     Platform.OS === "ios" ? (props.selected ? 8 : 4) : 0}px;
-//   shadow-color: ${Platform.OS === "ios" ? "#000" : "transparent"};
-//   shadow-offset: 0px 2px;
-//   border-width: ${Platform.OS === "android" ? 0 : 1}px;
-//   border-color: ${(props) =>
-//     props.selected ? DriverModeColors.primary : "rgba(224, 224, 224, 0.8)"};
-//   min-height: 65px;
-// `;
+const JobSelectionButton = styled.TouchableOpacity<JobSelectionButtonProps>`
+  flex: 1;
+  padding: 14px 10px;
+  margin: 0 6px;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${(props) =>
+    props.selected ? DriverModeColors.primary : "rgba(224, 224, 224, 0.5)"};
+  elevation: ${(props) =>
+    Platform.OS === "android" ? (props.selected ? 6 : 2) : 0};
+  shadow-opacity: ${(props) =>
+    Platform.OS === "ios" ? (props.selected ? 0.2 : 0.1) : 0};
+  shadow-radius: ${(props) =>
+    Platform.OS === "ios" ? (props.selected ? 8 : 4) : 0}px;
+  shadow-color: ${Platform.OS === "ios" ? "#000" : "transparent"};
+  shadow-offset: 0px 2px;
+  border-width: ${Platform.OS === "android" ? 0 : 1}px;
+  border-color: ${(props) =>
+    props.selected ? DriverModeColors.primary : "rgba(224, 224, 224, 0.8)"};
+  min-height: 65px;
+`;
 
 const ButtonText = styled.Text<ButtonTextProps>`
   font-size: 14px;
@@ -123,20 +125,12 @@ const ButtonText = styled.Text<ButtonTextProps>`
   letter-spacing: 0.2px;
 `;
 
-// const Divider = styled.View`
-//   height: 1px;
-//   width: 100%;
-//   background-color: rgba(224, 224, 224, 0.5);
-//   margin: 8px 0 20px 0;
-// `;
-
 const STORAGE_KEYS = {
   DRIVER_MODE: "DRIVER_MODE",
   JOB_SELECTION: "JOB_SELECTION",
 };
 
 const DriverModeComponent: React.FC = () => {
-  const [isAutomatic, setIsAutomatic] = useState<boolean>(true);
   const [userEmail, setUserEmail] = useState<string>("");
   const [location, setLocation] = useState<{
     latitude: number;
@@ -145,7 +139,8 @@ const DriverModeComponent: React.FC = () => {
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const { setMode, mode } = useAuthStore() as unknown as AuthStoreState;
+  const { setMode, mode, isAutomatic, setIsAutomatic } =
+    useAuthStore() as unknown as AuthStoreState;
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -262,7 +257,7 @@ const DriverModeComponent: React.FC = () => {
     };
 
     loadSavedJobSelection();
-  }, []);
+  }, [setIsAutomatic]);
 
   const sendStatusToApi = async (currentMode: "active" | "off" | "break") => {
     if (!userEmail || !location || !apiToken) {
@@ -386,7 +381,7 @@ const DriverModeComponent: React.FC = () => {
         </DriverModeButton>
       </DriverModesContainer>
 
-      {/* <SectionTitle>Job Selection</SectionTitle>
+      <SectionTitle>Job Selection</SectionTitle>
       <JobSelectionContainer>
         <JobSelectionButton
           selected={isAutomatic}
@@ -421,7 +416,7 @@ const DriverModeComponent: React.FC = () => {
             </ButtonText>
           </ButtonContent>
         </JobSelectionButton>
-      </JobSelectionContainer> */}
+      </JobSelectionContainer>
     </>
   );
 };

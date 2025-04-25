@@ -1,18 +1,23 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface AuthState {
   user: any | null;
   setUser: (user: any) => void;
-  mode: any,
-  my_id: any,
+  mode: any;
+  setMode: (mode: any) => void;
+  my_id: any;
+  setmyID: (my_id: any) => void;
+  isAutomatic: boolean;
+  setIsAutomatic: (isAuto: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
   mode: "off",
-  setMode: (mode:any) => set({mode}),
+  setMode: (mode: any) => set({ mode }),
   my_id: null,
-  setmyID: (my_id:any) => set({my_id}),
-
+  setmyID: (my_id: any) => set({ my_id }),
+  isAutomatic: true,
+  setIsAutomatic: (isAuto) => set({ isAutomatic: isAuto }),
 }));

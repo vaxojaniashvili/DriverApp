@@ -160,13 +160,34 @@ const NoJobsText = styled.Text`
   padding: 32px;
   background-color: ${DriverModeColors.cardBg};
   border-radius: 20px;
-  /* elevation: 2; */
-  shadow-opacity: 0.1;
-  shadow-radius: 6px;
+  elevation: 3;
+  shadow-radius: 12px;
   shadow-color: #000;
-  shadow-offset: 0px 2px;
+  shadow-offset: 0px 4px;
   border-width: 1px;
-  border-color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.35);
+  background-color: white;
+  box-shadow: ${Platform.OS === "ios"
+    ? "0px 4px 8px rgba(0, 0, 0, 0.1)"
+    : "0px 4px 8px rgba(0, 0, 0, 1)"};
+`;
+const NoOngoingJobsText = styled.Text`
+  font-size: 16px;
+  color: ${DriverModeColors.darkGray};
+  text-align: center;
+  padding: 25px;
+  background-color: ${DriverModeColors.cardBg};
+  border-radius: 20px;
+  elevation: 3;
+  shadow-radius: 12px;
+  shadow-color: #000;
+  shadow-offset: 0px 4px;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.35);
+  background-color: white;
+  box-shadow: ${Platform.OS === "ios"
+    ? "0px 4px 8px rgba(0, 0, 0, 0.1)"
+    : "0px 4px 8px rgba(0, 0, 0, 1)"};
 `;
 
 const LocationStatus = styled.View<ThemeProps>`
@@ -225,6 +246,27 @@ const IconContainer = styled.View`
   margin-right: 10px;
   background-color: ${DriverModeColors.primary};
 `;
+const TabContainer = styled.View`
+  width: 100%;
+  flex-direction: row;
+  margin-bottom: 16px;
+`;
+
+const Tab = styled.TouchableOpacity<{ active: boolean }>`
+  flex: 1;
+  padding: 12px 16px;
+  background-color: ${(props) =>
+    props.active ? DriverModeColors.primary : DriverModeColors.cardBg};
+  border-radius: 10px;
+  margin-horizontal: 4px;
+  align-items: center;
+`;
+
+const TabText = styled.Text<{ active: boolean }>`
+  font-size: 16px;
+  font-weight: 600;
+  color: ${(props) => (props.active ? "white" : DriverModeColors.darkGray)};
+`;
 
 const GradientHeader = styled(LinearGradient)`
   position: absolute;
@@ -245,13 +287,18 @@ const HomeScreen: React.FC = () => {
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"ongoing" | "available">(
+    "available"
+  );
+  const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
 
-  const { setMode, mode, setmyID } =
+  const { setMode, mode, setmyID, isAutomatic } =
     useAuthStore() as unknown as AuthStoreState;
   const modeRef = useRef<"active" | "off" | "break">(mode);
 
   const [location, setLocation] = useState<LocationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const [locationSendError, setLocationSendError] = useState<string | null>(
     null
   );
@@ -530,6 +577,7 @@ const HomeScreen: React.FC = () => {
       console.log("Order data is not an array:", ordersData);
       setOrders([]);
       setActiveOrder(null);
+      setOngoingOrders([]);
       return;
     }
 
@@ -541,13 +589,13 @@ const HomeScreen: React.FC = () => {
       destination_name: order.destination_name || "",
       pickup_name: order.pickup_name || "",
     }));
-
-    const active = processedOrders.find(
+    const ongoing = processedOrders.filter(
       (order) =>
         order.order_status !== "PENDING" &&
         order.order_status !== "COMPLETED" &&
         order.order_status !== "CANCELLED"
     );
+    const active = ongoing.length > 0 ? ongoing[0] : null;
 
     const pendingOrders = processedOrders.filter(
       (order) => order.order_status === "PENDING"
@@ -557,6 +605,7 @@ const HomeScreen: React.FC = () => {
     console.log("Pending orders:", pendingOrders);
 
     setActiveOrder(active || null);
+    setOngoingOrders(ongoing);
     setOrders(pendingOrders);
   };
 
@@ -730,59 +779,63 @@ const HomeScreen: React.FC = () => {
             <Drivermodecomponent />
           </ModeContainer>
 
-          {activeOrder && (
-            <>
-              <JobsContainer>
+          {isAutomatic && ongoingOrders.length > 0 && (
+            <JobsContainer>
+              <SectionTitle>Ongoing Orders</SectionTitle>
+              {ongoingOrders.map((order) => (
                 <JobOfferComponent
-                  key={activeOrder.id}
-                  id={activeOrder.id}
-                  items={activeOrder.items}
-                  order_status={activeOrder.order_status}
-                  orderNumber={`Order #${activeOrder.id.toString().slice(-3)}`}
-                  destination={activeOrder.destination_name || ""}
-                  pickupLocation={activeOrder.pickup_name || ""}
-                  price={Number(activeOrder.price) || 0}
-                  time={new Date(activeOrder.created_at).toLocaleString()}
+                  key={order.id}
+                  id={order.id}
+                  items={order.items}
+                  order_status={order.order_status}
+                  orderNumber={`Order #${order.id.toString().slice(-3)}`}
+                  destination={order.destination_name || ""}
+                  pickupLocation={order.pickup_name || ""}
+                  price={Number(order.price) || 0}
+                  time={new Date(order.created_at).toLocaleString()}
                   onAccept={() => {}}
                 />
-              </JobsContainer>
-            </>
+              ))}
+            </JobsContainer>
           )}
-          {!activeOrder && (
-            <>
-              <JobsContainer>
-                <SectionTitle>Available Orders</SectionTitle>
-                {loadingData ? (
-                  <LoadingContainer>
-                    <ActivityIndicator
-                      size="large"
-                      color={DriverModeColors.primary}
-                    />
-                    <LoadingText>Loading your jobs...</LoadingText>
-                  </LoadingContainer>
-                ) : orders && orders.length > 0 ? (
-                  orders.map((order: OrderData) => (
-                    <JobOfferComponent
-                      key={order.id}
-                      id={order.id}
-                      items={order.items}
-                      order_status={order.order_status}
-                      orderNumber={`Order #${order.id.toString().slice(-3)}`}
-                      destination={order.destination_name || ""}
-                      pickupLocation={order.pickup_name || ""}
-                      price={Number(order.price) || 0}
-                      time={new Date(order.created_at).toLocaleString()}
-                      onAccept={() => handleAccept(order.id)}
-                      // onDecline={() => handleAccept(order.id)}
-                    />
-                  ))
-                ) : (
-                  <NoJobsText>
-                    No available Orders at the moment. Pull down to refresh.
-                  </NoJobsText>
-                )}
-              </JobsContainer>
-            </>
+
+          {!isAutomatic && (
+            <JobsContainer>
+              <SectionTitle>Available Orders</SectionTitle>
+              {loadingData ? (
+                <LoadingContainer>
+                  <ActivityIndicator
+                    size="large"
+                    color={DriverModeColors.primary}
+                  />
+                  <LoadingText>Loading your jobs...</LoadingText>
+                </LoadingContainer>
+              ) : orders && orders.length > 0 ? (
+                orders.map((order: OrderData) => (
+                  <JobOfferComponent
+                    key={order.id}
+                    id={order.id}
+                    items={order.items}
+                    order_status={order.order_status}
+                    orderNumber={`Order #${order.id.toString().slice(-3)}`}
+                    destination={order.destination_name || ""}
+                    pickupLocation={order.pickup_name || ""}
+                    price={Number(order.price) || 0}
+                    time={new Date(order.created_at).toLocaleString()}
+                    onAccept={() => handleAccept(order.id)}
+                  />
+                ))
+              ) : (
+                <NoJobsText>
+                  No available Orders at the moment. Pull down to refresh.
+                </NoJobsText>
+              )}
+            </JobsContainer>
+          )}
+          {isAutomatic && ongoingOrders.length === 0 && (
+            <NoOngoingJobsText>
+              No available ongoing Orders at the moment. Pull down to refresh.
+            </NoOngoingJobsText>
           )}
         </Innercontainer>
       </ScrollableContent>

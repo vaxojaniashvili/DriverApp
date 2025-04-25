@@ -90,7 +90,7 @@ const OrderScreen = () => {
     getOrders();
     const timeoutId = setInterval(() => {
       getOrders();
-    }, 300000);
+    }, 3000000);
 
     return () => {
       clearTimeout(timeoutId);

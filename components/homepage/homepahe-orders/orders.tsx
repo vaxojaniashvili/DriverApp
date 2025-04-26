@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components/native";
 import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 // Item interface to match your backend data
 interface Item {
@@ -35,7 +36,7 @@ const JobOfferContainer = styled.View`
   padding-bottom: 15px;
   padding-horizontal: 24px;
   margin: 10px 0;
-  border-radius: 30px;
+  border-radius: 20px;
   elevation: 3;
   shadow-radius: 12px;
   shadow-color: #000;
@@ -52,6 +53,7 @@ const JobOfferContainer = styled.View`
 const JobDetail = styled.View`
   margin-bottom: 8px;
   flex-direction: row;
+  gap: 10px;
 `;
 
 // Styled component for detail label
@@ -63,7 +65,8 @@ const Label = styled.Text`
 
 // Styled component for job data
 const Value = styled.Text`
-  color: #666;
+  color: #4caf50;
+  font-weight: 500;
   flex: 1;
 `;
 
@@ -89,16 +92,25 @@ const ActionButton = styled(TouchableOpacity)<{
 
 // Expand/Collapse Button
 const ExpandButton = styled(TouchableOpacity)`
-  align-self: flex-end;
+  align-self: center;
   margin-top: 10px;
-  background-color: #007bff;
-  padding: 8px 12px;
+  /* background-color: #007bff; */
+  /* padding: 8px 12px; */
   border-radius: 5px;
+  flex-direction: row;
 `;
 
 const ExpandButtonText = styled.Text`
-  color: white;
+  color: gray;
   font-size: 14px;
+  margin-top: 5px;
+  margin-right: 20px;
+`;
+const ExpandButtonLessText = styled.Text`
+  color: black;
+  font-size: 14px;
+  margin-top: 5px;
+  margin-right: 30px;
 `;
 
 const ButtonText = styled.Text`
@@ -143,7 +155,7 @@ const ItemInfo = styled.View`
 
 const ItemName = styled.Text`
   font-weight: 500;
-  color: #333;
+  color: #4caf50;
 `;
 
 const ItemDetails = styled.Text`
@@ -153,7 +165,8 @@ const ItemDetails = styled.Text`
 
 const ItemPrice = styled.Text`
   font-weight: bold;
-  color: #333;
+  color: #4caf50;
+  align-self: center;
 `;
 
 const JobOfferComponent: React.FC<JobOfferProps> = ({
@@ -261,8 +274,14 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
 
       <ExpandButton onPress={toggleExpand}>
         <ExpandButtonText>
-          {isExpanded ? "Collapse" : "Expand"}
+          {isExpanded ? "Show Less" : "Show More"}
         </ExpandButtonText>
+        <Ionicons
+          name={isExpanded ? "chevron-up" : "chevron-down"}
+          size={16}
+          color="gray"
+          style={{ marginLeft: -13, marginTop: 5 }}
+        />
       </ExpandButton>
     </JobOfferContainer>
   );

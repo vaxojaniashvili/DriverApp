@@ -125,7 +125,7 @@ const LegendDot = styled.View`
   width: 8px;
   height: 8px;
   border-radius: 4px;
-  background-color: #4361ee;
+  background-color: #28c76f;
   margin-right: 6px;
 `;
 

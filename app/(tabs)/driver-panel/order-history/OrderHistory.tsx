@@ -359,7 +359,7 @@ export function OrderHistory() {
                       <FontAwesome5
                         name={getCategoryIcon(item.category)}
                         size={16}
-                        color="#4361ee"
+                        color="#4caf50"
                       />
                     </View>
 
@@ -398,16 +398,16 @@ export function OrderHistory() {
               {order.email && (
                 <View style={styles.infoRow}>
                   <Ionicons name="mail-outline" size={16} color="#6c757d" />
-                  <Text style={styles.infoText}>Customer: {order.email}</Text>
+                  <Text style={styles.infoText}>Customer:</Text>
+                  <Text style={styles.infoTextValue}>{order.email}</Text>
                 </View>
               )}
 
               {order.driver_id && (
                 <View style={styles.infoRow}>
                   <Ionicons name="person-outline" size={16} color="#6c757d" />
-                  <Text style={styles.infoText}>
-                    Driver ID: {order.driver_id}
-                  </Text>
+                  <Text style={styles.infoText}>Driver ID:</Text>
+                  <Text style={styles.infoTextValue}>{order.driver_id}</Text>
                 </View>
               )}
 
@@ -420,8 +420,9 @@ export function OrderHistory() {
                     size={16}
                     color="#6c757d"
                   />
-                  <Text style={styles.infoText}>
-                    Live Tracking: {order.live ? "Enabled" : "Disabled"}
+                  <Text style={styles.infoText}>Live Tracking:</Text>
+                  <Text style={styles.infoTextValue}>
+                    {order.live ? "Enabled" : "Disabled"}
                   </Text>
                 </View>
               )}
@@ -439,7 +440,7 @@ export function OrderHistory() {
           <Ionicons
             name={isExpanded ? "chevron-up" : "chevron-down"}
             size={16}
-            color="#4361ee"
+            color="gray"
           />
         </TouchableOpacity>
       </View>
@@ -493,8 +494,8 @@ export function OrderHistory() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={["#4361ee"]}
-              tintColor="#4361ee"
+              colors={["#28c76f"]}
+              tintColor="#28c76f"
             />
           }
         >
@@ -637,7 +638,7 @@ const styles = StyleSheet.create({
   orderAmount: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#4361ee",
+    color: "#4caf50",
   },
   orderStatusRow: {
     flexDirection: "row",
@@ -689,7 +690,7 @@ const styles = StyleSheet.create({
   expandButtonText: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#4361ee",
+    color: "gray",
     marginRight: 4,
   },
   expandedContent: {
@@ -794,7 +795,7 @@ const styles = StyleSheet.create({
   itemPrice: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#4361ee",
+    color: "#4caf50",
   },
   itemMetaRow: {
     flexDirection: "row",
@@ -831,6 +832,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#495057",
     marginLeft: 8,
+  },
+  infoTextValue: {
+    fontSize: 14,
+    color: "#4caf50",
+    marginLeft: 4,
   },
   emptyState: {
     alignItems: "center",

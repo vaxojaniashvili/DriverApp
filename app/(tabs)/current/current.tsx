@@ -200,13 +200,19 @@ const OrderScreen = () => {
 
   const currentStepIndex = getCurrentStepIndex();
 
-  const orderDetails = {
-    remainingDistance: activeOrder?.distance
-      ? `${activeOrder.distance}`
-      : "-- km",
-    speed: "45 km/h",
-    eta: activeOrder?.eta || "-- min",
-  };
+  const orderDetails = activeOrder
+    ? {
+        remainingDistance: activeOrder.distance || "-- km",
+        price: activeOrder.price ? `€${activeOrder.price}` : "--",
+        pickupName: activeOrder.pickup_name || "--",
+        destinationName: activeOrder.destination_name || "--",
+      }
+    : {
+        remainingDistance: "-- km",
+        price: "--",
+        pickupName: "--",
+        destinationName: "--",
+      };
 
   return (
     <Container>
@@ -288,29 +294,103 @@ const OrderScreen = () => {
                   <Ionicons name="navigate" size={18} color="#555" />
                 </DetailIcon>
                 <DetailLabel>Distance</DetailLabel>
-                <DetailValue>{orderDetails.remainingDistance}</DetailValue>
+                <DetailValue>{activeOrder.distance}</DetailValue>
               </DetailItem>
 
               <DetailSeparator />
 
               <DetailItem>
                 <DetailIcon>
-                  <Ionicons name="speedometer" size={18} color="#555" />
+                  <MaterialIcons name="euro" size={18} color="#555" />
                 </DetailIcon>
-                <DetailLabel>Speed</DetailLabel>
-                <DetailValue>{orderDetails.speed}</DetailValue>
+                <DetailLabel>Price</DetailLabel>
+                <DetailValue>€{activeOrder.price}</DetailValue>
               </DetailItem>
 
               <DetailSeparator />
 
               <DetailItem>
                 <DetailIcon>
-                  <Ionicons name="time" size={18} color="#555" />
+                  <Ionicons name="pricetag" size={18} color="#555" />
                 </DetailIcon>
-                <DetailLabel>ETA</DetailLabel>
-                <DetailValue>{orderDetails.eta}</DetailValue>
+                <DetailLabel>Status</DetailLabel>
+                <DetailValue>{activeOrder.status}</DetailValue>
               </DetailItem>
             </OrderDetailsRow>
+
+            {/* Location Details */}
+            <LocationsContainer>
+              <LocationItem>
+                <LocationIconContainer>
+                  <Ionicons name="location" size={20} color="#4CAF50" />
+                </LocationIconContainer>
+                <LocationDetails>
+                  <LocationTitle>Pickup</LocationTitle>
+                  <LocationName>{activeOrder.pickup_name}</LocationName>
+                </LocationDetails>
+              </LocationItem>
+
+              <LocationArrow>
+                <Ionicons name="arrow-down" size={24} color="#999" />
+              </LocationArrow>
+
+              <LocationItem>
+                <LocationIconContainer>
+                  <Ionicons name="flag" size={20} color="#F44336" />
+                </LocationIconContainer>
+                <LocationDetails>
+                  <LocationTitle>Destination</LocationTitle>
+                  <LocationName>{activeOrder.destination_name}</LocationName>
+                </LocationDetails>
+              </LocationItem>
+            </LocationsContainer>
+
+            {/* Order Items */}
+            {activeOrder.items && activeOrder.items.length > 0 && (
+              <OrderItemsContainer>
+                <OrderItemsHeader>
+                  <Ionicons name="list" size={18} color="#555" />
+                  <OrderItemsHeaderText>Order Items</OrderItemsHeaderText>
+                </OrderItemsHeader>
+
+                {activeOrder.items.map((item, index) => (
+                  <OrderItemRow key={item.id || index}>
+                    <OrderItemInfo>
+                      <OrderItemName>{item.name}</OrderItemName>
+                      <OrderItemDetails>
+                        {item.category} • {item.sub_category} • Size:{" "}
+                        {item.size}
+                      </OrderItemDetails>
+                    </OrderItemInfo>
+                    <OrderItemPriceContainer>
+                      <OrderItemQuantity>x{item.quantity}</OrderItemQuantity>
+                      <OrderItemPrice>€{item.price}</OrderItemPrice>
+                    </OrderItemPriceContainer>
+                  </OrderItemRow>
+                ))}
+
+                <OrderItemTotalRow>
+                  <OrderItemTotalLabel>Total</OrderItemTotalLabel>
+                  <OrderItemTotalValue>
+                    €{activeOrder.price}
+                  </OrderItemTotalValue>
+                </OrderItemTotalRow>
+              </OrderItemsContainer>
+            )}
+
+            {/* Customer Info */}
+            {activeOrder.email && (
+              <CustomerContainer>
+                <CustomerHeader>
+                  <Ionicons name="person" size={18} color="#555" />
+                  <CustomerHeaderText>Customer</CustomerHeaderText>
+                </CustomerHeader>
+                <CustomerDetail>
+                  <CustomerLabel>Email:</CustomerLabel>
+                  <CustomerValue>{activeOrder.email}</CustomerValue>
+                </CustomerDetail>
+              </CustomerContainer>
+            )}
 
             {/* Delivery Steps */}
             <DeliveryStepsContainer>
@@ -429,7 +509,7 @@ const LoadingOverlay = styled.View`
 
 const LoadingText = styled.Text`
   font-size: 16px;
-  color: #777;
+  color: #4caf50;
 `;
 
 const NoOrderContainer = styled.View`
@@ -440,7 +520,7 @@ const NoOrderContainer = styled.View`
 
 const NoOrderText = styled.Text`
   font-size: 18px;
-  color: #777;
+  color: #4caf50;
   margin-top: 15px;
   text-align: center;
 `;
@@ -455,7 +535,6 @@ const OrderHeader = styled.View`
 const OrderIdText = styled.Text`
   font-size: 18px;
   font-weight: bold;
-  color: #333;
 `;
 
 const OrderStatusBadge = styled.View`
@@ -472,7 +551,6 @@ const OrderStatusText = styled.Text`
 
 const OrderCreationTime = styled.Text`
   font-size: 12px;
-  color: #777;
   margin-bottom: 15px;
 `;
 
@@ -483,6 +561,7 @@ const OrderDetailsRow = styled.View`
   border-radius: 10px;
   padding: 15px;
   margin-bottom: 20px;
+  border: 1px solid #e8f5e9;
 `;
 
 const DetailItem = styled.View`
@@ -496,19 +575,18 @@ const DetailIcon = styled.View`
 
 const DetailLabel = styled.Text`
   font-size: 12px;
-  color: #777;
   margin-bottom: 3px;
 `;
 
 const DetailValue = styled.Text`
   font-size: 14px;
   font-weight: bold;
-  color: #333;
+  color: #388e3c;
 `;
 
 const DetailSeparator = styled.View`
   width: 1px;
-  background-color: #ddd;
+  background-color: #ccead6;
   height: 30px;
   margin-top: 5px;
 `;
@@ -539,6 +617,7 @@ const StepLabel = styled.Text`
   font-size: 14px;
   color: ${(props) =>
     props.isCompleted ? "#4CAF50" : props.isCurrent ? "#2196F3" : "#999999"};
+
   font-weight: ${(props) =>
     props.isCompleted || props.isCurrent ? "bold" : "normal"};
 `;
@@ -553,7 +632,7 @@ const StepConnector = styled.View`
 `;
 
 const ActionButton = styled.TouchableOpacity`
-  background-color: #2196f3;
+  background-color: #4caf50;
   padding: 15px;
   border-radius: 10px;
   align-items: center;
@@ -573,10 +652,171 @@ const ActionButtonText = styled.Text`
 
 const CompletedMessage = styled.Text`
   text-align: center;
-  /* margin-top: 15px; */
   margin-bottom: 25px;
-  color: #888;
+  color: #4caf50;
   font-style: italic;
+`;
+
+const LocationsContainer = styled.View`
+  margin-bottom: 20px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 15px;
+  border: 1px solid #e8f5e9;
+`;
+
+const LocationItem = styled.View`
+  flex-direction: row;
+  padding: 5px 0;
+`;
+
+const LocationIconContainer = styled.View`
+  width: 30px;
+  height: 30px;
+  background-color: #fff;
+  border-radius: 15px;
+  justify-content: center;
+  align-items: center;
+  margin-right: 10px;
+  border: 1px solid #4caf50;
+`;
+
+const LocationDetails = styled.View`
+  flex: 1;
+`;
+
+const LocationTitle = styled.Text`
+  font-size: 12px;
+`;
+
+const LocationName = styled.Text`
+  font-size: 16px;
+  font-weight: bold;
+  color: #388e3c;
+`;
+
+const LocationArrow = styled.View`
+  align-items: center;
+  margin: 5px 0;
+`;
+
+const OrderItemsContainer = styled.View`
+  margin-bottom: 20px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 15px;
+  border: 1px solid #e8f5e9;
+`;
+
+const OrderItemsHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 10px;
+  border-bottom-width: 1px;
+  border-bottom-color: #ccead6;
+  padding-bottom: 8px;
+`;
+
+const OrderItemsHeaderText = styled.Text`
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 8px;
+`;
+
+const OrderItemRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom-width: 1px;
+  border-bottom-color: #ccead6;
+`;
+
+const OrderItemInfo = styled.View`
+  flex: 1;
+`;
+
+const OrderItemName = styled.Text`
+  font-size: 14px;
+  font-weight: bold;
+  color: #388e3c;
+`;
+
+const OrderItemDetails = styled.Text`
+  font-size: 12px;
+  margin-top: 2px;
+`;
+
+const OrderItemPriceContainer = styled.View`
+  align-items: flex-end;
+`;
+
+const OrderItemQuantity = styled.Text`
+  font-size: 12px;
+`;
+
+const OrderItemPrice = styled.Text`
+  font-size: 14px;
+  font-weight: bold;
+  color: #388e3c;
+`;
+
+const OrderItemTotalRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top-width: 1px;
+  border-top-color: #ccead6;
+`;
+
+const OrderItemTotalLabel = styled.Text`
+  font-size: 14px;
+  font-weight: bold;
+`;
+
+const OrderItemTotalValue = styled.Text`
+  font-size: 16px;
+  font-weight: bold;
+  color: #4caf50;
+`;
+
+const CustomerContainer = styled.View`
+  margin-bottom: 20px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 15px;
+  border: 1px solid #e8f5e9;
+`;
+
+const CustomerHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 10px;
+  border-bottom-width: 1px;
+  border-bottom-color: #ccead6;
+  padding-bottom: 8px;
+`;
+
+const CustomerHeaderText = styled.Text`
+  font-size: 16px;
+  font-weight: bold;
+  margin-left: 8px;
+`;
+
+const CustomerDetail = styled.View`
+  flex-direction: row;
+  margin-bottom: 5px;
+`;
+
+const CustomerLabel = styled.Text`
+  font-size: 14px;
+  width: 60px;
+`;
+
+const CustomerValue = styled.Text`
+  font-size: 14px;
+  color: #388e3c;
+  flex: 1;
 `;
 
 export default OrderScreen;

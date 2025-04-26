@@ -24,6 +24,7 @@ import {
   ThemeProps,
 } from "@/types/common";
 import { useFocusEffect } from "expo-router";
+import JobSelectionComponent from "@/components/homepage/jobs-selection/JobSelection";
 
 const Container = styled.View`
   flex: 1;
@@ -41,24 +42,24 @@ const Innercontainer = styled.View`
   justify-content: flex-start;
   padding-top: ${Platform.OS === "android"
     ? StatusBar.currentHeight
-      ? StatusBar.currentHeight + 12
-      : 12
-    : 75}px;
-  padding-horizontal: 10px;
+      ? StatusBar.currentHeight + 8
+      : 8
+    : 65}px;
+  padding-horizontal: 12px;
 `;
 
 const Header = styled.View`
   width: 100%;
-  padding: 24px;
+  padding: 18px;
   background-color: ${DriverModeColors.cardBg};
-  border-radius: 30px;
-  margin-bottom: 20px;
-  elevation: 3;
-  shadow-opacity: 0.15;
-  shadow-radius: 12px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  elevation: 2;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
   shadow-color: #000;
-  shadow-offset: 0px 4px;
-  border-width: 1px;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
   border-color: rgba(255, 255, 255, 0.8);
 `;
 
@@ -74,120 +75,115 @@ const UserInfo = styled.View`
 `;
 
 const UserGreeting = styled.Text`
-  font-size: 26px;
-  font-weight: bold;
+  font-size: 22px;
+  font-weight: 700;
   color: ${DriverModeColors.dark};
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 `;
 
 const UserDetail = styled.Text`
-  font-size: 16px;
+  font-size: 14px;
   color: ${DriverModeColors.darkGray};
   font-weight: 500;
   flex-direction: row;
   align-items: center;
   position: relative;
-  top: ${Platform.OS === "android" ? "8px" : "10px"};
+  top: ${Platform.OS === "android" ? "4px" : "6px"};
 `;
 
 const StatusIndicator = styled.View<StatusProps>`
-  width: 10px;
-  height: 10px;
-  border-radius: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
   background-color: ${(props) =>
     props.active ? DriverModeColors.success : DriverModeColors.danger};
-  margin-right: 8px;
+  margin-right: 6px;
 `;
 
 const StatusContainer = styled.View<StatusProps>`
   flex-direction: row;
   align-items: center;
-  margin-top: 16px;
+  margin-top: 12px;
   background-color: ${(props) =>
     props.active
       ? DriverModeColors.statusBgOnline
       : DriverModeColors.statusBgOffline};
-  padding: 10px 16px;
-  border-radius: 12px;
-  border-width: 1px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-width: 0.5px;
   border-color: ${(props) =>
     props.active ? DriverModeColors.success : DriverModeColors.danger};
 `;
 
 const StatusText = styled.Text<StatusProps>`
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: ${(props) =>
     props.active ? DriverModeColors.success : DriverModeColors.danger};
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 `;
 
 const ModeContainer = styled.View`
   width: 100%;
-  padding: 24px;
+  padding: 16px;
   background-color: white;
-  border-radius: 30px;
-  margin-bottom: 24px;
-  elevation: 3;
-  shadow-opacity: 0.15;
-  shadow-radius: 12px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  elevation: 2;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
   shadow-color: #000;
-  shadow-offset: 0px 4px;
-  border-width: 1px;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
   border-color: rgba(255, 255, 255, 0.8);
 `;
 
 const SectionTitle = styled.Text`
-  font-size: 22px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 700;
   color: ${DriverModeColors.dark};
-  margin-bottom: 18px;
+  margin-bottom: 14px;
   width: 100%;
-  padding-horizontal: 4px;
-  letter-spacing: -0.5px;
+  padding-horizontal: 2px;
+  letter-spacing: -0.3px;
 `;
 
 const JobsContainer = styled.View`
   width: 100%;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 `;
 
 const NoJobsText = styled.Text`
-  font-size: 16px;
+  font-size: 14px;
   color: ${DriverModeColors.darkGray};
   text-align: center;
-  padding: 32px;
-  background-color: ${DriverModeColors.cardBg};
-  border-radius: 20px;
-  elevation: 3;
-  shadow-radius: 12px;
-  shadow-color: #000;
-  shadow-offset: 0px 4px;
-  border-width: 1px;
-  border-color: rgba(255, 255, 255, 0.35);
+  padding: 24px;
   background-color: white;
-  box-shadow: ${Platform.OS === "ios"
-    ? "0px 4px 8px rgba(0, 0, 0, 0.1)"
-    : "0px 4px 8px rgba(0, 0, 0, 1)"};
+  border-radius: 16px;
+  elevation: 2;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  shadow-color: #000;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.35);
 `;
+
 const NoOngoingJobsText = styled.Text`
-  font-size: 16px;
+  font-size: 14px;
   color: ${DriverModeColors.darkGray};
   text-align: center;
-  padding: 25px;
-  background-color: ${DriverModeColors.cardBg};
-  border-radius: 20px;
-  elevation: 3;
-  shadow-radius: 12px;
-  shadow-color: #000;
-  shadow-offset: 0px 4px;
-  border-width: 1px;
-  border-color: rgba(255, 255, 255, 0.35);
+  padding: 20px;
   background-color: white;
-  box-shadow: ${Platform.OS === "ios"
-    ? "0px 4px 8px rgba(0, 0, 0, 0.1)"
-    : "0px 4px 8px rgba(0, 0, 0, 1)"};
+  border-radius: 16px;
+  elevation: 2;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  shadow-color: #000;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.35);
 `;
 
 const LocationStatus = styled.View<ThemeProps>`
@@ -197,11 +193,11 @@ const LocationStatus = styled.View<ThemeProps>`
     props.theme === "error"
       ? DriverModeColors.statusBgOffline
       : DriverModeColors.statusBgOnline};
-  padding: 10px 16px;
-  border-radius: 12px;
-  margin-top: 14px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 12px;
   width: 100%;
-  border-width: 1px;
+  border-width: 0.5px;
   border-color: ${(props) =>
     props.theme === "error"
       ? DriverModeColors.danger
@@ -213,59 +209,38 @@ const LocationStatusText = styled.Text<ThemeProps>`
     props.theme === "error"
       ? DriverModeColors.danger
       : DriverModeColors.success};
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
-  margin-left: 8px;
-  letter-spacing: 0.2px;
+  margin-left: 6px;
+  letter-spacing: 0.1px;
 `;
 
 const LoadingContainer = styled.View`
-  background-color: ${DriverModeColors.cardBg};
-  border-radius: 20px;
-  padding: 32px;
+  background-color: white;
+  border-radius: 16px;
+  padding: 24px;
   align-items: center;
   justify-content: center;
-  shadow-opacity: 0.1;
-  shadow-radius: 6px;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
   shadow-color: #000;
-  shadow-offset: 0px 2px;
-  border-width: 1px;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
   border-color: rgba(255, 255, 255, 0.8);
 `;
 
 const LoadingText = styled.Text`
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   color: ${DriverModeColors.darkGray};
-  margin-top: 16px;
+  margin-top: 12px;
 `;
 
 const IconContainer = styled.View`
-  padding: 8px;
-  border-radius: 10px;
-  margin-right: 10px;
-  background-color: ${DriverModeColors.primary};
-`;
-const TabContainer = styled.View`
-  width: 100%;
-  flex-direction: row;
-  margin-bottom: 16px;
-`;
-
-const Tab = styled.TouchableOpacity<{ active: boolean }>`
-  flex: 1;
-  padding: 12px 16px;
-  background-color: ${(props) =>
-    props.active ? DriverModeColors.primary : DriverModeColors.cardBg};
-  border-radius: 10px;
-  margin-horizontal: 4px;
-  align-items: center;
-`;
-
-const TabText = styled.Text<{ active: boolean }>`
-  font-size: 16px;
-  font-weight: 600;
-  color: ${(props) => (props.active ? "white" : DriverModeColors.darkGray)};
+  padding: 6px;
+  border-radius: 8px;
+  margin-right: 8px;
+  background-color: ${DriverModeColors.vehicleGreen};
 `;
 
 const GradientHeader = styled(LinearGradient)`
@@ -273,9 +248,9 @@ const GradientHeader = styled(LinearGradient)`
   top: 0;
   left: 0;
   right: 0;
-  height: ${Platform.OS === "android" ? "295px" : "335px"};
-  border-bottom-left-radius: 20px;
-  border-bottom-right-radius: 20px;
+  height: ${Platform.OS === "android" ? "260px" : "300px"};
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
 `;
 
 const HomeScreen: React.FC = () => {
@@ -287,9 +262,7 @@ const HomeScreen: React.FC = () => {
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"ongoing" | "available">(
-    "available"
-  );
+
   const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
 
   const { setMode, mode, setmyID, isAutomatic } =
@@ -715,7 +688,7 @@ const HomeScreen: React.FC = () => {
           <Header>
             <HeaderRow>
               <UserInfo>
-                <UserGreeting>Hey, {capitalizedDisplayName}</UserGreeting>
+                <UserGreeting>Welcome, {capitalizedDisplayName}</UserGreeting>
                 {driverData?.plate && (
                   <View
                     style={{
@@ -777,6 +750,9 @@ const HomeScreen: React.FC = () => {
 
           <ModeContainer>
             <Drivermodecomponent />
+          </ModeContainer>
+          <ModeContainer>
+            <JobSelectionComponent />
           </ModeContainer>
 
           {isAutomatic && ongoingOrders.length > 0 && (

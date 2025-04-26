@@ -20,6 +20,7 @@ export interface AuthStoreState {
   setMode: (mode: "active" | "off" | "break") => void;
   setmyID?: any;
   isAutomatic: boolean;
+  setIsAutomatic: boolean;
 }
 
 export interface StatusProps {

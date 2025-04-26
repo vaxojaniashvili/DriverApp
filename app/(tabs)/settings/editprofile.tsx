@@ -91,7 +91,7 @@ const EditProfile = () => {
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ContentContainer>
+          <ContentContainer showsVerticalScrollIndicator={false}>
             <Header>
               <BackButton onPress={handleSubmit}>
                 <Ionicons name="chevron-back" size={24} color="#212529" />
@@ -183,7 +183,7 @@ const Container = styled(SafeAreaView)`
   background-color: #f8f9fa;
 `;
 
-const ContentContainer = styled.View`
+const ContentContainer = styled.ScrollView`
   flex: 1;
   padding: 0 20px;
   padding-top: ${Platform.OS === "android" ? "30px" : "0"};
@@ -288,7 +288,7 @@ const TextArea = styled.TextInput`
 `;
 
 const SaveButton = styled.TouchableOpacity`
-  background-color: #4361ee;
+  background-color: #4caf50;
   padding: 16px;
   border-radius: 12px;
   align-items: center;

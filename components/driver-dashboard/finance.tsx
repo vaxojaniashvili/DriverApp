@@ -40,7 +40,7 @@ const FinanceDetails = () => {
         <SectionTitle>Financial Records</SectionTitle>
         <ViewAllButton>
           <ViewAllText>View All</ViewAllText>
-          <Ionicons name="arrow-forward-outline" size={16} color="#4361ee" />
+          <Ionicons name="arrow-forward-outline" size={16} color="black" />
         </ViewAllButton>
       </SectionHeader>
 
@@ -108,7 +108,7 @@ const ViewAllButton = styled.TouchableOpacity`
 
 const ViewAllText = styled.Text`
   font-size: 14px;
-  color: #4361ee;
+  color: black;
   margin-right: 4px;
 `;
 
@@ -160,7 +160,7 @@ const ItemDate = styled.Text`
 const DownloadButton = styled(TouchableOpacity)`
   flex-direction: row;
   align-items: center;
-  background-color: #4361ee;
+  background-color: #4caf50;
   padding: 10px 16px;
   border-radius: 12px;
 `;

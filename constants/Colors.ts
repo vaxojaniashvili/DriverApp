@@ -27,6 +27,7 @@ export const Colors = {
 
 export const DriverModeColors = {
   primary: "#5E72E4",
+  jobPrimary: "#54ae54",
   secondary: "#11CDEF",
   success: "#2DCE89",
   danger: "#F5365C",
@@ -35,8 +36,10 @@ export const DriverModeColors = {
   light: "#FAFBFE",
   dark: "#212B36",
   darkGray: "#8898AA",
+  vehicleGreen: "#54ae54",
   gradient1: "#5E72E4",
   gradient2: "#825EE4",
+  green: "#5ba75fw",
   cardBg: "rgba(255, 255, 255, 0.9)",
   statusBgOnline: "rgba(45, 206, 137, 0.2)",
   statusBgOffline: "rgba(245, 54, 92, 0.2)",

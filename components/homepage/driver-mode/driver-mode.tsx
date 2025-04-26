@@ -35,96 +35,6 @@ interface AuthStoreState {
   setIsAutomatic: (isAuto: boolean) => void;
 }
 
-const SectionTitle = styled.Text`
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 16px;
-  color: ${DriverModeColors.dark};
-  letter-spacing: -0.3px;
-`;
-
-const DriverModesContainer = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  margin-bottom: 24px;
-`;
-
-const DriverModeButton = styled.TouchableOpacity<DriverModeButtonProps>`
-  flex: 1;
-  padding: 14px 10px;
-  margin: 0 6px;
-  border-radius: 12px;
-  align-items: center;
-  justify-content: center;
-  background-color: ${(props) =>
-    props.selected && props.mode === "active"
-      ? DriverModeColors.success
-      : props.selected && props.mode === "off"
-      ? DriverModeColors.danger
-      : props.selected && props.mode === "break"
-      ? DriverModeColors.warning
-      : "rgba(224, 224, 224, 0.5)"};
-  elevation: ${(props) =>
-    Platform.OS === "android" ? (props.selected ? 6 : 2) : 0};
-  shadow-opacity: ${(props) =>
-    Platform.OS === "ios" ? (props.selected ? 0.2 : 0.1) : 0};
-  shadow-radius: ${(props) =>
-    Platform.OS === "ios" ? (props.selected ? 8 : 4) : 0}px;
-  shadow-color: ${Platform.OS === "ios" ? "#000" : "transparent"};
-  shadow-offset: 0px 2px;
-  border-width: ${Platform.OS === "android" ? 0 : 1}px;
-  border-color: ${(props) =>
-    props.selected && props.mode === "active"
-      ? DriverModeColors.success
-      : props.selected && props.mode === "off"
-      ? DriverModeColors.danger
-      : props.selected && props.mode === "break"
-      ? DriverModeColors.warning
-      : "rgba(224, 224, 224, 0.8)"};
-  min-height: 65px;
-`;
-
-const ButtonContent = styled.View`
-  align-items: center;
-  justify-content: center;
-`;
-
-const JobSelectionContainer = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-`;
-
-const JobSelectionButton = styled.TouchableOpacity<JobSelectionButtonProps>`
-  flex: 1;
-  padding: 14px 10px;
-  margin: 0 6px;
-  border-radius: 12px;
-  align-items: center;
-  justify-content: center;
-  background-color: ${(props) =>
-    props.selected ? DriverModeColors.primary : "rgba(224, 224, 224, 0.5)"};
-  elevation: ${(props) =>
-    Platform.OS === "android" ? (props.selected ? 6 : 2) : 0};
-  shadow-opacity: ${(props) =>
-    Platform.OS === "ios" ? (props.selected ? 0.2 : 0.1) : 0};
-  shadow-radius: ${(props) =>
-    Platform.OS === "ios" ? (props.selected ? 8 : 4) : 0}px;
-  shadow-color: ${Platform.OS === "ios" ? "#000" : "transparent"};
-  shadow-offset: 0px 2px;
-  border-width: ${Platform.OS === "android" ? 0 : 1}px;
-  border-color: ${(props) =>
-    props.selected ? DriverModeColors.primary : "rgba(224, 224, 224, 0.8)"};
-  min-height: 65px;
-`;
-
-const ButtonText = styled.Text<ButtonTextProps>`
-  font-size: 14px;
-  font-weight: 600;
-  color: ${(props) => props.color || DriverModeColors.dark};
-  margin-top: 6px;
-  letter-spacing: 0.2px;
-`;
-
 const STORAGE_KEYS = {
   DRIVER_MODE: "DRIVER_MODE",
   JOB_SELECTION: "JOB_SELECTION",
@@ -315,20 +225,20 @@ const DriverModeComponent: React.FC = () => {
   };
 
   return (
-    <>
+    <Container>
       <SectionTitle>Driver Mode</SectionTitle>
       <DriverModesContainer>
         <DriverModeButton
           mode="active"
           selected={mode === "active"}
           onPress={() => handleModeChange("active")}
-          style={{ marginLeft: 0 }}
+          style={{ marginRight: 4 }}
           disabled={loading}
         >
           <ButtonContent>
             <FontAwesome5
               name="car"
-              size={20}
+              size={16}
               color={mode === "active" ? "white" : DriverModeColors.dark}
             />
             <ButtonText
@@ -344,11 +254,12 @@ const DriverModeComponent: React.FC = () => {
           selected={mode === "off"}
           onPress={() => handleModeChange("off")}
           disabled={loading}
+          style={{ marginHorizontal: 4 }}
         >
           <ButtonContent>
             <MaterialCommunityIcons
               name="car-off"
-              size={20}
+              size={16}
               color={mode === "off" ? "white" : DriverModeColors.dark}
             />
             <ButtonText
@@ -363,62 +274,91 @@ const DriverModeComponent: React.FC = () => {
           mode="break"
           selected={mode === "break"}
           onPress={() => handleModeChange("break")}
-          style={{ marginRight: 0 }}
+          style={{ marginLeft: 4 }}
           disabled={loading}
         >
           <ButtonContent>
             <Ionicons
               name="cafe"
-              size={20}
+              size={16}
               color={mode === "break" ? "white" : DriverModeColors.dark}
             />
             <ButtonText
               color={mode === "break" ? "white" : DriverModeColors.dark}
             >
-              On Break
+              Break
             </ButtonText>
           </ButtonContent>
         </DriverModeButton>
       </DriverModesContainer>
-
-      <SectionTitle>Job Selection</SectionTitle>
-      <JobSelectionContainer>
-        <JobSelectionButton
-          selected={isAutomatic}
-          onPress={() => setIsAutomatic(true)}
-          style={{ marginLeft: 0 }}
-        >
-          <ButtonContent>
-            <MaterialCommunityIcons
-              name="robot"
-              size={20}
-              color={isAutomatic ? "white" : DriverModeColors.dark}
-            />
-            <ButtonText color={isAutomatic ? "white" : DriverModeColors.dark}>
-              Automatic
-            </ButtonText>
-          </ButtonContent>
-        </JobSelectionButton>
-
-        <JobSelectionButton
-          selected={!isAutomatic}
-          onPress={() => setIsAutomatic(false)}
-          style={{ marginRight: 0 }}
-        >
-          <ButtonContent>
-            <MaterialCommunityIcons
-              name="account-edit"
-              size={20}
-              color={!isAutomatic ? "white" : DriverModeColors.dark}
-            />
-            <ButtonText color={!isAutomatic ? "white" : DriverModeColors.dark}>
-              Manual
-            </ButtonText>
-          </ButtonContent>
-        </JobSelectionButton>
-      </JobSelectionContainer>
-    </>
+    </Container>
   );
 };
 
 export default DriverModeComponent;
+
+const Container = styled.View`
+  padding: 4px 0;
+`;
+
+const SectionTitle = styled.Text`
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: ${DriverModeColors.dark};
+  letter-spacing: -0.2px;
+`;
+
+const DriverModesContainer = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 16px;
+`;
+
+const DriverModeButton = styled.TouchableOpacity<DriverModeButtonProps>`
+  flex: 1;
+  padding: 10px 6px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  background-color: ${(props) =>
+    props.selected && props.mode === "active"
+      ? DriverModeColors.success
+      : props.selected && props.mode === "off"
+      ? DriverModeColors.danger
+      : props.selected && props.mode === "break"
+      ? DriverModeColors.warning
+      : "rgba(240, 240, 240, 0.8)"};
+  elevation: ${(props) =>
+    Platform.OS === "android" ? (props.selected ? 3 : 1) : 0};
+  shadow-opacity: ${(props) =>
+    Platform.OS === "ios" ? (props.selected ? 0.15 : 0.05) : 0};
+  shadow-radius: ${(props) =>
+    Platform.OS === "ios" ? (props.selected ? 4 : 2) : 0}px;
+  shadow-color: ${Platform.OS === "ios" ? "#000" : "transparent"};
+  shadow-offset: 0px 1px;
+  border-width: ${Platform.OS === "android" ? 0 : 0.5}px;
+  border-color: ${(props) =>
+    props.selected && props.mode === "active"
+      ? DriverModeColors.success
+      : props.selected && props.mode === "off"
+      ? DriverModeColors.danger
+      : props.selected && props.mode === "break"
+      ? DriverModeColors.warning
+      : "rgba(224, 224, 224, 0.8)"};
+  min-height: 46px;
+`;
+
+const ButtonContent = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ButtonText = styled.Text<ButtonTextProps>`
+  font-size: 13px;
+  font-weight: 500;
+  color: ${(props) => props.color || DriverModeColors.dark};
+  margin-left: 6px;
+  letter-spacing: 0.1px;
+`;

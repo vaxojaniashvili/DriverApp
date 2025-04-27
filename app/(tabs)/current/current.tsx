@@ -354,7 +354,7 @@ const OrderScreen = () => {
                 </OrderItemsHeader>
 
                 {activeOrder.items.map((item, index) => (
-                  <OrderItemRow key={item.id || index}>
+                  <OrderItemRow key={index}>
                     <OrderItemInfo>
                       <OrderItemName>{item.name}</OrderItemName>
                       <OrderItemDetails>

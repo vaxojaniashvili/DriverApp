@@ -88,7 +88,7 @@ const UserDetail = styled.Text`
   flex-direction: row;
   align-items: center;
   position: relative;
-  top: ${Platform.OS === "android" ? "4px" : "6px"};
+  top: ${Platform.OS === "android" ? "6px" : "6px"};
 `;
 
 const StatusIndicator = styled.View<StatusProps>`

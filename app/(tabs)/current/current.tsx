@@ -319,67 +319,75 @@ const OrderScreen = () => {
             </OrderDetailsRow>
 
             {/* Location Details */}
-            <LocationsContainer>
-              <LocationItem>
-                <LocationIconContainer>
-                  <Ionicons name="location" size={20} color="#4CAF50" />
-                </LocationIconContainer>
-                <LocationDetails>
-                  <LocationTitle>Pickup</LocationTitle>
-                  <LocationName>{activeOrder.pickup_name}</LocationName>
-                </LocationDetails>
-              </LocationItem>
+            {activeOrder.order_status === "COMPLETED" ? (
+              <View></View>
+            ) : (
+              <LocationsContainer>
+                <LocationItem>
+                  <LocationIconContainer>
+                    <Ionicons name="location" size={20} color="#4CAF50" />
+                  </LocationIconContainer>
+                  <LocationDetails>
+                    <LocationTitle>Pickup</LocationTitle>
+                    <LocationName>{activeOrder.pickup_name}</LocationName>
+                  </LocationDetails>
+                </LocationItem>
+                <LocationArrow>
+                  <Ionicons name="arrow-down" size={24} color="#999" />
+                </LocationArrow>
 
-              <LocationArrow>
-                <Ionicons name="arrow-down" size={24} color="#999" />
-              </LocationArrow>
-
-              <LocationItem>
-                <LocationIconContainer>
-                  <Ionicons name="flag" size={20} color="#F44336" />
-                </LocationIconContainer>
-                <LocationDetails>
-                  <LocationTitle>Destination</LocationTitle>
-                  <LocationName>{activeOrder.destination_name}</LocationName>
-                </LocationDetails>
-              </LocationItem>
-            </LocationsContainer>
+                <LocationItem>
+                  <LocationIconContainer>
+                    <Ionicons name="flag" size={20} color="#F44336" />
+                  </LocationIconContainer>
+                  <LocationDetails>
+                    <LocationTitle>Destination</LocationTitle>
+                    <LocationName>{activeOrder.destination_name}</LocationName>
+                  </LocationDetails>
+                </LocationItem>
+              </LocationsContainer>
+            )}
 
             {/* Order Items */}
-            {activeOrder.items && activeOrder.items.length > 0 && (
-              <OrderItemsContainer>
-                <OrderItemsHeader>
-                  <Ionicons name="list" size={18} color="#555" />
-                  <OrderItemsHeaderText>Order Items</OrderItemsHeaderText>
-                </OrderItemsHeader>
+            {activeOrder.order_status === "COMPLETED" ? (
+              <View></View>
+            ) : (
+              activeOrder.items &&
+              activeOrder.items.length > 0 && (
+                <OrderItemsContainer>
+                  <OrderItemsHeader>
+                    <Ionicons name="list" size={18} color="#555" />
+                    <OrderItemsHeaderText>Order Items</OrderItemsHeaderText>
+                  </OrderItemsHeader>
 
-                {activeOrder.items.map((item, index) => (
-                  <OrderItemRow key={index}>
-                    <OrderItemInfo>
-                      <OrderItemName>{item.name}</OrderItemName>
-                      <OrderItemDetails>
-                        {item.category} • {item.sub_category} • Size:{" "}
-                        {item.size}
-                      </OrderItemDetails>
-                    </OrderItemInfo>
-                    <OrderItemPriceContainer>
-                      <OrderItemQuantity>x{item.quantity}</OrderItemQuantity>
-                      <OrderItemPrice>€{item.price}</OrderItemPrice>
-                    </OrderItemPriceContainer>
-                  </OrderItemRow>
-                ))}
+                  {activeOrder.items.map((item, index) => (
+                    <OrderItemRow key={index}>
+                      <OrderItemInfo>
+                        <OrderItemName>{item.name}</OrderItemName>
+                        <OrderItemDetails>
+                          {item.category} • {item.sub_category} • Size:{" "}
+                          {item.size}
+                        </OrderItemDetails>
+                      </OrderItemInfo>
+                      <OrderItemPriceContainer>
+                        <OrderItemQuantity>x{item.quantity}</OrderItemQuantity>
+                        <OrderItemPrice>€{item.price}</OrderItemPrice>
+                      </OrderItemPriceContainer>
+                    </OrderItemRow>
+                  ))}
 
-                <OrderItemTotalRow>
-                  <OrderItemTotalLabel>Total</OrderItemTotalLabel>
-                  <OrderItemTotalValue>
-                    €{activeOrder.price}
-                  </OrderItemTotalValue>
-                </OrderItemTotalRow>
-              </OrderItemsContainer>
+                  <OrderItemTotalRow>
+                    <OrderItemTotalLabel>Total</OrderItemTotalLabel>
+                    <OrderItemTotalValue>
+                      €{activeOrder.price}
+                    </OrderItemTotalValue>
+                  </OrderItemTotalRow>
+                </OrderItemsContainer>
+              )
             )}
 
             {/* Customer Info */}
-            {activeOrder.email && (
+            {/* {activeOrder.email && (
               <CustomerContainer>
                 <CustomerHeader>
                   <Ionicons name="person" size={18} color="#555" />
@@ -390,7 +398,7 @@ const OrderScreen = () => {
                   <CustomerValue>{activeOrder.email}</CustomerValue>
                 </CustomerDetail>
               </CustomerContainer>
-            )}
+            )} */}
 
             {/* Delivery Steps */}
             <DeliveryStepsContainer>
@@ -817,6 +825,7 @@ const CustomerValue = styled.Text`
   font-size: 14px;
   color: #388e3c;
   flex: 1;
+  margin-left: -15px;
 `;
 
 export default OrderScreen;

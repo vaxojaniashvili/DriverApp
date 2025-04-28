@@ -20,6 +20,8 @@ export interface AuthStoreState {
   setMode: (mode: "active" | "off" | "break") => void;
   setmyID?: any;
   isAutomatic: boolean;
+  pickupRadius: number;
+  setPickupRadius: (radius: number) => void;
   setIsAutomatic: boolean;
 }
 

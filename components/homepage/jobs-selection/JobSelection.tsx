@@ -2,9 +2,10 @@ import React from "react";
 import styled from "styled-components/native";
 import { StyleProp, ViewStyle, Platform } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { DriverModeColors } from "../../../constants/Colors";
+import { DriverModeColors } from "@/constants/Colors";
 import { AuthStoreState } from "@/types/common";
 import { useAuthStore } from "@/infrastructure/store/store";
+import PickupRadiusSelector from "../pickup-radius/PickupRadiusSelector";
 
 interface JobSelectionButtonProps {
   selected: boolean;
@@ -57,6 +58,7 @@ const JobSelectionComponent: React.FC = () => {
           </ButtonContent>
         </JobSelectionButton>
       </JobSelectionContainer>
+      {isAutomatic && <PickupRadiusSelector />}
     </Container>
   );
 };

@@ -9,6 +9,8 @@ interface AuthState {
   setmyID: (my_id: any) => void;
   isAutomatic: boolean;
   setIsAutomatic: (isAuto: boolean) => void;
+  pickupRadius: number;
+  setPickupRadius: (radius: number) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -20,4 +22,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   setmyID: (my_id: any) => set({ my_id }),
   isAutomatic: true,
   setIsAutomatic: (isAuto) => set({ isAutomatic: isAuto }),
+  pickupRadius: 1,
+  setPickupRadius: (radius) => set({ pickupRadius: radius }),
 }));

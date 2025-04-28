@@ -25,6 +25,7 @@ import {
 } from "@/types/common";
 import { useFocusEffect } from "expo-router";
 import JobSelectionComponent from "@/components/homepage/jobs-selection/JobSelection";
+import PickupRadiusSelector from "@/components/homepage/pickup-radius/PickupRadiusSelector";
 
 const HomeScreen: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>("");

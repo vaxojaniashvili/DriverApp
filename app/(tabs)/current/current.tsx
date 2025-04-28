@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, TouchableOpacity, Platform } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import styled from "styled-components/native";
-// import { useAuthStore } from "@/infrastructure/store/store";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { supabase } from "@/infrastructure/db/supabase";
 import { useFocusEffect } from "expo-router";
@@ -12,6 +11,14 @@ const OrderScreen = () => {
   const [orders, setOrders] = useState<any>([]);
   const [loading, setLoading] = useState<any>(true);
   const [apiToken, setApiToken] = useState(null);
+  const [orderItemsVisible, setOrderItemsVisible] = useState(false);
+  const [customerInfoVisible, setCustomerInfoVisible] = useState(false);
+  const [locationDetailAdress, setLocationDetailAdress] = useState(false);
+
+  const toggleOrderItems = () => setOrderItemsVisible(!orderItemsVisible);
+  const toggleCustomerInfo = () => setCustomerInfoVisible(!customerInfoVisible);
+  const toggleLocationInfo = () =>
+    setLocationDetailAdress(!locationDetailAdress);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -200,20 +207,6 @@ const OrderScreen = () => {
 
   const currentStepIndex = getCurrentStepIndex();
 
-  const orderDetails = activeOrder
-    ? {
-        remainingDistance: activeOrder.distance || "-- km",
-        price: activeOrder.price ? `€${activeOrder.price}` : "--",
-        pickupName: activeOrder.pickup_name || "--",
-        destinationName: activeOrder.destination_name || "--",
-      }
-    : {
-        remainingDistance: "-- km",
-        price: "--",
-        pickupName: "--",
-        destinationName: "--",
-      };
-
   return (
     <Container>
       <StyledMap
@@ -323,82 +316,136 @@ const OrderScreen = () => {
               <View></View>
             ) : (
               <LocationsContainer>
-                <LocationItem>
-                  <LocationIconContainer>
-                    <Ionicons name="location" size={20} color="#4CAF50" />
-                  </LocationIconContainer>
-                  <LocationDetails>
-                    <LocationTitle>Pickup</LocationTitle>
-                    <LocationName>{activeOrder.pickup_name}</LocationName>
-                  </LocationDetails>
-                </LocationItem>
-                <LocationArrow>
-                  <Ionicons name="arrow-down" size={24} color="#999" />
-                </LocationArrow>
+                <TouchableOpacity onPress={toggleLocationInfo}>
+                  <CustomerHeader>
+                    <HeaderLeftSection>
+                      <Ionicons name="location" size={18} color="#555" />
+                      <CustomerHeaderText>Location details</CustomerHeaderText>
+                    </HeaderLeftSection>
+                    <Ionicons
+                      name={
+                        locationDetailAdress ? "chevron-up" : "chevron-down"
+                      }
+                      size={20}
+                      color="#555"
+                    />
+                  </CustomerHeader>
+                </TouchableOpacity>
+                {locationDetailAdress && (
+                  <>
+                    <LocationItem>
+                      <LocationIconContainer>
+                        <Ionicons name="location" size={20} color="#4CAF50" />
+                      </LocationIconContainer>
+                      <LocationDetails>
+                        <LocationTitle>Pickup</LocationTitle>
+                        <LocationName>{activeOrder.pickup_name}</LocationName>
+                      </LocationDetails>
+                    </LocationItem>
+                    <LocationArrow>
+                      <Ionicons name="arrow-down" size={24} color="#999" />
+                    </LocationArrow>
 
-                <LocationItem>
-                  <LocationIconContainer>
-                    <Ionicons name="flag" size={20} color="#F44336" />
-                  </LocationIconContainer>
-                  <LocationDetails>
-                    <LocationTitle>Destination</LocationTitle>
-                    <LocationName>{activeOrder.destination_name}</LocationName>
-                  </LocationDetails>
-                </LocationItem>
+                    <LocationItem>
+                      <LocationIconContainer>
+                        <Ionicons name="flag" size={20} color="#F44336" />
+                      </LocationIconContainer>
+                      <LocationDetails>
+                        <LocationTitle>Destination</LocationTitle>
+                        <LocationName>
+                          {activeOrder.destination_name}
+                        </LocationName>
+                      </LocationDetails>
+                    </LocationItem>
+                  </>
+                )}
               </LocationsContainer>
             )}
 
-            {/* Order Items */}
+            {/* Order Items - Modified to be collapsible */}
             {activeOrder.order_status === "COMPLETED" ? (
               <View></View>
             ) : (
               activeOrder.items &&
               activeOrder.items.length > 0 && (
                 <OrderItemsContainer>
-                  <OrderItemsHeader>
-                    <Ionicons name="list" size={18} color="#555" />
-                    <OrderItemsHeaderText>Order Items</OrderItemsHeaderText>
-                  </OrderItemsHeader>
+                  <TouchableOpacity onPress={toggleOrderItems}>
+                    <OrderItemsHeader>
+                      <HeaderLeftSection>
+                        <Ionicons name="list" size={18} color="#555" />
+                        <OrderItemsHeaderText>Order Items</OrderItemsHeaderText>
+                      </HeaderLeftSection>
+                      <Ionicons
+                        name={orderItemsVisible ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color="#555"
+                      />
+                    </OrderItemsHeader>
+                  </TouchableOpacity>
 
-                  {activeOrder.items.map((item, index) => (
-                    <OrderItemRow key={index}>
-                      <OrderItemInfo>
-                        <OrderItemName>{item.name}</OrderItemName>
-                        <OrderItemDetails>
-                          {item.category} • {item.sub_category} • Size:{" "}
-                          {item.size}
-                        </OrderItemDetails>
-                      </OrderItemInfo>
-                      <OrderItemPriceContainer>
-                        <OrderItemQuantity>x{item.quantity}</OrderItemQuantity>
-                        <OrderItemPrice>€{item.price}</OrderItemPrice>
-                      </OrderItemPriceContainer>
-                    </OrderItemRow>
-                  ))}
+                  {orderItemsVisible && (
+                    <>
+                      {activeOrder.items.map((item, index) => (
+                        <OrderItemRow key={index}>
+                          <OrderItemInfo>
+                            <OrderItemName>{item.name}</OrderItemName>
+                            <OrderItemDetails>
+                              {item.category} • {item.sub_category} • Size:{" "}
+                              {item.size}
+                            </OrderItemDetails>
+                          </OrderItemInfo>
+                          <OrderItemPriceContainer>
+                            <OrderItemQuantity>
+                              x{item.quantity}
+                            </OrderItemQuantity>
+                            <OrderItemPrice>€{item.price}</OrderItemPrice>
+                          </OrderItemPriceContainer>
+                        </OrderItemRow>
+                      ))}
 
-                  <OrderItemTotalRow>
-                    <OrderItemTotalLabel>Total</OrderItemTotalLabel>
-                    <OrderItemTotalValue>
-                      €{activeOrder.price}
-                    </OrderItemTotalValue>
-                  </OrderItemTotalRow>
+                      <OrderItemTotalRow>
+                        <OrderItemTotalLabel>Total</OrderItemTotalLabel>
+                        <OrderItemTotalValue>
+                          €{activeOrder.price}
+                        </OrderItemTotalValue>
+                      </OrderItemTotalRow>
+                    </>
+                  )}
                 </OrderItemsContainer>
               )
             )}
 
-            {/* Customer Info */}
-            {/* {activeOrder.email && (
+            {/* Customer Info - Modified to be collapsible */}
+            {activeOrder.email && (
               <CustomerContainer>
-                <CustomerHeader>
-                  <Ionicons name="person" size={18} color="#555" />
-                  <CustomerHeaderText>Customer</CustomerHeaderText>
-                </CustomerHeader>
-                <CustomerDetail>
-                  <CustomerLabel>Email:</CustomerLabel>
-                  <CustomerValue>{activeOrder.email}</CustomerValue>
-                </CustomerDetail>
+                <TouchableOpacity onPress={toggleCustomerInfo}>
+                  <CustomerHeader>
+                    <HeaderLeftSection>
+                      <Ionicons name="person" size={18} color="#555" />
+                      <CustomerHeaderText>Customer</CustomerHeaderText>
+                    </HeaderLeftSection>
+                    <Ionicons
+                      name={customerInfoVisible ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color="#555"
+                    />
+                  </CustomerHeader>
+                </TouchableOpacity>
+
+                {customerInfoVisible && (
+                  <>
+                    <CustomerDetail>
+                      <CustomerLabel>Email:</CustomerLabel>
+                      <CustomerValue>{activeOrder.email}</CustomerValue>
+                    </CustomerDetail>
+                    <CustomerDetail>
+                      <CustomerLabel>Phone:</CustomerLabel>
+                      <CustomerValue> +995568930229</CustomerValue>
+                    </CustomerDetail>
+                  </>
+                )}
               </CustomerContainer>
-            )} */}
+            )}
 
             {/* Delivery Steps */}
             <DeliveryStepsContainer>
@@ -567,7 +614,7 @@ const OrderDetailsRow = styled.View`
   justify-content: space-between;
   background-color: #f9f9f9;
   border-radius: 10px;
-  padding: 15px;
+  padding: 8px;
   margin-bottom: 20px;
   border: 1px solid #e8f5e9;
 `;
@@ -587,7 +634,7 @@ const DetailLabel = styled.Text`
 `;
 
 const DetailValue = styled.Text`
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   color: #388e3c;
 `;
@@ -625,7 +672,6 @@ const StepLabel = styled.Text`
   font-size: 14px;
   color: ${(props) =>
     props.isCompleted ? "#4CAF50" : props.isCurrent ? "#2196F3" : "#999999"};
-
   font-weight: ${(props) =>
     props.isCompleted || props.isCurrent ? "bold" : "normal"};
 `;
@@ -698,7 +744,7 @@ const LocationTitle = styled.Text`
 `;
 
 const LocationName = styled.Text`
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
   color: #388e3c;
 `;
@@ -708,6 +754,7 @@ const LocationArrow = styled.View`
   margin: 5px 0;
 `;
 
+// Modified for dropdown functionality
 const OrderItemsContainer = styled.View`
   margin-bottom: 20px;
   background-color: #f9f9f9;
@@ -716,13 +763,21 @@ const OrderItemsContainer = styled.View`
   border: 1px solid #e8f5e9;
 `;
 
+// Modified for dropdown functionality
 const OrderItemsHeader = styled.View`
   flex-direction: row;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 10px;
   border-bottom-width: 1px;
   border-bottom-color: #ccead6;
   padding-bottom: 8px;
+`;
+
+// New component for header left section
+const HeaderLeftSection = styled.View`
+  flex-direction: row;
+  align-items: center;
 `;
 
 const OrderItemsHeaderText = styled.Text`
@@ -788,6 +843,7 @@ const OrderItemTotalValue = styled.Text`
   color: #4caf50;
 `;
 
+// Modified for dropdown functionality
 const CustomerContainer = styled.View`
   margin-bottom: 20px;
   background-color: #f9f9f9;
@@ -796,9 +852,11 @@ const CustomerContainer = styled.View`
   border: 1px solid #e8f5e9;
 `;
 
+// Modified for dropdown functionality
 const CustomerHeader = styled.View`
   flex-direction: row;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 10px;
   border-bottom-width: 1px;
   border-bottom-color: #ccead6;
@@ -827,5 +885,4 @@ const CustomerValue = styled.Text`
   flex: 1;
   margin-left: -15px;
 `;
-
 export default OrderScreen;

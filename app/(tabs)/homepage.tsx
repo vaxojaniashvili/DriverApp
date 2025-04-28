@@ -26,233 +26,6 @@ import {
 import { useFocusEffect } from "expo-router";
 import JobSelectionComponent from "@/components/homepage/jobs-selection/JobSelection";
 
-const Container = styled.View`
-  flex: 1;
-  background-color: ${DriverModeColors.light};
-`;
-
-const ScrollableContent = styled.ScrollView`
-  flex: 1;
-  width: 100%;
-`;
-
-const Innercontainer = styled.View`
-  align-items: center;
-  width: 100%;
-  justify-content: flex-start;
-  padding-top: ${Platform.OS === "android"
-    ? StatusBar.currentHeight
-      ? StatusBar.currentHeight + 8
-      : 8
-    : 65}px;
-  padding-horizontal: 12px;
-`;
-
-const Header = styled.View`
-  width: 100%;
-  padding: 18px;
-  background-color: ${DriverModeColors.cardBg};
-  border-radius: 20px;
-  margin-bottom: 16px;
-  elevation: 2;
-  shadow-opacity: 0.12;
-  shadow-radius: 8px;
-  shadow-color: #000;
-  shadow-offset: 0px 3px;
-  border-width: 0.5px;
-  border-color: rgba(255, 255, 255, 0.8);
-`;
-
-const HeaderRow = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-`;
-
-const UserInfo = styled.View`
-  flex: 1;
-`;
-
-const UserGreeting = styled.Text`
-  font-size: 22px;
-  font-weight: 700;
-  color: ${DriverModeColors.dark};
-  margin-bottom: 4px;
-`;
-
-const UserDetail = styled.Text`
-  font-size: 14px;
-  color: ${DriverModeColors.darkGray};
-  font-weight: 500;
-  flex-direction: row;
-  align-items: center;
-  position: relative;
-  top: ${Platform.OS === "android" ? "6px" : "6px"};
-`;
-
-const StatusIndicator = styled.View<StatusProps>`
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
-  background-color: ${(props) =>
-    props.active ? DriverModeColors.success : DriverModeColors.danger};
-  margin-right: 6px;
-`;
-
-const StatusContainer = styled.View<StatusProps>`
-  flex-direction: row;
-  align-items: center;
-  margin-top: 12px;
-  background-color: ${(props) =>
-    props.active
-      ? DriverModeColors.statusBgOnline
-      : DriverModeColors.statusBgOffline};
-  padding: 8px 12px;
-  border-radius: 8px;
-  border-width: 0.5px;
-  border-color: ${(props) =>
-    props.active ? DriverModeColors.success : DriverModeColors.danger};
-`;
-
-const StatusText = styled.Text<StatusProps>`
-  font-size: 12px;
-  font-weight: 600;
-  color: ${(props) =>
-    props.active ? DriverModeColors.success : DriverModeColors.danger};
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-`;
-
-const ModeContainer = styled.View`
-  width: 100%;
-  padding: 16px;
-  background-color: white;
-  border-radius: 16px;
-  margin-bottom: 16px;
-  elevation: 2;
-  shadow-opacity: 0.12;
-  shadow-radius: 8px;
-  shadow-color: #000;
-  shadow-offset: 0px 3px;
-  border-width: 0.5px;
-  border-color: rgba(255, 255, 255, 0.8);
-`;
-
-const SectionTitle = styled.Text`
-  font-size: 18px;
-  font-weight: 700;
-  color: ${DriverModeColors.dark};
-  margin-bottom: 14px;
-  width: 100%;
-  padding-horizontal: 2px;
-  letter-spacing: -0.3px;
-`;
-
-const JobsContainer = styled.View`
-  width: 100%;
-  margin-bottom: 24px;
-`;
-
-const NoJobsText = styled.Text`
-  font-size: 14px;
-  color: ${DriverModeColors.darkGray};
-  text-align: center;
-  padding: 24px;
-  background-color: white;
-  border-radius: 16px;
-  elevation: 2;
-  shadow-opacity: 0.12;
-  shadow-radius: 8px;
-  shadow-color: #000;
-  shadow-offset: 0px 3px;
-  border-width: 0.5px;
-  border-color: rgba(255, 255, 255, 0.35);
-`;
-
-const NoOngoingJobsText = styled.Text`
-  font-size: 14px;
-  color: ${DriverModeColors.darkGray};
-  text-align: center;
-  padding: 20px;
-  background-color: white;
-  border-radius: 16px;
-  elevation: 2;
-  shadow-opacity: 0.12;
-  shadow-radius: 8px;
-  shadow-color: #000;
-  shadow-offset: 0px 3px;
-  border-width: 0.5px;
-  border-color: rgba(255, 255, 255, 0.35);
-`;
-
-const LocationStatus = styled.View<ThemeProps>`
-  flex-direction: row;
-  align-items: center;
-  background-color: ${(props) =>
-    props.theme === "error"
-      ? DriverModeColors.statusBgOffline
-      : DriverModeColors.statusBgOnline};
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-top: 12px;
-  width: 100%;
-  border-width: 0.5px;
-  border-color: ${(props) =>
-    props.theme === "error"
-      ? DriverModeColors.danger
-      : DriverModeColors.success};
-`;
-
-const LocationStatusText = styled.Text<ThemeProps>`
-  color: ${(props) =>
-    props.theme === "error"
-      ? DriverModeColors.danger
-      : DriverModeColors.success};
-  font-size: 12px;
-  font-weight: 500;
-  margin-left: 6px;
-  letter-spacing: 0.1px;
-`;
-
-const LoadingContainer = styled.View`
-  background-color: white;
-  border-radius: 16px;
-  padding: 24px;
-  align-items: center;
-  justify-content: center;
-  shadow-opacity: 0.12;
-  shadow-radius: 8px;
-  shadow-color: #000;
-  shadow-offset: 0px 3px;
-  border-width: 0.5px;
-  border-color: rgba(255, 255, 255, 0.8);
-`;
-
-const LoadingText = styled.Text`
-  font-size: 14px;
-  font-weight: 500;
-  color: ${DriverModeColors.darkGray};
-  margin-top: 12px;
-`;
-
-const IconContainer = styled.View`
-  padding: 6px;
-  border-radius: 8px;
-  margin-right: 8px;
-  background-color: ${DriverModeColors.vehicleGreen};
-`;
-
-const GradientHeader = styled(LinearGradient)`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: ${Platform.OS === "android" ? "260px" : "300px"};
-  border-bottom-left-radius: 16px;
-  border-bottom-right-radius: 16px;
-`;
-
 const HomeScreen: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>("");
   const [driverData, setDriverData] = useState<DriverData | null>(null);
@@ -779,13 +552,13 @@ const HomeScreen: React.FC = () => {
             <JobsContainer>
               <SectionTitle>Available Orders</SectionTitle>
               {loadingData ? (
-                <LoadingContainer>
+                <>
                   <ActivityIndicator
                     size="large"
                     color={DriverModeColors.primary}
                   />
                   <LoadingText>Loading your jobs...</LoadingText>
-                </LoadingContainer>
+                </>
               ) : orders && orders.length > 0 ? (
                 orders.map((order: OrderData) => (
                   <JobOfferComponent
@@ -820,3 +593,216 @@ const HomeScreen: React.FC = () => {
 };
 
 export default HomeScreen;
+
+const Container = styled.View`
+  flex: 1;
+  background-color: ${DriverModeColors.light};
+`;
+
+const ScrollableContent = styled.ScrollView`
+  flex: 1;
+  width: 100%;
+`;
+
+const Innercontainer = styled.View`
+  align-items: center;
+  width: 100%;
+  justify-content: flex-start;
+  padding-top: ${Platform.OS === "android"
+    ? StatusBar.currentHeight
+      ? StatusBar.currentHeight + 8
+      : 8
+    : 65}px;
+  padding-horizontal: 12px;
+`;
+
+const Header = styled.View`
+  width: 100%;
+  padding: 18px;
+  background-color: ${DriverModeColors.cardBg};
+  border-radius: 20px;
+  margin-bottom: 16px;
+  elevation: 2;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  shadow-color: #000;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.8);
+`;
+
+const HeaderRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+`;
+
+const UserInfo = styled.View`
+  flex: 1;
+`;
+
+const UserGreeting = styled.Text`
+  font-size: 22px;
+  font-weight: 700;
+  color: ${DriverModeColors.dark};
+  margin-bottom: 4px;
+`;
+
+const UserDetail = styled.Text`
+  font-size: 14px;
+  color: ${DriverModeColors.darkGray};
+  font-weight: 500;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+  top: ${Platform.OS === "android" ? "7px" : "8px"};
+`;
+
+const StatusIndicator = styled.View<StatusProps>`
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: ${(props) =>
+    props.active ? DriverModeColors.success : DriverModeColors.danger};
+  margin-right: 6px;
+`;
+
+const StatusContainer = styled.View<StatusProps>`
+  flex-direction: row;
+  align-items: center;
+  margin-top: 12px;
+  background-color: ${(props) =>
+    props.active
+      ? DriverModeColors.statusBgOnline
+      : DriverModeColors.statusBgOffline};
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-width: 0.5px;
+  border-color: ${(props) =>
+    props.active ? DriverModeColors.success : DriverModeColors.danger};
+`;
+
+const StatusText = styled.Text<StatusProps>`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${(props) =>
+    props.active ? DriverModeColors.success : DriverModeColors.danger};
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+`;
+
+const ModeContainer = styled.View`
+  width: 100%;
+  padding: 16px;
+  background-color: white;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  elevation: 2;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  shadow-color: #000;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.8);
+`;
+
+const SectionTitle = styled.Text`
+  font-size: 18px;
+  font-weight: 700;
+  color: ${DriverModeColors.dark};
+  margin-bottom: 14px;
+  width: 100%;
+  padding-horizontal: 2px;
+  letter-spacing: -0.3px;
+`;
+
+const JobsContainer = styled.View`
+  width: 100%;
+  margin-bottom: 24px;
+`;
+
+const NoJobsText = styled.Text`
+  font-size: 14px;
+  color: green;
+  text-align: center;
+  padding: 24px;
+  /* background-color: white; */
+  border-radius: 16px;
+  /* elevation: 2; */
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  /* shadow-color: #000; */
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.35);
+`;
+
+const NoOngoingJobsText = styled.Text`
+  font-size: 14px;
+  color: green;
+  text-align: center;
+  padding: 20px;
+  /* background-color: white; */
+  border-radius: 16px;
+  /* elevation: 2; */
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  /* shadow-color: #000; */
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.35);
+`;
+
+const LocationStatus = styled.View<ThemeProps>`
+  flex-direction: row;
+  align-items: center;
+  background-color: ${(props) =>
+    props.theme === "error"
+      ? DriverModeColors.statusBgOffline
+      : DriverModeColors.statusBgOnline};
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 12px;
+  width: 100%;
+  border-width: 0.5px;
+  border-color: ${(props) =>
+    props.theme === "error"
+      ? DriverModeColors.danger
+      : DriverModeColors.success};
+`;
+
+const LocationStatusText = styled.Text<ThemeProps>`
+  color: ${(props) =>
+    props.theme === "error"
+      ? DriverModeColors.danger
+      : DriverModeColors.success};
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 6px;
+  letter-spacing: 0.1px;
+`;
+
+const LoadingText = styled.Text`
+  font-size: 14px;
+  font-weight: 500;
+  color: ${DriverModeColors.darkGray};
+  margin-top: 12px;
+`;
+
+const IconContainer = styled.View`
+  padding: 6px;
+  border-radius: 8px;
+  margin-right: 8px;
+  background-color: ${DriverModeColors.vehicleGreen};
+`;
+
+const GradientHeader = styled(LinearGradient)`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: ${Platform.OS === "android" ? "260px" : "300px"};
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+`;

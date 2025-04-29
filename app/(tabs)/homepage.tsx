@@ -529,20 +529,19 @@ const HomeScreen: React.FC = () => {
             <JobSelectionComponent />
           </ModeContainer>
 
+          {isAutomatic && (
+            <ModeContainer>
+              <PickupRadiusSelector />
+            </ModeContainer>
+          )}
+
           {isAutomatic && ongoingOrders.length > 0 && (
             <JobsContainer>
               <SectionTitle>Ongoing Orders</SectionTitle>
               {ongoingOrders.map((order) => (
                 <JobOfferComponent
                   key={order.id}
-                  id={order.id}
-                  items={order.items}
-                  order_status={order.order_status}
-                  orderNumber={`Order #${order.id.toString().slice(-3)}`}
-                  destination={order.destination_name || ""}
-                  pickupLocation={order.pickup_name || ""}
-                  price={Number(order.price) || 0}
-                  time={new Date(order.created_at).toLocaleString()}
+                  order={order}
                   onAccept={() => {}}
                 />
               ))}
@@ -564,14 +563,7 @@ const HomeScreen: React.FC = () => {
                 orders.map((order: OrderData) => (
                   <JobOfferComponent
                     key={order.id}
-                    id={order.id}
-                    items={order.items}
-                    order_status={order.order_status}
-                    orderNumber={`Order #${order.id.toString().slice(-3)}`}
-                    destination={order.destination_name || ""}
-                    pickupLocation={order.pickup_name || ""}
-                    price={Number(order.price) || 0}
-                    time={new Date(order.created_at).toLocaleString()}
+                    order={order}
                     onAccept={() => handleAccept(order.id)}
                   />
                 ))

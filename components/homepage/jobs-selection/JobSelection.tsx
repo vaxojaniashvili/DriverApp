@@ -58,7 +58,6 @@ const JobSelectionComponent: React.FC = () => {
           </ButtonContent>
         </JobSelectionButton>
       </JobSelectionContainer>
-      {isAutomatic && <PickupRadiusSelector />}
     </Container>
   );
 };

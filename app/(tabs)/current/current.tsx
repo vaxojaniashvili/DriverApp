@@ -14,6 +14,11 @@ const OrderScreen = () => {
   const [orderItemsVisible, setOrderItemsVisible] = useState(false);
   const [customerInfoVisible, setCustomerInfoVisible] = useState(false);
   const [locationDetailAdress, setLocationDetailAdress] = useState(false);
+  const [allDetailsVisible, setAllDetailsVisible] = useState(false);
+
+  const toggleAllDetails = () => {
+    setAllDetailsVisible(!allDetailsVisible);
+  };
 
   const toggleOrderItems = () => setOrderItemsVisible(!orderItemsVisible);
   const toggleCustomerInfo = () => setCustomerInfoVisible(!customerInfoVisible);
@@ -311,140 +316,144 @@ const OrderScreen = () => {
               </DetailItem>
             </OrderDetailsRow>
 
-            {/* Location Details */}
-            {activeOrder.order_status === "COMPLETED" ? (
-              <View></View>
-            ) : (
-              <LocationsContainer>
-                <TouchableOpacity onPress={toggleLocationInfo}>
-                  <CustomerHeader>
+            {/* Combined Details Container */}
+            {activeOrder.order_status !== "COMPLETED" && (
+              <UnifiedDetailsContainer>
+                <TouchableOpacity onPress={toggleAllDetails}>
+                  <UnifiedDetailsHeader>
                     <HeaderLeftSection>
-                      <Ionicons name="location" size={18} color="#555" />
-                      <CustomerHeaderText>Location details</CustomerHeaderText>
-                    </HeaderLeftSection>
-                    <Ionicons
-                      name={
-                        locationDetailAdress ? "chevron-up" : "chevron-down"
-                      }
-                      size={20}
-                      color="#555"
-                    />
-                  </CustomerHeader>
-                </TouchableOpacity>
-                {locationDetailAdress && (
-                  <>
-                    <LocationItem>
-                      <LocationIconContainer>
-                        <Ionicons name="location" size={20} color="#4CAF50" />
-                      </LocationIconContainer>
-                      <LocationDetails>
-                        <LocationTitle>Pickup</LocationTitle>
-                        <LocationName>{activeOrder.pickup_name}</LocationName>
-                      </LocationDetails>
-                    </LocationItem>
-                    <LocationArrow>
-                      <Ionicons name="arrow-down" size={24} color="#999" />
-                    </LocationArrow>
-
-                    <LocationItem>
-                      <LocationIconContainer>
-                        <Ionicons name="flag" size={20} color="#F44336" />
-                      </LocationIconContainer>
-                      <LocationDetails>
-                        <LocationTitle>Destination</LocationTitle>
-                        <LocationName>
-                          {activeOrder.destination_name}
-                        </LocationName>
-                      </LocationDetails>
-                    </LocationItem>
-                  </>
-                )}
-              </LocationsContainer>
-            )}
-
-            {/* Order Items - Modified to be collapsible */}
-            {activeOrder.order_status === "COMPLETED" ? (
-              <View></View>
-            ) : (
-              activeOrder.items &&
-              activeOrder.items.length > 0 && (
-                <OrderItemsContainer>
-                  <TouchableOpacity onPress={toggleOrderItems}>
-                    <OrderItemsHeader>
-                      <HeaderLeftSection>
-                        <Ionicons name="list" size={18} color="#555" />
-                        <OrderItemsHeaderText>Order Items</OrderItemsHeaderText>
-                      </HeaderLeftSection>
                       <Ionicons
-                        name={orderItemsVisible ? "chevron-up" : "chevron-down"}
-                        size={20}
+                        name="information-circle"
+                        size={18}
                         color="#555"
                       />
-                    </OrderItemsHeader>
-                  </TouchableOpacity>
-
-                  {orderItemsVisible && (
-                    <>
-                      {activeOrder.items.map((item, index) => (
-                        <OrderItemRow key={index}>
-                          <OrderItemInfo>
-                            <OrderItemName>{item.name}</OrderItemName>
-                            <OrderItemDetails>
-                              {item.category} • {item.sub_category} • Size:{" "}
-                              {item.size}
-                            </OrderItemDetails>
-                          </OrderItemInfo>
-                          <OrderItemPriceContainer>
-                            <OrderItemQuantity>
-                              x{item.quantity}
-                            </OrderItemQuantity>
-                            <OrderItemPrice>€{item.price}</OrderItemPrice>
-                          </OrderItemPriceContainer>
-                        </OrderItemRow>
-                      ))}
-
-                      <OrderItemTotalRow>
-                        <OrderItemTotalLabel>Total</OrderItemTotalLabel>
-                        <OrderItemTotalValue>
-                          €{activeOrder.price}
-                        </OrderItemTotalValue>
-                      </OrderItemTotalRow>
-                    </>
-                  )}
-                </OrderItemsContainer>
-              )
-            )}
-
-            {/* Customer Info - Modified to be collapsible */}
-            {activeOrder.email && (
-              <CustomerContainer>
-                <TouchableOpacity onPress={toggleCustomerInfo}>
-                  <CustomerHeader>
-                    <HeaderLeftSection>
-                      <Ionicons name="person" size={18} color="#555" />
-                      <CustomerHeaderText>Customer</CustomerHeaderText>
+                      <UnifiedDetailsHeaderText>
+                        Order Details
+                      </UnifiedDetailsHeaderText>
                     </HeaderLeftSection>
                     <Ionicons
-                      name={customerInfoVisible ? "chevron-up" : "chevron-down"}
+                      name={allDetailsVisible ? "chevron-up" : "chevron-down"}
                       size={20}
                       color="#555"
                     />
-                  </CustomerHeader>
+                  </UnifiedDetailsHeader>
                 </TouchableOpacity>
 
-                {customerInfoVisible && (
+                {allDetailsVisible && (
                   <>
-                    <CustomerDetail>
-                      <CustomerLabel>Email:</CustomerLabel>
-                      <CustomerValue>{activeOrder.email}</CustomerValue>
-                    </CustomerDetail>
-                    <CustomerDetail>
-                      <CustomerLabel>Phone:</CustomerLabel>
-                      <CustomerValue> +995568930229</CustomerValue>
-                    </CustomerDetail>
+                    {/* Location Details Section */}
+                    <ContentSection>
+                      <DetailSectionHeader>
+                        <DetailSectionIcon>
+                          <Ionicons name="location" size={18} color="#555" />
+                        </DetailSectionIcon>
+                        <DetailSectionTitle>
+                          Location Details
+                        </DetailSectionTitle>
+                      </DetailSectionHeader>
+
+                      <SectionContent>
+                        <LocationItem>
+                          <LocationIconContainer>
+                            <Ionicons
+                              name="location"
+                              size={20}
+                              color="#4CAF50"
+                            />
+                          </LocationIconContainer>
+                          <LocationDetails>
+                            <LocationTitle>Pickup</LocationTitle>
+                            <LocationName>
+                              {activeOrder.pickup_name}
+                            </LocationName>
+                          </LocationDetails>
+                        </LocationItem>
+                        <LocationArrow>
+                          <Ionicons name="arrow-down" size={24} color="#999" />
+                        </LocationArrow>
+
+                        <LocationItem>
+                          <LocationIconContainer>
+                            <Ionicons name="flag" size={20} color="#F44336" />
+                          </LocationIconContainer>
+                          <LocationDetails>
+                            <LocationTitle>Destination</LocationTitle>
+                            <LocationName>
+                              {activeOrder.destination_name}
+                            </LocationName>
+                          </LocationDetails>
+                        </LocationItem>
+                      </SectionContent>
+                    </ContentSection>
+
+                    <SectionDivider />
+
+                    {/* Order Items Section */}
+                    {activeOrder.items && activeOrder.items.length > 0 && (
+                      <ContentSection>
+                        <DetailSectionHeader>
+                          <DetailSectionIcon>
+                            <Ionicons name="list" size={18} color="#555" />
+                          </DetailSectionIcon>
+                          <DetailSectionTitle>Order Items</DetailSectionTitle>
+                        </DetailSectionHeader>
+
+                        <SectionContent>
+                          {activeOrder.items.map((item, index) => (
+                            <OrderItemRow key={index}>
+                              <OrderItemInfo>
+                                <OrderItemName>{item.name}</OrderItemName>
+                                <OrderItemDetails>
+                                  {item.category} • {item.sub_category} • Size:{" "}
+                                  {item.size}
+                                </OrderItemDetails>
+                              </OrderItemInfo>
+                              <OrderItemPriceContainer>
+                                <OrderItemQuantity>
+                                  x{item.quantity}
+                                </OrderItemQuantity>
+                                <OrderItemPrice>€{item.price}</OrderItemPrice>
+                              </OrderItemPriceContainer>
+                            </OrderItemRow>
+                          ))}
+
+                          <OrderItemTotalRow>
+                            <OrderItemTotalLabel>Total</OrderItemTotalLabel>
+                            <OrderItemTotalValue>
+                              €{activeOrder.price}
+                            </OrderItemTotalValue>
+                          </OrderItemTotalRow>
+                        </SectionContent>
+
+                        <SectionDivider />
+                      </ContentSection>
+                    )}
+
+                    {/* Customer Info Section */}
+                    {activeOrder.email && (
+                      <ContentSection>
+                        <DetailSectionHeader>
+                          <DetailSectionIcon>
+                            <Ionicons name="person" size={18} color="#555" />
+                          </DetailSectionIcon>
+                          <DetailSectionTitle>Customer</DetailSectionTitle>
+                        </DetailSectionHeader>
+
+                        <SectionContent>
+                          <CustomerDetail>
+                            <CustomerLabel>Email:</CustomerLabel>
+                            <CustomerValue>{activeOrder.email}</CustomerValue>
+                          </CustomerDetail>
+                          <CustomerDetail>
+                            <CustomerLabel>Phone:</CustomerLabel>
+                            <CustomerValue> +995568930229</CustomerValue>
+                          </CustomerDetail>
+                        </SectionContent>
+                      </ContentSection>
+                    )}
                   </>
                 )}
-              </CustomerContainer>
+              </UnifiedDetailsContainer>
             )}
 
             {/* Delivery Steps */}
@@ -646,6 +655,180 @@ const DetailSeparator = styled.View`
   margin-top: 5px;
 `;
 
+const UnifiedDetailsContainer = styled.View`
+  margin-bottom: 20px;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  padding: 15px;
+  border: 1px solid #e8f5e9;
+`;
+
+const UnifiedDetailsHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  border-bottom-width: 2px;
+  border-bottom-color: #4caf50;
+  padding-bottom: 12px;
+`;
+
+const UnifiedDetailsHeaderText = styled.Text`
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 8px;
+  color: #388e3c;
+`;
+
+const ContentSection = styled.View`
+  margin-bottom: 10px;
+`;
+
+const SectionContent = styled.View`
+  /* background-color: #fff; */
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 5px;
+  /* border: 1px solid #e8f5e9; */
+`;
+
+const DetailSectionHeader = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin: 10px 0;
+`;
+
+const DetailSectionIcon = styled.View`
+  margin-right: 8px;
+  background-color: #e8f5e9;
+  padding: 6px;
+  border-radius: 20px;
+`;
+
+const DetailSectionTitle = styled.Text`
+  font-size: 16px;
+  font-weight: bold;
+  color: #388e3c;
+`;
+
+const SectionDivider = styled.View`
+  height: 2px;
+  background-color: #ccead6;
+  margin: 20px 0;
+`;
+
+const HeaderLeftSection = styled.View`
+  flex-direction: row;
+  align-items: center;
+`;
+
+const LocationItem = styled.View`
+  flex-direction: row;
+  padding: 5px 0;
+`;
+
+const LocationIconContainer = styled.View`
+  width: 30px;
+  height: 30px;
+  background-color: #fff;
+  border-radius: 15px;
+  justify-content: center;
+  align-items: center;
+  margin-right: 10px;
+  border: 1px solid #4caf50;
+`;
+
+const LocationDetails = styled.View`
+  flex: 1;
+`;
+
+const LocationTitle = styled.Text`
+  font-size: 12px;
+`;
+
+const LocationName = styled.Text`
+  font-size: 14px;
+  font-weight: bold;
+  color: #388e3c;
+`;
+
+const LocationArrow = styled.View`
+  align-items: center;
+  margin: 5px 0;
+`;
+
+const OrderItemRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom-width: 1px;
+  border-bottom-color: #ccead6;
+`;
+
+const OrderItemInfo = styled.View`
+  flex: 1;
+`;
+
+const OrderItemName = styled.Text`
+  font-size: 14px;
+  font-weight: bold;
+  color: #388e3c;
+`;
+
+const OrderItemDetails = styled.Text`
+  font-size: 12px;
+  margin-top: 2px;
+`;
+
+const OrderItemPriceContainer = styled.View`
+  align-items: flex-end;
+`;
+
+const OrderItemQuantity = styled.Text`
+  font-size: 12px;
+`;
+
+const OrderItemPrice = styled.Text`
+  font-size: 14px;
+  font-weight: bold;
+  color: #388e3c;
+`;
+
+const OrderItemTotalRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+`;
+
+const OrderItemTotalLabel = styled.Text`
+  font-size: 14px;
+  font-weight: bold;
+`;
+
+const OrderItemTotalValue = styled.Text`
+  font-size: 16px;
+  font-weight: bold;
+  color: #4caf50;
+`;
+
+const CustomerDetail = styled.View`
+  flex-direction: row;
+  margin-bottom: 5px;
+`;
+
+const CustomerLabel = styled.Text`
+  font-size: 14px;
+  width: 60px;
+`;
+
+const CustomerValue = styled.Text`
+  font-size: 14px;
+  color: #388e3c;
+  flex: 1;
+  margin-left: -15px;
+`;
+
 const DeliveryStepsContainer = styled.View`
   margin-bottom: 20px;
 `;
@@ -711,178 +894,4 @@ const CompletedMessage = styled.Text`
   font-style: italic;
 `;
 
-const LocationsContainer = styled.View`
-  margin-bottom: 20px;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  padding: 15px;
-  border: 1px solid #e8f5e9;
-`;
-
-const LocationItem = styled.View`
-  flex-direction: row;
-  padding: 5px 0;
-`;
-
-const LocationIconContainer = styled.View`
-  width: 30px;
-  height: 30px;
-  background-color: #fff;
-  border-radius: 15px;
-  justify-content: center;
-  align-items: center;
-  margin-right: 10px;
-  border: 1px solid #4caf50;
-`;
-
-const LocationDetails = styled.View`
-  flex: 1;
-`;
-
-const LocationTitle = styled.Text`
-  font-size: 12px;
-`;
-
-const LocationName = styled.Text`
-  font-size: 14px;
-  font-weight: bold;
-  color: #388e3c;
-`;
-
-const LocationArrow = styled.View`
-  align-items: center;
-  margin: 5px 0;
-`;
-
-// Modified for dropdown functionality
-const OrderItemsContainer = styled.View`
-  margin-bottom: 20px;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  padding: 15px;
-  border: 1px solid #e8f5e9;
-`;
-
-// Modified for dropdown functionality
-const OrderItemsHeader = styled.View`
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  border-bottom-width: 1px;
-  border-bottom-color: #ccead6;
-  padding-bottom: 8px;
-`;
-
-// New component for header left section
-const HeaderLeftSection = styled.View`
-  flex-direction: row;
-  align-items: center;
-`;
-
-const OrderItemsHeaderText = styled.Text`
-  font-size: 16px;
-  font-weight: bold;
-  margin-left: 8px;
-`;
-
-const OrderItemRow = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom-width: 1px;
-  border-bottom-color: #ccead6;
-`;
-
-const OrderItemInfo = styled.View`
-  flex: 1;
-`;
-
-const OrderItemName = styled.Text`
-  font-size: 14px;
-  font-weight: bold;
-  color: #388e3c;
-`;
-
-const OrderItemDetails = styled.Text`
-  font-size: 12px;
-  margin-top: 2px;
-`;
-
-const OrderItemPriceContainer = styled.View`
-  align-items: flex-end;
-`;
-
-const OrderItemQuantity = styled.Text`
-  font-size: 12px;
-`;
-
-const OrderItemPrice = styled.Text`
-  font-size: 14px;
-  font-weight: bold;
-  color: #388e3c;
-`;
-
-const OrderItemTotalRow = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top-width: 1px;
-  border-top-color: #ccead6;
-`;
-
-const OrderItemTotalLabel = styled.Text`
-  font-size: 14px;
-  font-weight: bold;
-`;
-
-const OrderItemTotalValue = styled.Text`
-  font-size: 16px;
-  font-weight: bold;
-  color: #4caf50;
-`;
-
-// Modified for dropdown functionality
-const CustomerContainer = styled.View`
-  margin-bottom: 20px;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  padding: 15px;
-  border: 1px solid #e8f5e9;
-`;
-
-// Modified for dropdown functionality
-const CustomerHeader = styled.View`
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  border-bottom-width: 1px;
-  border-bottom-color: #ccead6;
-  padding-bottom: 8px;
-`;
-
-const CustomerHeaderText = styled.Text`
-  font-size: 16px;
-  font-weight: bold;
-  margin-left: 8px;
-`;
-
-const CustomerDetail = styled.View`
-  flex-direction: row;
-  margin-bottom: 5px;
-`;
-
-const CustomerLabel = styled.Text`
-  font-size: 14px;
-  width: 60px;
-`;
-
-const CustomerValue = styled.Text`
-  font-size: 14px;
-  color: #388e3c;
-  flex: 1;
-  margin-left: -15px;
-`;
 export default OrderScreen;

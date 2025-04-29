@@ -66,12 +66,7 @@ const PickupRadiusSelector: React.FC = () => {
 
 export default PickupRadiusSelector;
 
-const Container = styled.View`
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top-width: 1px;
-  border-top-color: rgba(224, 224, 224, 0.8);
-`;
+const Container = styled.View``;
 
 const SectionTitle = styled.Text`
   font-size: 16px;

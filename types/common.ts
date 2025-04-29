@@ -44,6 +44,7 @@ export interface OrderData {
   id: string;
   driver_id: string;
   isActive?: any;
+  email: string;
   status: string;
   live: boolean;
   order_status?: any;

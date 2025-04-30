@@ -1,38 +1,8 @@
 import React, { useState } from "react";
 import styled from "styled-components/native";
-import { Alert, Platform, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
-interface Item {
-  id: number;
-  name: string;
-  size: string;
-  price: number;
-  category: string;
-  quantity: number;
-  created_at: string;
-  sub_category: string;
-}
-
-interface Order {
-  id: number;
-  created_at: string;
-  pickup_name: string;
-  destination_name: string;
-  pickup_lat: string;
-  pickup_lng: string;
-  destination_lat: string;
-  destination_lng: string;
-  email: string;
-  price: string;
-  distance: string;
-  status: string;
-  driver_id: number;
-  order_status: string;
-  live: boolean;
-  assigned_driver: string;
-  items: Item[];
-}
+import { Order } from "@/types/common";
 
 interface JobOfferProps {
   order: Order;
@@ -182,15 +152,9 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
                         <ItemDetailValue>{item.quantity}</ItemDetailValue>
                       </ItemDetailRow>
                       <ItemDetailRow>
-                        <ItemDetailLabel>Unit Price:</ItemDetailLabel>
+                        <ItemDetailLabel>Price:</ItemDetailLabel>
                         <ItemDetailValue>
                           €{item.price.toFixed(2)}
-                        </ItemDetailValue>
-                      </ItemDetailRow>
-                      <ItemDetailRow>
-                        <ItemDetailLabel>Total:</ItemDetailLabel>
-                        <ItemDetailValue>
-                          €{(item.price * item.quantity).toFixed(2)}
                         </ItemDetailValue>
                       </ItemDetailRow>
                     </ItemDropdown>
@@ -261,35 +225,30 @@ const JobOfferContainer = styled.View`
     : "0px 4px 8px rgba(0, 0, 0, 1)"};
 `;
 
-// Styled component for job details
 const JobDetail = styled.View`
   margin-bottom: 8px;
   flex-direction: row;
   gap: 10px;
 `;
 
-// Styled component for detail label
 const Label = styled.Text`
   font-weight: bold;
   color: #333;
   min-width: 120px;
 `;
 
-// Styled component for job data
 const Value = styled.Text`
   color: #4caf50;
   font-weight: 500;
   flex: 1;
 `;
 
-// Container for action buttons
 const ActionsContainer = styled.View`
   flex-direction: row;
   justify-content: space-between;
   margin-top: 15px;
 `;
 
-// Styled button for accept and decline
 const ActionButton = styled(TouchableOpacity)<{
   actionType: "accept" | "decline";
 }>`
@@ -302,7 +261,6 @@ const ActionButton = styled(TouchableOpacity)<{
     actionType === "accept" ? "#4CAF50" : "#F44336"};
 `;
 
-// Expand/Collapse Button
 const ExpandButton = styled(TouchableOpacity)`
   align-self: center;
   margin-top: 10px;
@@ -322,14 +280,6 @@ const ButtonText = styled.Text`
   font-weight: bold;
 `;
 
-const OrderText = styled.Text`
-  font-size: 18px;
-  margin-bottom: 10px;
-  font-weight: 600;
-  color: green;
-`;
-
-// New styled components for items section
 const ItemsContainer = styled.View`
   margin-top: 15px;
   padding-top: 10px;
@@ -375,7 +325,6 @@ const ItemPrice = styled.Text`
   align-self: center;
 `;
 
-// New components for item dropdown
 const ItemDropdown = styled.View`
   background-color: #f0f8f0;
   padding: 12px;
@@ -400,12 +349,6 @@ const ItemDetailLabel = styled.Text`
 const ItemDetailValue = styled.Text`
   color: #666;
   flex: 1;
-`;
-
-const FormattedDate = styled.Text`
-  color: #888;
-  font-size: 12px;
-  margin-top: 5px;
 `;
 
 const CustomerInfoSection = styled.View`

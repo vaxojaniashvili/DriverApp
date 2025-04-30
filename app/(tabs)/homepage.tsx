@@ -720,12 +720,9 @@ const NoJobsText = styled.Text`
   color: green;
   text-align: center;
   padding: 24px;
-  /* background-color: white; */
   border-radius: 16px;
-  /* elevation: 2; */
   shadow-opacity: 0.12;
   shadow-radius: 8px;
-  /* shadow-color: #000; */
   shadow-offset: 0px 3px;
   border-width: 0.5px;
   border-color: rgba(255, 255, 255, 0.35);
@@ -736,12 +733,9 @@ const NoOngoingJobsText = styled.Text`
   color: green;
   text-align: center;
   padding: 20px;
-  /* background-color: white; */
   border-radius: 16px;
-  /* elevation: 2; */
   shadow-opacity: 0.12;
   shadow-radius: 8px;
-  /* shadow-color: #000; */
   shadow-offset: 0px 3px;
   border-width: 0.5px;
   border-color: rgba(255, 255, 255, 0.35);

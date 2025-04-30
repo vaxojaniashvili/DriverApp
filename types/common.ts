@@ -98,3 +98,34 @@ export interface OrderHistoryType {
   live: boolean;
   assigned_driver: string;
 }
+
+export interface Item {
+  id: number;
+  name: string;
+  size: string;
+  price: number;
+  category: string;
+  quantity: number;
+  created_at: string;
+  sub_category: string;
+}
+
+export interface Order {
+  id: number;
+  created_at: string;
+  pickup_name: string;
+  destination_name: string;
+  pickup_lat: string;
+  pickup_lng: string;
+  destination_lat: string;
+  destination_lng: string;
+  email: string;
+  price: string;
+  distance: string;
+  status: string;
+  driver_id: number;
+  order_status: string;
+  live: boolean;
+  assigned_driver: string;
+  items: Item[];
+}

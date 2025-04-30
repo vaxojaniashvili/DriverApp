@@ -5,7 +5,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { DriverModeColors } from "@/constants/Colors";
 import { AuthStoreState } from "@/types/common";
 import { useAuthStore } from "@/infrastructure/store/store";
-import PickupRadiusSelector from "../pickup-radius/PickupRadiusSelector";
 
 interface JobSelectionButtonProps {
   selected: boolean;

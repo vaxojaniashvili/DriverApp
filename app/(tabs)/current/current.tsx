@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, TouchableOpacity, Platform } from "react-native";
+import { TouchableOpacity, Platform } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import styled from "styled-components/native";
-import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { supabase } from "@/infrastructure/db/supabase";
 import { useFocusEffect } from "expo-router";
 
@@ -11,19 +11,21 @@ const OrderScreen = () => {
   const [orders, setOrders] = useState<any>([]);
   const [loading, setLoading] = useState<any>(true);
   const [apiToken, setApiToken] = useState(null);
-  const [orderItemsVisible, setOrderItemsVisible] = useState(false);
-  const [customerInfoVisible, setCustomerInfoVisible] = useState(false);
-  const [locationDetailAdress, setLocationDetailAdress] = useState(false);
   const [allDetailsVisible, setAllDetailsVisible] = useState(false);
+  const [expandedItemIds, setExpandedItemIds] = useState([]);
 
   const toggleAllDetails = () => {
     setAllDetailsVisible(!allDetailsVisible);
   };
-
-  const toggleOrderItems = () => setOrderItemsVisible(!orderItemsVisible);
-  const toggleCustomerInfo = () => setCustomerInfoVisible(!customerInfoVisible);
-  const toggleLocationInfo = () =>
-    setLocationDetailAdress(!locationDetailAdress);
+  const toggleItemExpansion = (itemId) => {
+    setExpandedItemIds((prev) => {
+      if (prev.includes(itemId)) {
+        return prev.filter((id) => id !== itemId);
+      } else {
+        return [...prev, itemId];
+      }
+    });
+  };
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -388,7 +390,7 @@ const OrderScreen = () => {
 
                     <SectionDivider />
 
-                    {/* Order Items Section */}
+                    {/* Order Items Section - MODIFIED */}
                     {activeOrder.items && activeOrder.items.length > 0 && (
                       <ContentSection>
                         <DetailSectionHeader>
@@ -399,23 +401,88 @@ const OrderScreen = () => {
                         </DetailSectionHeader>
 
                         <SectionContent>
-                          {activeOrder.items.map((item, index) => (
-                            <OrderItemRow key={index}>
-                              <OrderItemInfo>
-                                <OrderItemName>{item.name}</OrderItemName>
-                                <OrderItemDetails>
-                                  {item.category} • {item.sub_category} • Size:{" "}
-                                  {item.size}
-                                </OrderItemDetails>
-                              </OrderItemInfo>
-                              <OrderItemPriceContainer>
-                                <OrderItemQuantity>
-                                  x{item.quantity}
-                                </OrderItemQuantity>
-                                <OrderItemPrice>€{item.price}</OrderItemPrice>
-                              </OrderItemPriceContainer>
-                            </OrderItemRow>
-                          ))}
+                          {activeOrder.items.map((item, index) => {
+                            const isExpanded = expandedItemIds.includes(
+                              item.id || index
+                            );
+                            return (
+                              <OrderItemContainer key={index}>
+                                <TouchableOpacity
+                                  onPress={() =>
+                                    toggleItemExpansion(item.id || index)
+                                  }
+                                >
+                                  <OrderItemRow>
+                                    <OrderItemInfo>
+                                      <OrderItemName>{item.name}</OrderItemName>
+                                      <OrderItemDetails>
+                                        {item.category} • {item.sub_category} •
+                                        Size: {item.size}
+                                      </OrderItemDetails>
+                                    </OrderItemInfo>
+                                    <OrderItemPriceContainer>
+                                      <OrderItemPrice>
+                                        €{item.price}
+                                      </OrderItemPrice>
+                                      <ExpandIcon>
+                                        <Ionicons
+                                          name={
+                                            isExpanded
+                                              ? "chevron-up"
+                                              : "chevron-down"
+                                          }
+                                          size={16}
+                                          color="#555"
+                                        />
+                                      </ExpandIcon>
+                                    </OrderItemPriceContainer>
+                                  </OrderItemRow>
+                                </TouchableOpacity>
+
+                                {isExpanded && (
+                                  <ItemDropdown>
+                                    <ItemDetailRow>
+                                      <ItemDetailLabel>
+                                        Category:
+                                      </ItemDetailLabel>
+                                      <ItemDetailValue>
+                                        {item.category}
+                                      </ItemDetailValue>
+                                    </ItemDetailRow>
+                                    <ItemDetailRow>
+                                      <ItemDetailLabel>
+                                        Sub-category:
+                                      </ItemDetailLabel>
+                                      <ItemDetailValue>
+                                        {item.sub_category}
+                                      </ItemDetailValue>
+                                    </ItemDetailRow>
+                                    <ItemDetailRow>
+                                      <ItemDetailLabel>Size:</ItemDetailLabel>
+                                      <ItemDetailValue>
+                                        {item.size}
+                                      </ItemDetailValue>
+                                    </ItemDetailRow>
+                                    <ItemDetailRow>
+                                      <ItemDetailLabel>
+                                        Quantity:
+                                      </ItemDetailLabel>
+                                      <ItemDetailValue>
+                                        {item.quantity}
+                                      </ItemDetailValue>
+                                    </ItemDetailRow>
+                                    <ItemDetailRow>
+                                      <ItemDetailLabel>Price:</ItemDetailLabel>
+                                      <ItemDetailValue>
+                                        €{item.price.toFixed(2)}
+                                      </ItemDetailValue>
+                                    </ItemDetailRow>
+                                  </ItemDropdown>
+                                )}
+                                <ItemSeparator />
+                              </OrderItemContainer>
+                            );
+                          })}
 
                           <OrderItemTotalRow>
                             <OrderItemTotalLabel>Total</OrderItemTotalLabel>
@@ -424,12 +491,11 @@ const OrderScreen = () => {
                             </OrderItemTotalValue>
                           </OrderItemTotalRow>
                         </SectionContent>
-
-                        <SectionDivider />
                       </ContentSection>
                     )}
 
-                    {/* Customer Info Section */}
+                    <SectionDivider />
+
                     {activeOrder.email && (
                       <ContentSection>
                         <DetailSectionHeader>
@@ -444,7 +510,7 @@ const OrderScreen = () => {
                             <CustomerLabel>Email:</CustomerLabel>
                             <CustomerValue>{activeOrder.email}</CustomerValue>
                           </CustomerDetail>
-                          <CustomerDetail>
+                          <CustomerDetail style={{ marginTop: 3 }}>
                             <CustomerLabel>Phone:</CustomerLabel>
                             <CustomerValue> +995568930229</CustomerValue>
                           </CustomerDetail>
@@ -458,7 +524,7 @@ const OrderScreen = () => {
 
             {/* Delivery Steps */}
             <DeliveryStepsContainer>
-              {DELIVERY_STEPS.map((step, index) => {
+              {DELIVERY_STEPS.map((step, index: number) => {
                 const isCompleted = index < currentStepIndex;
                 const isCurrent = index === currentStepIndex;
                 const isPending = index > currentStepIndex;
@@ -685,11 +751,9 @@ const ContentSection = styled.View`
 `;
 
 const SectionContent = styled.View`
-  /* background-color: #fff; */
   border-radius: 12px;
   padding: 12px;
   margin-top: 5px;
-  /* border: 1px solid #e8f5e9; */
 `;
 
 const DetailSectionHeader = styled.View`
@@ -761,8 +825,6 @@ const OrderItemRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom-width: 1px;
-  border-bottom-color: #ccead6;
 `;
 
 const OrderItemInfo = styled.View`
@@ -782,10 +844,7 @@ const OrderItemDetails = styled.Text`
 
 const OrderItemPriceContainer = styled.View`
   align-items: flex-end;
-`;
-
-const OrderItemQuantity = styled.Text`
-  font-size: 12px;
+  flex-direction: row;
 `;
 
 const OrderItemPrice = styled.Text`
@@ -892,6 +951,45 @@ const CompletedMessage = styled.Text`
   margin-bottom: 25px;
   color: #4caf50;
   font-style: italic;
+`;
+const OrderItemContainer = styled.View`
+  margin-bottom: 2px;
+`;
+
+const ExpandIcon = styled.View`
+  margin-left: 5px;
+`;
+
+const ItemSeparator = styled.View`
+  height: 1px;
+  background-color: #ccead6;
+  margin-top: 2px;
+`;
+
+const ItemDropdown = styled.View`
+  background-color: #f0f8f0;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 5px;
+  margin-bottom: 8px;
+  border-left-width: 3px;
+  border-left-color: #4caf50;
+`;
+
+const ItemDetailRow = styled.View`
+  flex-direction: row;
+  margin-bottom: 5px;
+`;
+
+const ItemDetailLabel = styled.Text`
+  font-weight: 600;
+  color: #555;
+  min-width: 100px;
+`;
+
+const ItemDetailValue = styled.Text`
+  color: #666;
+  flex: 1;
 `;
 
 export default OrderScreen;

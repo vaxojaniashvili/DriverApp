@@ -119,7 +119,10 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
                     <View
                       style={{ flexDirection: "row", alignItems: "center" }}
                     >
-                      <ItemPrice>€{item.price.toFixed(2)}</ItemPrice>
+                      <ItemPrice>
+                        {item?.price ? item.price.toFixed(2) : "0.00"}
+                      </ItemPrice>
+
                       <Ionicons
                         name={
                           expandedItems.includes(item.id)
@@ -154,7 +157,7 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
                       <ItemDetailRow>
                         <ItemDetailLabel>Price:</ItemDetailLabel>
                         <ItemDetailValue>
-                          €{item.price.toFixed(2)}
+                          €{item.price ? item.price.toFixed(2) : "00"}
                         </ItemDetailValue>
                       </ItemDetailRow>
                     </ItemDropdown>

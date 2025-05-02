@@ -7,12 +7,36 @@ import { supabase } from "@/infrastructure/db/supabase";
 import { useFocusEffect } from "expo-router";
 
 const OrderScreen = () => {
-  let my_id = "eifmimsdaisndis93";
   const [orders, setOrders] = useState<any>([]);
+  const [my_id, setMy_id] = useState(0);
   const [loading, setLoading] = useState<any>(true);
   const [apiToken, setApiToken] = useState(null);
   const [allDetailsVisible, setAllDetailsVisible] = useState(false);
   const [expandedItemIds, setExpandedItemIds] = useState([]);
+
+  useEffect(() => {
+    const fetchDriverUUID = async () => {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("Error fetching user:", userError);
+          return;
+        }
+
+        const driverUUID = user?.id;
+        setMy_id(driverUUID as any);
+        console.log("Driver UUID:", driverUUID);
+      } catch (error) {
+        console.error("Unexpected error:", error);
+      }
+    };
+
+    fetchDriverUUID();
+  }, []);
 
   const toggleAllDetails = () => {
     setAllDetailsVisible(!allDetailsVisible);

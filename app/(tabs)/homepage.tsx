@@ -233,17 +233,17 @@ const HomeScreen: React.FC = () => {
     setRefreshing(true);
 
     try {
-      // const {
-      //   data: { user },
-      //   error: userError,
-      // } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-      // if (userError) {
-      //   console.error("Error fetching user:", userError);
-      //   return;
-      // }
+      if (userError) {
+        console.error("Error fetching user:", userError);
+        return;
+      }
 
-      // const driverUUID = user?.id;
+      const driverUUID = user?.id;
       const res = await fetch(
         "https://api.thevanapp.com/api/paidorders/checker",
         {
@@ -253,7 +253,7 @@ const HomeScreen: React.FC = () => {
             Authorization: `Bearer ${apiToken}`,
           },
           body: JSON.stringify({
-            id: "eifmimsdaisndis93",
+            id: driverUUID,
           }),
         }
       );

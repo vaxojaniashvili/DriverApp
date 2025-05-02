@@ -27,7 +27,7 @@ const weeklyData = {
     {
       data: [15, 25, 18, 32, 45, 38, 22],
       strokeWidth: 2,
-      color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`, // Green color
+      color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`,
     },
   ],
 };
@@ -38,7 +38,7 @@ const monthlyData = {
     {
       data: [120, 180, 210, 250],
       strokeWidth: 2,
-      color: (opacity = 1) => `rgba(46, 184, 92, ${opacity})`, // Different green shade
+      color: (opacity = 1) => `rgba(46, 184, 92, ${opacity})`,
     },
   ],
 };
@@ -222,7 +222,7 @@ const DriverDashboard = () => {
               backgroundColor: "#f5f5f5",
               backgroundGradientFrom: "#ffffff",
               backgroundGradientTo: "white",
-              color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`, // Green color
+              color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`,
               labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
               style: {
                 borderRadius: 10,

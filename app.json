@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "DriverApp",
+    "name": "TheVanApp Driver",
     "slug": "DriverApp",
     "version": "3.0.6",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/logo.png",
+      "image": "./assets/images/mainImage.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -21,7 +21,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/mainImage.jpg",
         "backgroundColor": "#ffffff"
       },
       "permissions": [

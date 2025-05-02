@@ -233,6 +233,17 @@ const HomeScreen: React.FC = () => {
     setRefreshing(true);
 
     try {
+      // const {
+      //   data: { user },
+      //   error: userError,
+      // } = await supabase.auth.getUser();
+
+      // if (userError) {
+      //   console.error("Error fetching user:", userError);
+      //   return;
+      // }
+
+      // const driverUUID = user?.id;
       const res = await fetch(
         "https://api.thevanapp.com/api/paidorders/checker",
         {
@@ -412,6 +423,18 @@ const HomeScreen: React.FC = () => {
     if (!driverData?.id || !apiToken) return;
 
     try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("Error fetching user:", userError);
+        return;
+      }
+
+      const driverUUID = user?.id;
+
       const response = await fetch(
         `https://api.thevanapp.com/api/paidorders/${orderId}`,
         {
@@ -421,7 +444,7 @@ const HomeScreen: React.FC = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            id: "eifmimsdaisndis93",
+            id: driverUUID,
           }),
         }
       );

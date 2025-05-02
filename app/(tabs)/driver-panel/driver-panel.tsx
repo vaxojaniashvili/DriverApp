@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  Dimensions,
-  SafeAreaView,
-  StatusBar,
-  Platform,
-  View,
-} from "react-native";
+import { Dimensions, StatusBar, Platform, View } from "react-native";
 import styled from "styled-components/native";
 import { LineChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";

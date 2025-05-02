@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Dimensions, StatusBar, Platform, View } from "react-native";
+import { Dimensions, StatusBar, Platform, View, Animated } from "react-native";
 import styled from "styled-components/native";
 import { LineChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,37 +10,80 @@ import { supabase } from "@/infrastructure/db/supabase";
 const screenWidth = Dimensions.get("window").width;
 
 const cardColors = [
+  { bg: "#e7f9f0", icon: "#28c76f" },
   { bg: "#e9f5ff", icon: "#4361ee" },
   { bg: "#fff4de", icon: "#ff9f43" },
-  { bg: "#e7f9f0", icon: "#28c76f" },
-  { bg: "#fff2f2", icon: "#ea5455" },
   { bg: "#f0eeff", icon: "#7367f0" },
+  { bg: "#e7f9f0", icon: "#2eb85c" },
   { bg: "#e8f8ff", icon: "#00cfe8" },
 ];
 
+const primaryGreen = "#28c76f";
+const lightGreen = "#e7f9f0";
+
+const weeklyData = {
+  labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  datasets: [
+    {
+      data: [15, 25, 18, 32, 45, 38, 22],
+      strokeWidth: 2,
+      color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`, // Green color
+    },
+  ],
+};
+
+const monthlyData = {
+  labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
+  datasets: [
+    {
+      data: [120, 180, 210, 250],
+      strokeWidth: 2,
+      color: (opacity = 1) => `rgba(46, 184, 92, ${opacity})`, // Different green shade
+    },
+  ],
+};
+
 const DriverDashboard = () => {
   const [driverData, setDriverData] = useState([]);
-  const data = {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    datasets: [
-      {
-        data: [10, 20, 15, 30, 40, 35],
-        strokeWidth: 2,
-        color: (opacity = 1) => `rgba(67, 97, 238, ${opacity})`,
-      },
-    ],
-  };
+  const [incomeTimeframe, setIncomeTimeframe] = useState("weekly");
+  const [chartData, setChartData] = useState(weeklyData);
+  const [ordersExpanded, setOrdersExpanded] = useState(false);
+  const animatedHeight = useState(new Animated.Value(0))[0];
 
   const statCards = [
     { title: "Trip Count", value: "52", icon: "car-outline" },
     { title: "Income", value: "$1,240", icon: "wallet-outline" },
     { title: "Your %", value: "25%", icon: "pie-chart-outline" },
-    { title: "Dashboard", value: "Active", icon: "speedometer-outline" },
-    { title: "Order History", value: "View Details", icon: "time-outline" },
-    { title: "Feedback", value: "3.5", icon: "star-outline" },
+    { title: "Rating", value: "4.8", icon: "star-outline" },
+    {
+      title: "Order History",
+      value: "View Details",
+      icon: "time-outline",
+      isButton: true,
+    },
+    { title: "Feedback", value: "3.5", icon: "star-half-outline" },
+  ];
+
+  const recentOrders = [
+    {
+      route: "Vake → Saburtalo",
+      time: "2 hours ago",
+      price: 25,
+    },
+    {
+      route: "Didube → Varketili",
+      time: "Yesterday, 18:30",
+      price: 35,
+    },
+    {
+      route: "Gldani → Avlabari",
+      time: "Today, 11:20",
+      price: 28,
+    },
   ];
 
   const router = useRouter();
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -56,16 +99,44 @@ const DriverDashboard = () => {
 
         const driverUUID = user?.id;
 
-        const res = await fetch(
-          `https://api.thevanapp.com/api/driver-stats/total/${driverUUID}`
-        );
-        setDriverData(await res.json());
+        try {
+          const res = await fetch(
+            `https://api.thevanapp.com/api/driver-stats/total/${driverUUID}`
+          );
+          const data = await res.json();
+          setDriverData(data);
+        } catch (apiError) {
+          console.log("API error, using fake data:", apiError);
+        }
       } catch (error) {
         console.log("error", error);
       }
     };
+
     fetchStats();
   }, []);
+
+  const toggleTimeframe = () => {
+    if (incomeTimeframe === "weekly") {
+      setIncomeTimeframe("monthly");
+      setChartData(monthlyData);
+    } else {
+      setIncomeTimeframe("weekly");
+      setChartData(weeklyData);
+    }
+  };
+
+  const toggleOrdersExpanded = () => {
+    const toValue = ordersExpanded ? 0 : 1;
+
+    Animated.timing(animatedHeight, {
+      toValue,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+
+    setOrdersExpanded(!ordersExpanded);
+  };
 
   return (
     <Container>
@@ -79,14 +150,14 @@ const DriverDashboard = () => {
         <StatsGrid>
           {statCards.map((stat, index) => (
             <StatCard
+              key={index}
               onPress={() => {
-                if (stat.value === "View Details") {
+                if (stat.isButton) {
                   router.push(
                     "/(tabs)/driver-panel/order-history/OrderHistory"
                   );
                 }
               }}
-              key={index}
             >
               <StatIcon
                 style={{
@@ -96,71 +167,143 @@ const DriverDashboard = () => {
                 <Ionicons
                   name={stat.icon}
                   size={22}
-                  color={cardColors[index % cardColors.length].icon}
+                  color={
+                    stat.isButton
+                      ? primaryGreen
+                      : cardColors[index % cardColors.length].icon
+                  }
                 />
               </StatIcon>
               <StatTitle>{stat.title}</StatTitle>
-              <StatValue>{stat.value}</StatValue>
+              <StatValueContainer>
+                <StatValue>{stat.value}</StatValue>
+              </StatValueContainer>
             </StatCard>
           ))}
         </StatsGrid>
 
-        <SectionTitle>Performance</SectionTitle>
+        <SectionHeader>
+          <SectionTitle>Performance</SectionTitle>
+          <TimeframeToggle
+            onPress={toggleTimeframe}
+            style={{ backgroundColor: lightGreen }}
+          >
+            <TimeframeText style={{ color: primaryGreen }}>
+              {incomeTimeframe === "weekly" ? "Weekly" : "Monthly"}
+            </TimeframeText>
+            <Ionicons name="swap-horizontal" size={18} color={primaryGreen} />
+          </TimeframeToggle>
+        </SectionHeader>
+
         <ChartContainer>
           <ChartHeader>
-            <ChartTitle>Weekly Income</ChartTitle>
+            <ChartTitle>
+              {incomeTimeframe === "weekly"
+                ? "Weekly Income"
+                : "Monthly Income"}
+            </ChartTitle>
             <ChartLegend>
-              <LegendDot />
-              <LegendText>Last 7 days</LegendText>
+              <LegendDot
+                style={{
+                  backgroundColor: primaryGreen,
+                }}
+              />
+              <LegendText>
+                {incomeTimeframe === "weekly" ? "Last 7 days" : "Last 4 weeks"}
+              </LegendText>
             </ChartLegend>
           </ChartHeader>
 
           <LineChart
-            data={data}
-            width={screenWidth - 52}
+            data={chartData}
+            width={screenWidth - 60}
             height={220}
             chartConfig={{
-              backgroundColor: "#ffffff",
+              backgroundColor: "#f5f5f5",
               backgroundGradientFrom: "#ffffff",
-              backgroundGradientTo: "#ffffff",
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(67, 97, 238, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(108, 117, 125, ${opacity})`,
+              backgroundGradientTo: "white",
+              color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`, // Green color
+              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
               style: {
-                borderRadius: 16,
+                borderRadius: 10,
               },
               propsForDots: {
                 r: "6",
                 strokeWidth: "2",
-                stroke: "#4361ee",
+                stroke: primaryGreen,
               },
-              propsForBackgroundLines: {
-                strokeDasharray: "5, 5",
-                stroke: "#f1f1f1",
-              },
-              fillShadowGradientFrom: "#4361ee",
-              fillShadowGradientTo: "#ffffff",
-              fillShadowGradientOpacity: 0.2,
-              paddingRight: 10,
             }}
             bezier
             style={{
-              borderRadius: 16,
-              paddingRight: 0,
-              paddingLeft: 0,
-              marginHorizontal: 0,
-              alignSelf: "center",
+              borderRadius: 10,
+              marginVertical: 8,
             }}
-            withInnerLines={true}
-            withOuterLines={true}
-            withVerticalLines={true}
-            withHorizontalLines={true}
-            fromZero
           />
         </ChartContainer>
+
+        <RecentOrdersContainer>
+          <OrdersHeader onPress={toggleOrdersExpanded}>
+            <SectionTitle style={{ marginTop: 0, marginBottom: 0 }}>
+              Recent Completed Orders
+            </SectionTitle>
+            <Ionicons
+              name={ordersExpanded ? "chevron-up" : "chevron-down"}
+              size={24}
+              color={primaryGreen}
+            />
+          </OrdersHeader>
+
+          <Animated.View
+            style={{
+              maxHeight: animatedHeight.interpolate({
+                inputRange: [0, 1],
+                outputRange: Platform.OS === "ios" ? [0, 245] : [0, 300],
+              }),
+              overflow: "hidden",
+            }}
+          >
+            <OrdersContent>
+              {recentOrders.map((order, index) => (
+                <OrderItem
+                  key={index}
+                  isLast={index === recentOrders.length - 1}
+                >
+                  <OrderLeft>
+                    <OrderIcon style={{ backgroundColor: lightGreen }}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={22}
+                        color={primaryGreen}
+                      />
+                    </OrderIcon>
+                    <OrderInfo>
+                      <OrderDestination>{order.route}</OrderDestination>
+                      <OrderTime>{order.time}</OrderTime>
+                    </OrderInfo>
+                  </OrderLeft>
+                  <OrderPrice style={{ color: "#2b6a49" }}>
+                    ${order.price}
+                  </OrderPrice>
+                </OrderItem>
+              ))}
+
+              <ViewAllButton
+                onPress={() =>
+                  router.push("/(tabs)/driver-panel/order-history/OrderHistory")
+                }
+              >
+                <ViewAllText style={{ color: primaryGreen }}>
+                  View All Orders
+                </ViewAllText>
+                <Ionicons name="arrow-forward" size={16} color={primaryGreen} />
+              </ViewAllButton>
+            </OrdersContent>
+          </Animated.View>
+        </RecentOrdersContainer>
+
         <View
           style={
-            Platform.OS === "ios" ? { marginBottom: 30 } : { marginBottom: 0 }
+            Platform.OS === "ios" ? { marginBottom: 50 } : { marginBottom: 20 }
           }
         >
           <FinanceDetails />
@@ -201,6 +344,38 @@ const Subtitle = styled.Text`
   margin-top: 4px;
 `;
 
+const SectionHeader = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  margin-top: 8px;
+`;
+
+const SectionTitle = styled.Text`
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 16px;
+  margin-top: 8px;
+`;
+
+const TimeframeToggle = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  background-color: #f0f2ff;
+  padding-horizontal: 12px;
+  padding-vertical: 6px;
+  border-radius: 20px;
+`;
+
+const TimeframeText = styled.Text`
+  font-size: 14px;
+  color: #4361ee;
+  font-weight: 500;
+  margin-right: 6px;
+`;
+
 const StatsGrid = styled.View`
   flex-direction: row;
   flex-wrap: wrap;
@@ -235,24 +410,21 @@ const StatTitle = styled.Text`
   margin-bottom: 4px;
 `;
 
+const StatValueContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+`;
+
 const StatValue = styled.Text`
   font-size: 22px;
   font-weight: bold;
   color: #212529;
 `;
 
-const SectionTitle = styled.Text`
-  font-size: 20px;
-  font-weight: 600;
-  color: #212529;
-  margin-bottom: 16px;
-  margin-top: 8px;
-`;
-
 const ChartContainer = styled.View`
   background-color: #ffffff;
   border-radius: 16px;
-  padding: 16px 8px;
+  padding: 16px 12px;
   margin-bottom: 24px;
   elevation: 2;
   shadow-color: #000;
@@ -290,4 +462,85 @@ const LegendDot = styled.View`
 const LegendText = styled.Text`
   font-size: 14px;
   color: #6c757d;
+`;
+
+const RecentOrdersContainer = styled.View`
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 13px;
+  margin-bottom: 24px;
+  elevation: 2;
+  shadow-color: #000;
+  shadow-opacity: 0.1;
+  shadow-radius: 8px;
+`;
+
+const OrdersHeader = styled.TouchableOpacity`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding-vertical: 4px;
+`;
+
+const OrdersContent = styled.View`
+  margin-top: 12px;
+`;
+
+const OrderItem = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding-vertical: 12px;
+  border-bottom-width: ${(props) => (props.isLast ? "0" : "1px")};
+  border-bottom-color: #f0f0f0;
+`;
+
+const OrderLeft = styled.View`
+  flex-direction: row;
+  align-items: center;
+`;
+
+const OrderIcon = styled.View`
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: #e7f9f0;
+  justify-content: center;
+  align-items: center;
+  margin-right: 12px;
+`;
+
+const OrderInfo = styled.View``;
+
+const OrderDestination = styled.Text`
+  font-size: 15px;
+  font-weight: 500;
+  color: #212529;
+`;
+
+const OrderTime = styled.Text`
+  font-size: 13px;
+  color: #6c757d;
+  margin-top: 2px;
+`;
+
+const OrderPrice = styled.Text`
+  font-size: 18px;
+  font-weight: 700;
+  color: #212529;
+`;
+
+const ViewAllButton = styled.TouchableOpacity`
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  margin-top: ${Platform.OS === "ios" ? "16px" : "0px"};
+  padding-vertical: 10px;
+`;
+
+const ViewAllText = styled.Text`
+  font-size: 15px;
+  font-weight: 500;
+  color: #4361ee;
+  margin-right: 8px;
 `;

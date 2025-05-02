@@ -1,102 +1,92 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 import { Ionicons } from "@expo/vector-icons";
 
 const FinanceDetails = () => {
   const items = [
-    { label: "Receipt - January", type: "receipt", date: "Jan 31, 2023" },
-    { label: "Invoice - February", type: "invoice", date: "Feb 28, 2023" },
-    { label: "Receipt - March", type: "receipt", date: "Mar 31, 2023" },
-    { label: "Invoice - April", type: "invoice", date: "Apr 30, 2023" },
+    {
+      label: "April Summary",
+      date: "Apr 30, 2023",
+      amount: "$1,240",
+      orders: "52 orders",
+    },
+    {
+      label: "March Summary",
+      date: "Mar 31, 2023",
+      amount: "$1,105",
+      orders: "47 orders",
+    },
+    {
+      label: "February Summary",
+      date: "Feb 28, 2023",
+      amount: "$950",
+      orders: "38 orders",
+    },
   ];
-
-  const getDocumentDetails = (type: any) => {
-    switch (type) {
-      case "receipt":
-        return {
-          icon: "receipt-outline",
-          color: "#4361ee",
-          bgColor: "#e9f5ff",
-        };
-      case "invoice":
-        return {
-          icon: "document-text-outline",
-          color: "#ff9f43",
-          bgColor: "#fff4de",
-        };
-      default:
-        return {
-          icon: "document-outline",
-          color: "#6c757d",
-          bgColor: "#f0f0f0",
-        };
-    }
-  };
 
   return (
     <Container>
       <SectionHeader>
-        <SectionTitle>Financial Records</SectionTitle>
+        <SectionTitle>Recent Earnings</SectionTitle>
         <ViewAllButton>
           <ViewAllText>View All</ViewAllText>
-          <Ionicons name="arrow-forward-outline" size={16} color="black" />
+          <Ionicons name="chevron-forward" size={16} color="#28c76f" />
         </ViewAllButton>
       </SectionHeader>
 
-      <Description>Download your monthly receipts and invoices</Description>
-
       <ItemsContainer>
-        {items.map((item, index) => {
-          const { icon, color, bgColor } = getDocumentDetails(item.type);
+        {items.map((item, index) => (
+          <Item key={index} isLast={index === items.length - 1}>
+            <ItemLeftSection>
+              <IconContainer>
+                <Ionicons name="calendar-outline" size={20} color="#28c76f" />
+              </IconContainer>
+              <ItemDetails>
+                <ItemLabel>{item.label}</ItemLabel>
+                <ItemInfo>
+                  {item.orders} • {item.date}
+                </ItemInfo>
+              </ItemDetails>
+            </ItemLeftSection>
 
-          return (
-            <Item key={index}>
-              <ItemLeftSection>
-                <IconContainer style={{ backgroundColor: bgColor }}>
-                  <Ionicons name={icon} size={22} color={color} />
-                </IconContainer>
-                <ItemDetails>
-                  <ItemLabel>{item.label}</ItemLabel>
-                  <ItemDate>{item.date}</ItemDate>
-                </ItemDetails>
-              </ItemLeftSection>
-
-              <DownloadButton>
-                <Ionicons name="download-outline" size={20} color="#fff" />
-                <ButtonText>Download</ButtonText>
-              </DownloadButton>
-            </Item>
-          );
-        })}
+            <ItemRightSection>
+              <AmountText>{item.amount}</AmountText>
+              <DownloadIcon name="download-outline" size={18} color="#28c76f" />
+            </ItemRightSection>
+          </Item>
+        ))}
       </ItemsContainer>
+
+      <TotalRow>
+        <TotalLabel>Quarter total:</TotalLabel>
+        <TotalAmount>$3,295</TotalAmount>
+      </TotalRow>
     </Container>
   );
 };
 
 export default FinanceDetails;
 
-// Styled Components
 const Container = styled.View`
   background-color: #ffffff;
   border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 55px;
+  padding: 16px;
   elevation: 2;
   shadow-color: #000;
   shadow-opacity: 0.1;
   shadow-radius: 8px;
+  margin-bottom: 50px;
 `;
 
 const SectionHeader = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 16px;
 `;
 
 const SectionTitle = styled.Text`
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: #212529;
 `;
@@ -108,25 +98,21 @@ const ViewAllButton = styled.TouchableOpacity`
 
 const ViewAllText = styled.Text`
   font-size: 14px;
-  color: black;
-  margin-right: 4px;
+  color: #28c76f;
+  font-weight: 500;
 `;
 
-const Description = styled.Text`
-  font-size: 14px;
-  color: #6c757d;
-  margin-bottom: 20px;
+const ItemsContainer = styled.View`
+  margin-bottom: 16px;
 `;
-
-const ItemsContainer = styled.View``;
 
 const Item = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
-  border-bottom-width: 1px;
-  border-bottom-color: #f1f1f1;
+  padding: 12px 0;
+  border-bottom-width: ${(props) => (props.isLast ? "0" : "1px")};
+  border-bottom-color: #f0f0f0;
 `;
 
 const ItemLeftSection = styled.View`
@@ -135,39 +121,60 @@ const ItemLeftSection = styled.View`
 `;
 
 const IconContainer = styled.View`
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 12px;
+  background-color: #e7f9f0;
   justify-content: center;
   align-items: center;
-  margin-right: 16px;
+  margin-right: 12px;
 `;
 
 const ItemDetails = styled.View``;
 
 const ItemLabel = styled.Text`
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 500;
   color: #212529;
 `;
 
-const ItemDate = styled.Text`
-  font-size: 13px;
+const ItemInfo = styled.Text`
+  font-size: 12px;
   color: #6c757d;
   margin-top: 2px;
 `;
 
-const DownloadButton = styled(TouchableOpacity)`
+const ItemRightSection = styled.View`
   flex-direction: row;
   align-items: center;
-  background-color: #4caf50;
-  padding: 10px 16px;
-  border-radius: 12px;
 `;
 
-const ButtonText = styled.Text`
-  color: #fff;
+const AmountText = styled.Text`
+  font-size: 16px;
+  font-weight: 600;
+  color: #2b6a49;
+  margin-right: 10px;
+`;
+
+const DownloadIcon = styled(Ionicons)``;
+
+const TotalRow = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #e7f9f0;
+  border-radius: 12px;
+  padding: 12px 16px;
+`;
+
+const TotalLabel = styled.Text`
   font-size: 14px;
   font-weight: 500;
-  margin-left: 6px;
+  color: #2b6a49;
+`;
+
+const TotalAmount = styled.Text`
+  font-size: 18px;
+  font-weight: 700;
+  color: #28c76f;
 `;

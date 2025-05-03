@@ -21,6 +21,17 @@ const cardColors = [
 const primaryGreen = "#28c76f";
 const lightGreen = "#e7f9f0";
 
+const dailyData = {
+  labels: ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"],
+  datasets: [
+    {
+      data: [5, 8, 22, 35, 28, 25, 15],
+      strokeWidth: 2,
+      color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`,
+    },
+  ],
+};
+
 const weeklyData = {
   labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
   datasets: [
@@ -45,8 +56,10 @@ const monthlyData = {
 
 const DriverDashboard = () => {
   const [driverData, setDriverData] = useState([]);
-  const [incomeTimeframe, setIncomeTimeframe] = useState("weekly");
-  const [chartData, setChartData] = useState(weeklyData);
+  // Changed from "weekly" to "daily" as default
+  const [incomeTimeframe, setIncomeTimeframe] = useState("daily");
+  // Changed initial chart data to dailyData
+  const [chartData, setChartData] = useState(dailyData);
   const [ordersExpanded, setOrdersExpanded] = useState(false);
   const animatedHeight = useState(new Animated.Value(0))[0];
 
@@ -117,12 +130,15 @@ const DriverDashboard = () => {
   }, []);
 
   const toggleTimeframe = () => {
-    if (incomeTimeframe === "weekly") {
+    if (incomeTimeframe === "daily") {
+      setIncomeTimeframe("weekly");
+      setChartData(weeklyData);
+    } else if (incomeTimeframe === "weekly") {
       setIncomeTimeframe("monthly");
       setChartData(monthlyData);
     } else {
-      setIncomeTimeframe("weekly");
-      setChartData(weeklyData);
+      setIncomeTimeframe("daily");
+      setChartData(dailyData);
     }
   };
 
@@ -136,6 +152,19 @@ const DriverDashboard = () => {
     }).start();
 
     setOrdersExpanded(!ordersExpanded);
+  };
+
+  const getTimeframeLegendText = () => {
+    switch (incomeTimeframe) {
+      case "daily":
+        return "Today";
+      case "weekly":
+        return "Last 7 days";
+      case "monthly":
+        return "Last 4 weeks";
+      default:
+        return "Last 7 days";
+    }
   };
 
   return (
@@ -183,13 +212,14 @@ const DriverDashboard = () => {
         </StatsGrid>
 
         <SectionHeader>
-          <SectionTitle>Performance</SectionTitle>
+          <View></View>
           <TimeframeToggle
             onPress={toggleTimeframe}
             style={{ backgroundColor: lightGreen }}
           >
             <TimeframeText style={{ color: primaryGreen }}>
-              {incomeTimeframe === "weekly" ? "Weekly" : "Monthly"}
+              {incomeTimeframe.charAt(0).toUpperCase() +
+                incomeTimeframe.slice(1)}
             </TimeframeText>
             <Ionicons name="swap-horizontal" size={18} color={primaryGreen} />
           </TimeframeToggle>
@@ -198,7 +228,9 @@ const DriverDashboard = () => {
         <ChartContainer>
           <ChartHeader>
             <ChartTitle>
-              {incomeTimeframe === "weekly"
+              {incomeTimeframe === "daily"
+                ? "Daily Income"
+                : incomeTimeframe === "weekly"
                 ? "Weekly Income"
                 : "Monthly Income"}
             </ChartTitle>
@@ -208,9 +240,7 @@ const DriverDashboard = () => {
                   backgroundColor: primaryGreen,
                 }}
               />
-              <LegendText>
-                {incomeTimeframe === "weekly" ? "Last 7 days" : "Last 4 weeks"}
-              </LegendText>
+              <LegendText>{getTimeframeLegendText()}</LegendText>
             </ChartLegend>
           </ChartHeader>
 

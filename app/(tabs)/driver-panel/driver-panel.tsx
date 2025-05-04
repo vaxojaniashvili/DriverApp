@@ -56,9 +56,7 @@ const monthlyData = {
 
 const DriverDashboard = () => {
   const [driverData, setDriverData] = useState([]);
-  // Changed from "weekly" to "daily" as default
   const [incomeTimeframe, setIncomeTimeframe] = useState("daily");
-  // Changed initial chart data to dailyData
   const [chartData, setChartData] = useState(dailyData);
   const [ordersExpanded, setOrdersExpanded] = useState(false);
   const animatedHeight = useState(new Animated.Value(0))[0];

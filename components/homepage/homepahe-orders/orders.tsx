@@ -109,58 +109,65 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
               <ItemsHeader>Items ({order.items.length})</ItemsHeader>
               {order.items.map((item, index) => (
                 <View key={`${item.id}-${index}`}>
-                  <ItemRow onPress={() => toggleItemExpand(item.id)}>
-                    <ItemInfo>
-                      <ItemName>{item.name}</ItemName>
-                      <ItemDetails>
-                        Qty: {item.quantity} • {item.size}
-                      </ItemDetails>
-                    </ItemInfo>
-                    <View
-                      style={{ flexDirection: "row", alignItems: "center" }}
-                    >
-                      <ItemPrice>
-                        {item?.price ? item.price.toFixed(2) : "0.00"}
-                      </ItemPrice>
+                  {!item.name ? (
+                    <View></View>
+                  ) : (
+                    <ItemRow onPress={() => toggleItemExpand(item.id)}>
+                      <ItemInfo>
+                        <ItemName>{item.name}</ItemName>
+                        <ItemDetails>
+                          Qty: {item.quantity} • {item.size}
+                        </ItemDetails>
+                      </ItemInfo>
+                      <View
+                        style={{ flexDirection: "row", alignItems: "center" }}
+                      >
+                        <ItemPrice>
+                          {item?.price ? item.price.toFixed(2) : "0.00"}
+                        </ItemPrice>
 
-                      <Ionicons
-                        name={
-                          expandedItems.includes(item.id)
-                            ? "chevron-up"
-                            : "chevron-down"
-                        }
-                        size={18}
-                        color="gray"
-                        style={{ marginLeft: 8 }}
-                      />
-                    </View>
-                  </ItemRow>
-
-                  {expandedItems.includes(item.id) && (
-                    <ItemDropdown>
-                      <ItemDetailRow>
-                        <ItemDetailLabel>Category:</ItemDetailLabel>
-                        <ItemDetailValue>{item.category}</ItemDetailValue>
-                      </ItemDetailRow>
-                      <ItemDetailRow>
-                        <ItemDetailLabel>Sub-category:</ItemDetailLabel>
-                        <ItemDetailValue>{item.sub_category}</ItemDetailValue>
-                      </ItemDetailRow>
-                      <ItemDetailRow>
-                        <ItemDetailLabel>Size:</ItemDetailLabel>
-                        <ItemDetailValue>{item.size}</ItemDetailValue>
-                      </ItemDetailRow>
-                      <ItemDetailRow>
-                        <ItemDetailLabel>Quantity:</ItemDetailLabel>
-                        <ItemDetailValue>{item.quantity}</ItemDetailValue>
-                      </ItemDetailRow>
-                      <ItemDetailRow>
-                        <ItemDetailLabel>Price:</ItemDetailLabel>
-                        <ItemDetailValue>
-                          €{item.price ? item.price.toFixed(2) : "00"}
-                        </ItemDetailValue>
-                      </ItemDetailRow>
-                    </ItemDropdown>
+                        <Ionicons
+                          name={
+                            expandedItems.includes(item.id)
+                              ? "chevron-up"
+                              : "chevron-down"
+                          }
+                          size={18}
+                          color="gray"
+                          style={{ marginLeft: 8 }}
+                        />
+                      </View>
+                    </ItemRow>
+                  )}
+                  {!item.name ? (
+                    <View></View>
+                  ) : (
+                    expandedItems.includes(item.id) && (
+                      <ItemDropdown>
+                        <ItemDetailRow>
+                          <ItemDetailLabel>Category:</ItemDetailLabel>
+                          <ItemDetailValue>{item.category}</ItemDetailValue>
+                        </ItemDetailRow>
+                        <ItemDetailRow>
+                          <ItemDetailLabel>Sub-category:</ItemDetailLabel>
+                          <ItemDetailValue>{item.sub_category}</ItemDetailValue>
+                        </ItemDetailRow>
+                        <ItemDetailRow>
+                          <ItemDetailLabel>Size:</ItemDetailLabel>
+                          <ItemDetailValue>{item.size}</ItemDetailValue>
+                        </ItemDetailRow>
+                        <ItemDetailRow>
+                          <ItemDetailLabel>Quantity:</ItemDetailLabel>
+                          <ItemDetailValue>{item.quantity}</ItemDetailValue>
+                        </ItemDetailRow>
+                        <ItemDetailRow>
+                          <ItemDetailLabel>Price:</ItemDetailLabel>
+                          <ItemDetailValue>
+                            €{item.price ? item.price.toFixed(2) : "00"}
+                          </ItemDetailValue>
+                        </ItemDetailRow>
+                      </ItemDropdown>
+                    )
                   )}
                 </View>
               ))}

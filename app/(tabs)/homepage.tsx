@@ -466,19 +466,14 @@ const HomeScreen: React.FC = () => {
   return (
     <Container>
       <GradientHeader
-        colors={[DriverModeColors.gradient1, DriverModeColors.gradient2]}
+        colors={["#27ae60", "#1e8449"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
       <ScrollableContent
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[DriverModeColors.primary]}
-            tintColor={DriverModeColors.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         <Innercontainer>
@@ -812,7 +807,7 @@ const GradientHeader = styled(LinearGradient)`
   top: 0;
   left: 0;
   right: 0;
-  height: ${Platform.OS === "android" ? "260px" : "300px"};
+  height: ${Platform.OS === "android" ? "250px" : "270px"};
   border-bottom-left-radius: 16px;
   border-bottom-right-radius: 16px;
 `;

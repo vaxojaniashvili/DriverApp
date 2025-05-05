@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import FinanceDetails from "@/components/driver-dashboard/finance";
 import { useRouter } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
+import { LinearGradient } from "expo-linear-gradient";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -167,175 +168,206 @@ const DriverDashboard = () => {
 
   return (
     <Container>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-      <InternalContainer showsVerticalScrollIndicator={false}>
-        <Header>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle="light-content"
+      />
+      <LinearGradient
+        colors={["#28c76f", "#18ad50"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{
+          position: "absolute",
+          width: "100%",
+          height: 150 + (Platform.OS === "ios" ? 200 : 200),
+        }}
+      />
+      <InternalContainer
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 30 }}
+      >
+        <HeaderGradient
+          colors={["#28c76f", "#18ad50"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
           <Title>Driver Dashboard</Title>
           <Subtitle>Welcome back, let's check your stats</Subtitle>
-        </Header>
+        </HeaderGradient>
 
-        <StatsGrid>
-          {statCards.map((stat, index) => (
-            <StatCard
-              key={index}
-              onPress={() => {
-                if (stat.isButton) {
-                  router.push(
-                    "/(tabs)/driver-panel/order-history/OrderHistory"
-                  );
-                }
+        <ContentContainer>
+          <StatsGrid>
+            {statCards.map((stat, index) => (
+              <StatCard
+                key={index}
+                onPress={() => {
+                  if (stat.isButton) {
+                    router.push(
+                      "/(tabs)/driver-panel/order-history/OrderHistory"
+                    );
+                  }
+                }}
+              >
+                <StatIcon
+                  style={{
+                    backgroundColor: cardColors[index % cardColors.length].bg,
+                  }}
+                >
+                  <Ionicons
+                    name={stat.icon}
+                    size={22}
+                    color={
+                      stat.isButton
+                        ? primaryGreen
+                        : cardColors[index % cardColors.length].icon
+                    }
+                  />
+                </StatIcon>
+                <StatTitle>{stat.title}</StatTitle>
+                <StatValueContainer>
+                  <StatValue>{stat.value}</StatValue>
+                </StatValueContainer>
+              </StatCard>
+            ))}
+          </StatsGrid>
+
+          <SectionHeader>
+            <View></View>
+            <TimeframeToggle
+              onPress={toggleTimeframe}
+              style={{ backgroundColor: lightGreen }}
+            >
+              <TimeframeText style={{ color: primaryGreen }}>
+                {incomeTimeframe.charAt(0).toUpperCase() +
+                  incomeTimeframe.slice(1)}
+              </TimeframeText>
+              <Ionicons name="swap-horizontal" size={18} color={primaryGreen} />
+            </TimeframeToggle>
+          </SectionHeader>
+
+          <ChartContainer>
+            <ChartHeader>
+              <ChartTitle>
+                {incomeTimeframe === "daily"
+                  ? "Daily Income"
+                  : incomeTimeframe === "weekly"
+                  ? "Weekly Income"
+                  : "Monthly Income"}
+              </ChartTitle>
+              <ChartLegend>
+                <LegendDot
+                  style={{
+                    backgroundColor: primaryGreen,
+                  }}
+                />
+                <LegendText>{getTimeframeLegendText()}</LegendText>
+              </ChartLegend>
+            </ChartHeader>
+
+            <LineChart
+              data={chartData}
+              width={screenWidth - 60}
+              height={220}
+              chartConfig={{
+                backgroundColor: "#f5f5f5",
+                backgroundGradientFrom: "#ffffff",
+                backgroundGradientTo: "white",
+                color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                style: {
+                  borderRadius: 10,
+                },
+                propsForDots: {
+                  r: "6",
+                  strokeWidth: "2",
+                  stroke: primaryGreen,
+                },
+              }}
+              bezier
+              style={{
+                borderRadius: 10,
+                marginVertical: 8,
+              }}
+            />
+          </ChartContainer>
+
+          <RecentOrdersContainer>
+            <OrdersHeader onPress={toggleOrdersExpanded}>
+              <SectionTitle style={{ marginTop: 0, marginBottom: 0 }}>
+                Recent Completed Orders
+              </SectionTitle>
+              <Ionicons
+                name={ordersExpanded ? "chevron-up" : "chevron-down"}
+                size={24}
+                color={primaryGreen}
+              />
+            </OrdersHeader>
+
+            <Animated.View
+              style={{
+                maxHeight: animatedHeight.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: Platform.OS === "ios" ? [0, 245] : [0, 300],
+                }),
+                overflow: "hidden",
               }}
             >
-              <StatIcon
-                style={{
-                  backgroundColor: cardColors[index % cardColors.length].bg,
-                }}
-              >
-                <Ionicons
-                  name={stat.icon}
-                  size={22}
-                  color={
-                    stat.isButton
-                      ? primaryGreen
-                      : cardColors[index % cardColors.length].icon
+              <OrdersContent>
+                {recentOrders.map((order, index) => (
+                  <OrderItem
+                    key={index}
+                    isLast={index === recentOrders.length - 1}
+                  >
+                    <OrderLeft>
+                      <OrderIcon style={{ backgroundColor: lightGreen }}>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={22}
+                          color={primaryGreen}
+                        />
+                      </OrderIcon>
+                      <OrderInfo>
+                        <OrderDestination>{order.route}</OrderDestination>
+                        <OrderTime>{order.time}</OrderTime>
+                      </OrderInfo>
+                    </OrderLeft>
+                    <OrderPrice style={{ color: "#2b6a49" }}>
+                      ${order.price}
+                    </OrderPrice>
+                  </OrderItem>
+                ))}
+
+                <ViewAllButton
+                  onPress={() =>
+                    router.push(
+                      "/(tabs)/driver-panel/order-history/OrderHistory"
+                    )
                   }
-                />
-              </StatIcon>
-              <StatTitle>{stat.title}</StatTitle>
-              <StatValueContainer>
-                <StatValue>{stat.value}</StatValue>
-              </StatValueContainer>
-            </StatCard>
-          ))}
-        </StatsGrid>
-
-        <SectionHeader>
-          <View></View>
-          <TimeframeToggle
-            onPress={toggleTimeframe}
-            style={{ backgroundColor: lightGreen }}
-          >
-            <TimeframeText style={{ color: primaryGreen }}>
-              {incomeTimeframe.charAt(0).toUpperCase() +
-                incomeTimeframe.slice(1)}
-            </TimeframeText>
-            <Ionicons name="swap-horizontal" size={18} color={primaryGreen} />
-          </TimeframeToggle>
-        </SectionHeader>
-
-        <ChartContainer>
-          <ChartHeader>
-            <ChartTitle>
-              {incomeTimeframe === "daily"
-                ? "Daily Income"
-                : incomeTimeframe === "weekly"
-                ? "Weekly Income"
-                : "Monthly Income"}
-            </ChartTitle>
-            <ChartLegend>
-              <LegendDot
-                style={{
-                  backgroundColor: primaryGreen,
-                }}
-              />
-              <LegendText>{getTimeframeLegendText()}</LegendText>
-            </ChartLegend>
-          </ChartHeader>
-
-          <LineChart
-            data={chartData}
-            width={screenWidth - 60}
-            height={220}
-            chartConfig={{
-              backgroundColor: "#f5f5f5",
-              backgroundGradientFrom: "#ffffff",
-              backgroundGradientTo: "white",
-              color: (opacity = 1) => `rgba(40, 199, 111, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: {
-                borderRadius: 10,
-              },
-              propsForDots: {
-                r: "6",
-                strokeWidth: "2",
-                stroke: primaryGreen,
-              },
-            }}
-            bezier
-            style={{
-              borderRadius: 10,
-              marginVertical: 8,
-            }}
-          />
-        </ChartContainer>
-
-        <RecentOrdersContainer>
-          <OrdersHeader onPress={toggleOrdersExpanded}>
-            <SectionTitle style={{ marginTop: 0, marginBottom: 0 }}>
-              Recent Completed Orders
-            </SectionTitle>
-            <Ionicons
-              name={ordersExpanded ? "chevron-up" : "chevron-down"}
-              size={24}
-              color={primaryGreen}
-            />
-          </OrdersHeader>
-
-          <Animated.View
-            style={{
-              maxHeight: animatedHeight.interpolate({
-                inputRange: [0, 1],
-                outputRange: Platform.OS === "ios" ? [0, 245] : [0, 300],
-              }),
-              overflow: "hidden",
-            }}
-          >
-            <OrdersContent>
-              {recentOrders.map((order, index) => (
-                <OrderItem
-                  key={index}
-                  isLast={index === recentOrders.length - 1}
                 >
-                  <OrderLeft>
-                    <OrderIcon style={{ backgroundColor: lightGreen }}>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={22}
-                        color={primaryGreen}
-                      />
-                    </OrderIcon>
-                    <OrderInfo>
-                      <OrderDestination>{order.route}</OrderDestination>
-                      <OrderTime>{order.time}</OrderTime>
-                    </OrderInfo>
-                  </OrderLeft>
-                  <OrderPrice style={{ color: "#2b6a49" }}>
-                    ${order.price}
-                  </OrderPrice>
-                </OrderItem>
-              ))}
+                  <ViewAllText style={{ color: primaryGreen }}>
+                    View All Orders
+                  </ViewAllText>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={16}
+                    color={primaryGreen}
+                  />
+                </ViewAllButton>
+              </OrdersContent>
+            </Animated.View>
+          </RecentOrdersContainer>
 
-              <ViewAllButton
-                onPress={() =>
-                  router.push("/(tabs)/driver-panel/order-history/OrderHistory")
-                }
-              >
-                <ViewAllText style={{ color: primaryGreen }}>
-                  View All Orders
-                </ViewAllText>
-                <Ionicons name="arrow-forward" size={16} color={primaryGreen} />
-              </ViewAllButton>
-            </OrdersContent>
-          </Animated.View>
-        </RecentOrdersContainer>
-
-        <View
-          style={
-            Platform.OS === "ios" ? { marginBottom: 50 } : { marginBottom: 20 }
-          }
-        >
-          <FinanceDetails />
-        </View>
+          <View
+            style={
+              Platform.OS === "ios"
+                ? { marginBottom: 50 }
+                : { marginBottom: 20 }
+            }
+          >
+            <FinanceDetails />
+          </View>
+        </ContentContainer>
       </InternalContainer>
     </Container>
   );
@@ -346,29 +378,36 @@ export default DriverDashboard;
 const Container = styled.View`
   flex: 1;
   background-color: #f8f9fa;
-  ${Platform.OS === "ios" ? "padding-top: 10px;" : "padding-top:40px"}
 `;
 
 const InternalContainer = styled.ScrollView`
   flex: 1;
-  padding-horizontal: 20px;
-  padding-top: ${Platform.OS === "android" ? 10 : 75}px;
-  ${Platform.OS === "android" && "margin-top: -25"}
 `;
 
-const Header = styled.View`
-  margin-bottom: 24px;
+const HeaderGradient = styled(LinearGradient)`
+  padding: 20px;
+  padding-top: ${Platform.OS === "ios" ? "60px" : "50px"};
+  padding-bottom: 23px;
+`;
+
+const ContentContainer = styled.View`
+  padding-horizontal: 20px;
+  margin-top: -15px;
+  background-color: #f8f9fa;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding-top: 20px;
 `;
 
 const Title = styled.Text`
   font-size: 28px;
   font-weight: 700;
-  color: #212529;
+  color: #ffffff;
 `;
 
 const Subtitle = styled.Text`
   font-size: 16px;
-  color: #6c757d;
+  color: rgba(255, 255, 255, 0.8);
   margin-top: 4px;
 `;
 

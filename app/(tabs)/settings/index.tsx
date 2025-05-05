@@ -1,11 +1,15 @@
 import React from "react";
-import { Alert, Platform, SafeAreaView, StatusBar } from "react-native";
+import { Alert, Platform, SafeAreaView, StatusBar, View } from "react-native";
 import styled from "styled-components/native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/infrastructure/db/supabase";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Settings = () => {
+  const insets = useSafeAreaInsets();
+
   async function handleLogout() {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -34,62 +38,90 @@ const Settings = () => {
     {
       label: "Edit Profile",
       icon: "person",
-      color: "#4361ee",
-      bgColor: "#e9f5ff",
+      color: "#ffffff",
+      bgColor: "#2ecc71",
       onPress: () => router.push("/settings/editprofile"),
     },
     {
       label: "Notifications",
       icon: "notifications",
-      color: "#ff9f43",
-      bgColor: "#fff4de",
+      color: "#ffffff",
+      bgColor: "#27ae60",
       onPress: () => router.push("/settings/notifications"),
     },
     {
       label: "Privacy & Security",
       icon: "shield-checkmark",
-      color: "#28c76f",
-      bgColor: "#e7f9f0",
+      color: "#ffffff",
+      bgColor: "#2ecc71",
       onPress: () => router.push("settings/privace"),
     },
     {
       label: "Contact Support",
       icon: "headset",
-      color: "#7367f0",
-      bgColor: "#f0eeff",
+      color: "#ffffff",
+      bgColor: "#27ae60",
       onPress: () => router.push("/settings/support"),
     },
     {
       label: "Deactivate Account",
       icon: "close-circle",
-      color: "#ea5455",
-      bgColor: "#fff2f2",
+      color: "#ffffff",
+      bgColor: "#e74c3c",
       onPress: handleDeactivateAccount,
     },
   ];
 
   return (
     <Container>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-      <ContentContainer>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#1e8449"
+        translucent
+      />
+
+      <HeaderGradient
+        colors={["#28c76f", "#18ad50"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{
+          paddingTop: insets.top,
+        }}
+      >
         <Header>
           <Title>Settings</Title>
           <Subtitle>Manage your account preferences</Subtitle>
         </Header>
+      </HeaderGradient>
 
-        <SectionTitle>Account Settings</SectionTitle>
+      <ContentContainer>
         <OptionsContainer>
           {settingsOptions.map((option, index) => (
             <Option
               key={index}
               onPress={option.onPress}
-              isLast={index === settingsOptions.length - 1}
+              style={{
+                marginBottom: index === settingsOptions.length - 1 ? 0 : 16,
+              }}
             >
               <OptionInfo>
                 <IconContainer style={{ backgroundColor: option.bgColor }}>
                   <Ionicons name={option.icon} size={22} color={option.color} />
                 </IconContainer>
-                <OptionText>{option.label}</OptionText>
+                <OptionTextContainer>
+                  <OptionText>{option.label}</OptionText>
+                  <OptionSubtext>
+                    {option.label === "Edit Profile"
+                      ? "Update your personal information"
+                      : option.label === "Notifications"
+                      ? "Manage push notifications"
+                      : option.label === "Privacy & Security"
+                      ? "Control data usage and privacy"
+                      : option.label === "Contact Support"
+                      ? "Get help with any issues"
+                      : "Remove your account permanently"}
+                  </OptionSubtext>
+                </OptionTextContainer>
               </OptionInfo>
               <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
             </Option>
@@ -97,15 +129,21 @@ const Settings = () => {
         </OptionsContainer>
 
         <BottomContainer>
-          <LogoutButton onPress={handleLogout}>
-            <Ionicons
-              name="log-out-outline"
-              size={20}
-              color="#fff"
-              style={{ marginRight: 8 }}
-            />
-            <LogoutText>Log Out</LogoutText>
-          </LogoutButton>
+          <LogoutButtonGradient
+            colors={["#e74c3c", "#c0392b"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <LogoutButton onPress={handleLogout}>
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color="#fff"
+                style={{ marginRight: 8 }}
+              />
+              <LogoutText>Log Out</LogoutText>
+            </LogoutButton>
+          </LogoutButtonGradient>
 
           <FooterText>App Version 3.0.5</FooterText>
         </BottomContainer>
@@ -116,51 +154,44 @@ const Settings = () => {
 
 export default Settings;
 
-const Container = styled(SafeAreaView)`
+const Container = styled(View)`
   flex: 1;
-  background-color: #f8f9fa;
+  background-color: #f5f9f7;
+`;
+
+const HeaderGradient = styled(LinearGradient)`
+  padding-horizontal: 20px;
+  padding-bottom: 30px;
+`;
+
+const Header = styled.View`
+  padding-top: ${Platform.OS === "android" ? "24px" : "0"};
 `;
 
 const ContentContainer = styled.View`
   flex: 1;
   padding-horizontal: 20px;
-  padding-top: ${Platform.OS === "android" ? "20px" : "25"};
-`;
-
-const Header = styled.View`
-  margin-bottom: 32px;
+  padding-top: 24px;
+  background-color: #f5f9f7;
+  margin-top: -20px;
+  border-top-right-radius: 20px;
+  border-top-left-radius: 20px;
 `;
 
 const Title = styled.Text`
   font-size: 28px;
   font-weight: 700;
-  color: #212529;
+  color: #ffffff;
 `;
 
 const Subtitle = styled.Text`
   font-size: 16px;
-  color: #6c757d;
+  color: rgba(255, 255, 255, 0.8);
   margin-top: 4px;
 `;
 
-const SectionTitle = styled.Text`
-  font-size: 16px;
-  font-weight: 600;
-  color: #6c757d;
-  margin-bottom: 16px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
 const OptionsContainer = styled.View`
-  background-color: #ffffff;
-  border-radius: 16px;
-  overflow: hidden;
   margin-bottom: 24px;
-  elevation: 2;
-  shadow-color: #000;
-  shadow-opacity: 0.1;
-  shadow-radius: 8px;
 `;
 
 const Option = styled.TouchableOpacity`
@@ -168,43 +199,62 @@ const Option = styled.TouchableOpacity`
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom-width: ${(props) => (props.isLast ? "0" : "1px")};
-  border-bottom-color: #f1f1f1;
+  background-color: #ffffff;
+  border-radius: 16px;
+  elevation: 2;
+  shadow-color: #000;
+  shadow-opacity: 0.08;
+  shadow-radius: 8px;
+  shadow-offset: 0px 2px;
 `;
 
 const OptionInfo = styled.View`
   flex-direction: row;
   align-items: center;
+  flex: 1;
 `;
 
 const IconContainer = styled.View`
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   justify-content: center;
   align-items: center;
-  margin-right: 12px;
+  margin-right: 16px;
+`;
+
+const OptionTextContainer = styled.View`
+  flex: 1;
 `;
 
 const OptionText = styled.Text`
   font-size: 16px;
-  font-weight: 500;
-  color: #212529;
+  font-weight: 600;
+  color: #333;
+`;
+
+const OptionSubtext = styled.Text`
+  font-size: 13px;
+  color: #888;
+  margin-top: 2px;
 `;
 
 const BottomContainer = styled.View`
   margin-top: auto;
+  margin-bottom: 24px;
+`;
+
+const LogoutButtonGradient = styled(LinearGradient)`
+  border-radius: 16px;
+  overflow: hidden;
   margin-bottom: 16px;
 `;
 
 const LogoutButton = styled.TouchableOpacity`
-  background-color: #ea5455;
   padding: 16px;
-  border-radius: 12px;
   align-items: center;
   flex-direction: row;
   justify-content: center;
-  margin-bottom: 16px;
 `;
 
 const LogoutText = styled.Text`

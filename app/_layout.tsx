@@ -41,6 +41,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="signUp"
+          options={{
+            headerShown: false,
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
           name="(tabs)"
           options={{
             headerShown: false,

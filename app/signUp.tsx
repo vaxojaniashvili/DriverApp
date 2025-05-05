@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   ActivityIndicator,
   Platform,
   TouchableOpacity,
-  View,
 } from "react-native";
 import { supabase } from "../infrastructure/db/supabase";
 import { Button, Input, Icon } from "@rneui/themed";
@@ -13,15 +12,21 @@ import styled from "styled-components/native";
 import { KeyboardAvoidingView, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
-export default function Auth() {
+export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
-  const [session, setSession] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [fullNameError, setFullNameError] = useState("");
+  const [phoneNumberError, setPhoneNumberError] = useState("");
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -48,84 +53,101 @@ export default function Auth() {
     return true;
   };
 
-  async function signInWithEmail() {
+  const validateConfirmPassword = (confirmPass: string) => {
+    if (!confirmPass) {
+      setConfirmPasswordError("Please confirm your password");
+      return false;
+    } else if (confirmPass !== password) {
+      setConfirmPasswordError("Passwords do not match");
+      return false;
+    }
+    setConfirmPasswordError("");
+    return true;
+  };
+
+  const validateFullName = (name: string) => {
+    if (!name.trim()) {
+      setFullNameError("Full name is required");
+      return false;
+    }
+    setFullNameError("");
+    return true;
+  };
+
+  const validatePhoneNumber = (phone: string) => {
+    const phoneRegex = /^\+?[0-9]{9,15}$/;
+    if (!phone) {
+      setPhoneNumberError("Phone number is required");
+      return false;
+    } else if (!phoneRegex.test(phone)) {
+      setPhoneNumberError("Invalid phone number format");
+      return false;
+    }
+    setPhoneNumberError("");
+    return true;
+  };
+
+  async function signUpWithEmail() {
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
+    const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
+    const isFullNameValid = validateFullName(fullName);
+    const isPhoneNumberValid = validatePhoneNumber(phoneNumber);
 
-    if (!isEmailValid || !isPasswordValid) {
+    if (
+      !isEmailValid ||
+      !isPasswordValid ||
+      !isConfirmPasswordValid ||
+      !isFullNameValid ||
+      !isPhoneNumberValid
+    ) {
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phoneNumber,
+          },
+        },
       });
 
       if (error) {
         Alert.alert("Error", error.message);
       } else {
-        router.push("/homepage");
+        Alert.alert(
+          "Registration Successful",
+          "Your account has been created. Please check your email for verification instructions.",
+          [
+            {
+              text: "OK",
+              onPress: () => router.push("/"),
+            },
+          ]
+        );
       }
     } catch (error) {
-      Alert.alert("Error", "Authentication error occurred");
+      Alert.alert("Error", "Registration error occurred");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    setLoading(true);
-
-    const checkSession = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-
-        if (error) {
-          // console.error("Session retrieval error:", error);
-          return;
-        }
-
-        if (data.session) {
-          setSession(data.session);
-          router.push("/homepage");
-        } else {
-          console.log("No active session");
-        }
-      } catch (e) {
-        console.error("Exception checking session:", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event);
-      setSession(session);
-
-      if (session) {
-        router.push("/homepage");
-      }
-    });
-
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, []);
-
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
   };
 
-  const navigateToSignUp = () => {
-    router.push("/signUp");
+  const toggleShowConfirmPassword = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  const navigateToSignIn = () => {
+    router.push("/");
   };
 
   return (
@@ -149,13 +171,37 @@ export default function Auth() {
               size={50}
             />
           </LogoContainer>
-          <AppName>Thevanapp Driver</AppName>
           <FormContainer>
             {loading ? (
               <ActivityIndicator size="large" color="#27ae60" />
             ) : (
               <>
-                <Title>Please enter your credentials</Title>
+                <Title>Create New Account</Title>
+
+                <StyledInput
+                  label="Full Name"
+                  leftIcon={{
+                    type: "material-community",
+                    name: "account-outline",
+                    size: 22,
+                    color: "#27ae60",
+                  }}
+                  onChangeText={(text) => {
+                    setFullName(text);
+                    if (fullNameError) validateFullName(text);
+                  }}
+                  value={fullName}
+                  placeholder="Enter your full name"
+                  autoCapitalize="words"
+                  inputStyle={{ paddingLeft: 10 }}
+                  labelStyle={{ color: "#2c3e50", fontWeight: "normal" }}
+                  inputContainerStyle={{
+                    borderColor: fullNameError ? "#e74c3c" : "#ddd",
+                    borderBottomWidth: 1,
+                  }}
+                  onBlur={() => validateFullName(fullName)}
+                />
+                {fullNameError ? <ErrorText>{fullNameError}</ErrorText> : null}
 
                 <StyledInput
                   label="Email"
@@ -172,6 +218,7 @@ export default function Auth() {
                   value={email}
                   placeholder="Enter your email"
                   autoCapitalize="none"
+                  keyboardType="email-address"
                   inputStyle={{ paddingLeft: 10 }}
                   labelStyle={{ color: "#2c3e50", fontWeight: "normal" }}
                   inputContainerStyle={{
@@ -181,6 +228,33 @@ export default function Auth() {
                   onBlur={() => validateEmail(email)}
                 />
                 {emailError ? <ErrorText>{emailError}</ErrorText> : null}
+
+                <StyledInput
+                  label="Phone Number"
+                  leftIcon={{
+                    type: "material-community",
+                    name: "phone-outline",
+                    size: 22,
+                    color: "#27ae60",
+                  }}
+                  onChangeText={(text) => {
+                    setPhoneNumber(text);
+                    if (phoneNumberError) validatePhoneNumber(text);
+                  }}
+                  value={phoneNumber}
+                  placeholder="Enter your phone number"
+                  keyboardType="phone-pad"
+                  inputStyle={{ paddingLeft: 10 }}
+                  labelStyle={{ color: "#2c3e50", fontWeight: "normal" }}
+                  inputContainerStyle={{
+                    borderColor: phoneNumberError ? "#e74c3c" : "#ddd",
+                    borderBottomWidth: 1,
+                  }}
+                  onBlur={() => validatePhoneNumber(phoneNumber)}
+                />
+                {phoneNumberError ? (
+                  <ErrorText>{phoneNumberError}</ErrorText>
+                ) : null}
 
                 <StyledInput
                   label="Password"
@@ -200,10 +274,12 @@ export default function Auth() {
                   onChangeText={(text) => {
                     setPassword(text);
                     if (passwordError) validatePassword(text);
+                    if (confirmPassword && confirmPasswordError)
+                      validateConfirmPassword(confirmPassword);
                   }}
                   value={password}
                   secureTextEntry={!showPassword}
-                  placeholder="Enter a password"
+                  placeholder="Create a password"
                   autoCapitalize="none"
                   inputStyle={{ paddingLeft: 10 }}
                   labelStyle={{ color: "#2c3e50", fontWeight: "normal" }}
@@ -215,16 +291,42 @@ export default function Auth() {
                 />
                 {passwordError ? <ErrorText>{passwordError}</ErrorText> : null}
 
-                <TouchableOpacity
-                  onPress={() =>
-                    Alert.alert(
-                      "Contact Us",
-                      "Please contact administration to reset your password"
-                    )
-                  }
-                >
-                  <ForgotPasswordText>Forgot Password?</ForgotPasswordText>
-                </TouchableOpacity>
+                <StyledInput
+                  label="Confirm Password"
+                  leftIcon={{
+                    type: "material-community",
+                    name: "lock-outline",
+                    size: 22,
+                    color: "#27ae60",
+                  }}
+                  rightIcon={{
+                    type: "material-community",
+                    name: showConfirmPassword
+                      ? "eye-off-outline"
+                      : "eye-outline",
+                    size: 22,
+                    color: "#95a5a6",
+                    onPress: toggleShowConfirmPassword,
+                  }}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (confirmPasswordError) validateConfirmPassword(text);
+                  }}
+                  value={confirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  placeholder="Confirm your password"
+                  autoCapitalize="none"
+                  inputStyle={{ paddingLeft: 10 }}
+                  labelStyle={{ color: "#2c3e50", fontWeight: "normal" }}
+                  inputContainerStyle={{
+                    borderColor: confirmPasswordError ? "#e74c3c" : "#ddd",
+                    borderBottomWidth: 1,
+                  }}
+                  onBlur={() => validateConfirmPassword(confirmPassword)}
+                />
+                {confirmPasswordError ? (
+                  <ErrorText>{confirmPasswordError}</ErrorText>
+                ) : null}
 
                 <StyledButton
                   ViewComponent={LinearGradient}
@@ -233,11 +335,11 @@ export default function Auth() {
                     start: { x: 0, y: 0 },
                     end: { x: 1, y: 0 },
                   }}
-                  title="Sign In"
+                  title="Sign Up"
                   disabled={loading}
-                  onPress={() => signInWithEmail()}
+                  onPress={() => signUpWithEmail()}
                   icon={{
-                    name: "login",
+                    name: "account-plus",
                     type: "material-community",
                     size: 20,
                     color: "white",
@@ -253,12 +355,12 @@ export default function Auth() {
                   }}
                 />
 
-                <SignUpContainer>
-                  <SignUpText>Don't have an account?</SignUpText>
-                  <TouchableOpacity onPress={navigateToSignUp}>
-                    <SignUpButtonText>Sign Up</SignUpButtonText>
+                <SignInContainer>
+                  <SignInText>Already have an account?</SignInText>
+                  <TouchableOpacity onPress={navigateToSignIn}>
+                    <SignInButtonText>Sign In</SignInButtonText>
                   </TouchableOpacity>
-                </SignUpContainer>
+                </SignInContainer>
               </>
             )}
           </FormContainer>
@@ -273,6 +375,7 @@ const Container = styled.View`
   justify-content: center;
   align-items: center;
   padding: 20px;
+  padding-top: ${Platform.OS === "android" ? "" : "80px"};
 `;
 
 const FormContainer = styled.View`
@@ -342,28 +445,20 @@ const ErrorText = styled.Text`
   margin-bottom: 5px;
 `;
 
-const ForgotPasswordText = styled.Text`
-  color: #3498db;
-  text-align: right;
-  margin-top: -5px;
-  margin-bottom: 10px;
-  font-size: 14px;
-`;
-
-const SignUpContainer = styled.View`
+const SignInContainer = styled.View`
   flex-direction: row;
   justify-content: center;
   align-items: center;
   margin-top: 15px;
 `;
 
-const SignUpText = styled.Text`
+const SignInText = styled.Text`
   color: #7f8c8d;
   font-size: 14px;
   margin-right: 5px;
 `;
 
-const SignUpButtonText = styled.Text`
+const SignInButtonText = styled.Text`
   color: #27ae60;
   font-size: 15px;
   font-weight: bold;

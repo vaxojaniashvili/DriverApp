@@ -164,7 +164,7 @@ export default function Auth() {
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error("Session retrieval error:", error);
+          // console.error("Session retrieval error:", error);
           return;
         }
 

@@ -75,7 +75,7 @@ const Container = styled.View`
   shadow-color: #000;
   shadow-opacity: 0.1;
   shadow-radius: 8px;
-  margin-bottom: 50px;
+  margin-bottom: -30px;
 `;
 
 const SectionHeader = styled.View`

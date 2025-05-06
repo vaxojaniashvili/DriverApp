@@ -116,28 +116,20 @@ export default function AuthCallback() {
       {loading ? (
         <>
           <ActivityIndicator size="large" color="#27ae60" />
-          <Text style={{ marginTop: 20, fontSize: 16 }}>
-            გთხოვთ მოიცადოთ, ხდება აუთენტიფიკაცია...
-          </Text>
+          <Text style={{ marginTop: 20, fontSize: 16 }}>loading...</Text>
         </>
       ) : error ? (
         <>
-          <Text style={{ fontSize: 18, color: "red", marginBottom: 20 }}>
-            აუთენტიფიკაციის შეცდომა
-          </Text>
+          <Text style={{ fontSize: 18, color: "red", marginBottom: 20 }}></Text>
           <Text style={{ textAlign: "center", marginHorizontal: 20 }}>
             {error}
           </Text>
-          <Text style={{ marginTop: 20 }}>
-            თქვენ გადახვალთ მთავარ გვერდზე...
-          </Text>
+          <Text style={{ marginTop: 20 }}></Text>
         </>
       ) : (
         <>
           <ActivityIndicator size="large" color="#27ae60" />
-          <Text style={{ marginTop: 20, fontSize: 16 }}>
-            წარმატებული აუთენტიფიკაცია! მიმდინარეობს გადამისამართება...
-          </Text>
+          <Text style={{ marginTop: 20, fontSize: 16 }}></Text>
         </>
       )}
     </View>

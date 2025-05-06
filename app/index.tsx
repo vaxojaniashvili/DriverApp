@@ -172,7 +172,7 @@ export default function Auth() {
                   value={email}
                   placeholder="Enter your email"
                   autoCapitalize="none"
-                  inputStyle={{ paddingLeft: 10 }}
+                  inputStyle={{ paddingLeft: 10, paddingTop: 5 }}
                   labelStyle={{ color: "#2c3e50", fontWeight: "normal" }}
                   inputContainerStyle={{
                     borderColor: emailError ? "#e74c3c" : "#ddd",
@@ -205,7 +205,7 @@ export default function Auth() {
                   secureTextEntry={!showPassword}
                   placeholder="Enter a password"
                   autoCapitalize="none"
-                  inputStyle={{ paddingLeft: 10 }}
+                  inputStyle={{ paddingLeft: 10, paddingTop: 5 }}
                   labelStyle={{ color: "#2c3e50", fontWeight: "normal" }}
                   inputContainerStyle={{
                     borderColor: passwordError ? "#e74c3c" : "#ddd",

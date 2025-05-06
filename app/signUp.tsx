@@ -28,19 +28,19 @@ export default function DriverSignUp() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [contactMethod, setContactMethod] = useState("email"); // Default to email
-  const [vanOption, setVanOption] = useState(""); // "own" or "company"
+  const [contactMethod, setContactMethod] = useState("email");
+  const [vanOption, setVanOption] = useState("");
 
   // Verification state
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
-  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]); // Array for OTP digits
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const otpInputRefs = useRef([]);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
   // Current registration step
-  const [currentStep, setCurrentStep] = useState(1); // 1: Initial, 2: Documents, 3: Confirmation
+  const [currentStep, setCurrentStep] = useState(1);
 
   // Form validation errors
   const [emailError, setEmailError] = useState("");
@@ -156,13 +156,11 @@ export default function DriverSignUp() {
   };
 
   const handleOtpChange = (text, index) => {
-    // Make sure input is only a digit
     if (/^\d*$/.test(text)) {
       const newOtpDigits = [...otpDigits];
       newOtpDigits[index] = text;
       setOtpDigits(newOtpDigits);
 
-      // Auto focus next input when a digit is entered
       if (text && index < 5) {
         otpInputRefs.current[index + 1].focus();
       }
@@ -170,7 +168,6 @@ export default function DriverSignUp() {
   };
 
   const handleOtpKeyPress = (event, index) => {
-    // Handle backspace to move to previous input
     if (
       event.nativeEvent.key === "Backspace" &&
       !otpDigits[index] &&
@@ -461,6 +458,7 @@ export default function DriverSignUp() {
             setFullName(text);
             if (fullNameError) validateFullName(text);
           }}
+          inputStyle={{ paddingTop: 5 }}
           value={fullName}
           placeholder="Enter your full name"
           autoCapitalize="words"
@@ -481,6 +479,7 @@ export default function DriverSignUp() {
               setEmail(text);
               if (emailError) validateEmail(text);
             }}
+            inputStyle={{ paddingTop: 5 }}
             value={email}
             placeholder="Enter your email"
             keyboardType="email-address"
@@ -503,6 +502,7 @@ export default function DriverSignUp() {
               setPhoneNumber(text);
               if (phoneNumberError) validatePhoneNumber(text);
             }}
+            inputStyle={{ paddingTop: 5 }}
             value={phoneNumber}
             placeholder="Enter your phone number"
             keyboardType="phone-pad"
@@ -526,6 +526,7 @@ export default function DriverSignUp() {
             color: "#95a5a6",
             onPress: () => setShowPassword(!showPassword),
           }}
+          inputStyle={{ paddingTop: 5 }}
           onChangeText={(text) => {
             setPassword(text);
             if (passwordError) validatePassword(text);
@@ -555,6 +556,7 @@ export default function DriverSignUp() {
             color: "#95a5a6",
             onPress: () => setShowConfirmPassword(!showConfirmPassword),
           }}
+          inputStyle={{ paddingTop: 5 }}
           onChangeText={(text) => {
             setConfirmPassword(text);
             if (confirmPasswordError) validateConfirmPassword(text);
@@ -579,6 +581,7 @@ export default function DriverSignUp() {
             setCity(text);
             if (cityError) validateCity(text);
           }}
+          inputStyle={{ paddingTop: 5 }}
           value={city}
           placeholder="Enter your city"
           autoCapitalize="words"
@@ -783,7 +786,7 @@ export default function DriverSignUp() {
             start: { x: 0, y: 0 },
             end: { x: 1, y: 0 },
           }}
-          title="Continue"
+          title="Create account"
           disabled={loading}
           onPress={sendVerificationCode}
           loading={loading}
@@ -797,21 +800,39 @@ export default function DriverSignUp() {
           }}
         />
 
-        <View style={{ marginTop: 20, alignItems: "center" }}>
-          <Text style={{ color: "#7f8c8d", fontSize: 14, marginBottom: 10 }}>
-            Already have an account?
+        <View style={{ marginTop: 10, alignItems: "center" }}>
+          <Text
+            style={{
+              color: "green",
+              fontSize: 18,
+              marginTop: -8,
+              marginBottom: 15,
+            }}
+          >
+            TheVanApp - For Drivers
           </Text>
-          <TouchableOpacity onPress={() => router.push("/")}>
+          <View style={{ flexDirection: "row", gap: 5 }}>
             <Text
               style={{
-                color: "#27ae60",
-                fontSize: 15,
-                fontWeight: "bold",
+                color: "#7f8c8d",
+                fontSize: 14,
+                marginBottom: 10,
               }}
             >
-              Login
+              Already have an account?
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push("/")}>
+              <Text
+                style={{
+                  color: "#27ae60",
+                  fontSize: 15,
+                  fontWeight: "bold",
+                }}
+              >
+                Login
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -929,6 +950,7 @@ export default function DriverSignUp() {
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <Container>
           <LogoContainer>

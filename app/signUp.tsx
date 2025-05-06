@@ -14,6 +14,7 @@ import { Button, Input, Icon } from "@rneui/themed";
 import { router } from "expo-router";
 import styled from "styled-components/native";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function DriverSignUp() {
   // User information
@@ -50,6 +51,30 @@ export default function DriverSignUp() {
   const [phoneNumberError, setPhoneNumberError] = useState("");
   const [cityError, setCityError] = useState("");
   const [vanOptionError, setVanOptionError] = useState("");
+
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const isVerified = await AsyncStorage.getItem(
+          "authentication_verified"
+        );
+        const nextStep = await AsyncStorage.getItem("next_step");
+
+        if (isVerified === "true" && nextStep === "2") {
+          setIsVerifying(false);
+          setCurrentStep(2);
+
+          // გავასუფთაოთ AsyncStorage, რომ არ მოხდეს ხელახლა ავტომატური გადასვლა
+          await AsyncStorage.removeItem("authentication_verified");
+          await AsyncStorage.removeItem("next_step");
+        }
+      } catch (error) {
+        console.error("Error checking auth status:", error);
+      }
+    };
+
+    checkAuthStatus();
+  }, []);
 
   useEffect(() => {
     if (otpInputRefs.current.length < 6) {
@@ -317,32 +342,77 @@ export default function DriverSignUp() {
       setLoading(false);
     }
   };
-
   const createDriverAccount = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password: password,
-        options: {
-          data: {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      console.log("სესიის მონაცემები:", JSON.stringify(sessionData));
+
+      if (sessionError) {
+        console.error("სესიის შეცდომა:", sessionError);
+        Alert.alert(
+          "შეცდომა",
+          "სესიის მიღება ვერ მოხერხდა: " + sessionError.message
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (sessionData?.session) {
+        console.log("მომხმარებლის ID:", sessionData.session.user.id);
+
+        const { data: updateData, error: updateError } = await supabase
+          .from("drivers")
+          .upsert({
+            id: sessionData.session.user.id,
             full_name: fullName,
             phone: phoneNumber,
             city: city,
             van_option: vanOption,
             user_type: "driver",
             status: "incomplete",
-          },
-        },
-      });
+            updated_at: new Date(),
+          });
 
-      if (error) {
-        Alert.alert("Error", error.message);
+        if (updateError) {
+          console.error("drivers ცხრილის შეცდომა:", updateError);
+          Alert.alert("შეცდომა", updateError.message);
+          setLoading(false);
+          return;
+        } else {
+          console.log("მძღოლის ჩანაწერი წარმატებით შეიქმნა!");
+          setCurrentStep(3);
+        }
       } else {
-        setCurrentStep(3);
+        // სესია არ არსებობს - უნდა მოხდეს აუთენტიფიკაცია
+        console.warn(
+          "სესია არ მოიძებნა! ვერ შეიქმნება ჩანაწერი აუთენტიფიკაციის გარეშე."
+        );
+
+        Alert.alert(
+          "აუთენტიფიკაცია საჭიროა",
+          "გთხოვთ დაასრულოთ აუთენტიფიკაციის პროცესი"
+        );
+
+        // შევინახოთ მონაცემები
+        await AsyncStorage.setItem(
+          "profile_data",
+          JSON.stringify({
+            full_name: fullName,
+            phone: phoneNumber,
+            city: city,
+            van_option: vanOption,
+          })
+        );
+
+        // დავრჩეთ იმავე ნაბიჯზე ან დავბრუნდეთ აუთენტიფიკაციაზე
+        // setCurrentStep(3); // ეს ხაზი ამოვაშოროთ
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to create account");
+      console.error("ანგარიშის შექმნის შეცდომა:", error);
+      Alert.alert("შეცდომა", "ანგარიშის შექმნა ვერ მოხერხდა");
     } finally {
       setLoading(false);
     }
@@ -981,7 +1051,7 @@ const Container = styled.View`
   flex: 1;
   justify-content: center;
   align-items: center;
-  padding: 20px;
+  padding: 15px;
   padding-top: ${Platform.OS === "android" ? "20px" : "80px"};
 `;
 

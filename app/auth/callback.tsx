@@ -16,7 +16,6 @@ export default function AuthCallback() {
         console.log("Auth callback გაეშვა");
         console.log("პლატფორმა:", Platform.OS);
 
-        // 1. ვცადოთ Supabase სესიის მიღება
         const { data, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
@@ -32,7 +31,6 @@ export default function AuthCallback() {
         if (data?.session) {
           console.log("სესია ნაპოვნია! მომხმარებლის ID:", data.session.user.id);
 
-          // შევინახოთ მომხმარებლის ვერიფიცირებული მდგომარეობა
           await AsyncStorage.setItem("authentication_verified", "true");
           await AsyncStorage.setItem("next_step", "2");
 
@@ -48,7 +46,6 @@ export default function AuthCallback() {
             "სესია ვერ მოიძებნა! ვცდილობთ URL პარამეტრების გამოყენებას..."
           );
 
-          // მობილურზე ვცადოთ expo-router პარამეტრების შემოწმება
           let accessToken = null;
           let refreshToken = null;
 
@@ -61,7 +58,6 @@ export default function AuthCallback() {
           if (accessToken && refreshToken) {
             console.log("ტოკენები ნაპოვნია პარამეტრებში, ვამუშავებთ...");
 
-            // ვცადოთ სესიის მანუალურად დაყენება
             const { error: setSessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -69,7 +65,7 @@ export default function AuthCallback() {
 
             if (setSessionError) {
               console.error("სესიის დაყენების შეცდომა:", setSessionError);
-              setError(setSessionError.message);
+              setError(setSessionError.message as any);
               setTimeout(() => router.replace("/"), 2000);
             } else {
               await AsyncStorage.setItem("authentication_verified", "true");
@@ -80,11 +76,9 @@ export default function AuthCallback() {
               }, 1000);
             }
           } else {
-            // ვცადოთ პირდაპირ ვერიფიკაცია ელფოსტის და პაროლის გარეშე
             await AsyncStorage.setItem("authentication_verified", "true");
             await AsyncStorage.setItem("next_step", "2");
 
-            // გადავიდეთ დოკუმენტების ეკრანზე მაინც
             setTimeout(() => {
               router.replace("/signUp");
             }, 1000);
@@ -94,7 +88,6 @@ export default function AuthCallback() {
         console.error("Auth handling ზოგადი შეცდომა:", e);
         setError(e.message);
 
-        // გადავიდეთ მთავარ გვერდზე შეცდომის შემთხვევაში
         setTimeout(() => router.replace("/"), 2000);
       } finally {
         setLoading(false);

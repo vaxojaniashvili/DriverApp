@@ -17,10 +17,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function DriverSignUp() {
-  // User information
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [city, setCity] = useState("");
@@ -43,11 +43,12 @@ export default function DriverSignUp() {
   // Current registration step
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Form validation errors
+  // Form validation errors - Split full name errors
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
-  const [fullNameError, setFullNameError] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [surnameError, setSurnameError] = useState("");
   const [phoneNumberError, setPhoneNumberError] = useState("");
   const [cityError, setCityError] = useState("");
   const [vanOptionError, setVanOptionError] = useState("");
@@ -135,12 +136,22 @@ export default function DriverSignUp() {
     return true;
   };
 
-  const validateFullName = (name) => {
+  // Split validation for name and surname
+  const validateName = (name) => {
     if (!name.trim()) {
-      setFullNameError("Full name is required");
+      setNameError("Name is required");
       return false;
     }
-    setFullNameError("");
+    setNameError("");
+    return true;
+  };
+
+  const validateSurname = (surname) => {
+    if (!surname.trim()) {
+      setSurnameError("Surname is required");
+      return false;
+    }
+    setSurnameError("");
     return true;
   };
 
@@ -159,15 +170,6 @@ export default function DriverSignUp() {
       return false;
     }
     setPhoneNumberError("");
-    return true;
-  };
-
-  const validateCity = (city) => {
-    if (!city.trim()) {
-      setCityError("City is required");
-      return false;
-    }
-    setCityError("");
     return true;
   };
 
@@ -205,19 +207,19 @@ export default function DriverSignUp() {
   const sendVerificationCode = async () => {
     const isEmailValid = validateEmail(email);
     const isPhoneValid = validatePhoneNumber(phoneNumber);
-    const isFullNameValid = validateFullName(fullName);
+    const isNameValid = validateName(name);
+    const isSurnameValid = validateSurname(surname);
     const isPasswordValid = validatePassword(password);
     const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
-    const isCityValid = validateCity(city);
     const isVanOptionValid = validateVanOption(vanOption);
 
     if (
       !isEmailValid ||
       !isPhoneValid ||
-      !isFullNameValid ||
+      !isNameValid ||
+      !isSurnameValid ||
       !isPasswordValid ||
       !isConfirmPasswordValid ||
-      !isCityValid ||
       !isVanOptionValid
     ) {
       return;
@@ -225,53 +227,91 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      if (contactMethod === "email") {
-        const redirectUrl =
-          Platform.OS === "web"
-            ? window.location.origin + "/authentication"
-            : "thevanapp://authentication/verify";
+      // პირველი შევამოწმოთ არსებობს თუ არა უკვე მომხმარებელი
+      const { data: checkData } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: "dummy_password", // მცდარი პაროლი რომ მხოლოდ არსებობა შევამოწმოთ
+      });
 
-        const { error } = await supabase.auth.signInWithOtp({
+      if (checkData?.user) {
+        // მომხმარებელი უკვე არსებობს
+        Alert.alert("Error", "User already exists. Please sign in instead.");
+        setLoading(false);
+        return;
+      }
+
+      // ახალი მომხმარებლის შექმნა
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
+          password: password,
           options: {
-            emailRedirectTo: redirectUrl,
             data: {
-              password: password,
+              full_name: `${name} ${surname}`,
+              phone: phoneNumber,
+              van_option: vanOption,
+              user_type: "driver",
+              status: "incomplete",
             },
+            emailRedirectTo:
+              Platform.OS === "web"
+                ? `${window.location.origin}/authentication`
+                : "thevanapp://authentication/verify",
           },
         });
 
-        if (error) {
-          Alert.alert("Error", error.message);
-          setLoading(false);
-          return;
+      if (signUpError) {
+        console.error("SignUp Error:", signUpError);
+        Alert.alert("Error", signUpError.message);
+        setLoading(false);
+        return;
+      }
+
+      // შევამოწმოთ მომხმარებელი შეიქმნა თუ არა
+      if (signUpData?.user) {
+        // თუ confirmation email არ გაიგზავნა ავტომატურად, ვცდით OTP-ს
+        if (!signUpData.session) {
+          console.log("No session, trying OTP method...");
+
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email: email.trim().toLowerCase(),
+            options: {
+              shouldCreateUser: false,
+              emailRedirectTo:
+                Platform.OS === "web"
+                  ? `${window.location.origin}/authentication`
+                  : "thevanapp://authentication/verify",
+            },
+          });
+
+          if (otpError) {
+            console.error("OTP Error:", otpError);
+            Alert.alert("Error", otpError.message);
+            setLoading(false);
+            return;
+          }
         }
 
         setVerificationSent(true);
         setIsVerifying(true);
         setTimer(60);
         setCanResend(false);
+
         Alert.alert(
           "Verification Sent",
-          "Verification email sent. Please check your inbox."
+          "Verification email sent. Please check your inbox and spam folder."
         );
-      } else if (contactMethod === "phone") {
-        Alert.alert(
-          "SMS Verification",
-          "A verification code has been sent to your phone number."
-        );
-        setVerificationSent(true);
-        setIsVerifying(true);
-        setTimer(60);
-        setCanResend(false);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to send verification code");
+      console.error("Unexpected error:", error);
+      Alert.alert(
+        "Error",
+        "Failed to send verification email. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
-
   const verifyOtp = async () => {
     const otpValue = otpDigits.join("");
     if (otpValue.length !== 6) {
@@ -281,13 +321,8 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      if (contactMethod === "email") {
-        setIsVerifying(false);
-        setCurrentStep(2);
-      } else if (contactMethod === "phone") {
-        setIsVerifying(false);
-        setCurrentStep(2);
-      }
+      setIsVerifying(false);
+      setCurrentStep(2);
     } catch (error) {
       Alert.alert("Error", "Failed to verify code");
     } finally {
@@ -300,119 +335,26 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      if (contactMethod === "email") {
-        const redirectUrl =
-          Platform.OS === "web"
-            ? window.location.origin + "/authentication"
-            : "thevanapp://authentication/verify";
+      // უბრალოდ ხელახლა ვაგზავნით ვერიფიკაციის იმეილს
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim().toLowerCase(),
+      });
 
-        const { error } = await supabase.auth.signInWithOtp({
-          email: email.trim().toLowerCase(),
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              password: password,
-            },
-          },
-        });
-
-        if (error) {
-          Alert.alert("Error", error.message);
-          setLoading(false);
-          return;
-        }
-
-        setTimer(60);
-        setCanResend(false);
-        Alert.alert(
-          "Verification Resent",
-          "A new verification email has been sent. Please check your inbox."
-        );
-      } else if (contactMethod === "phone") {
-        Alert.alert(
-          "SMS Verification",
-          "A new verification code has been sent to your phone number."
-        );
-        setTimer(60);
-        setCanResend(false);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to resend verification code");
-    } finally {
-      setLoading(false);
-    }
-  };
-  const createDriverAccount = async () => {
-    setLoading(true);
-    try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-
-      console.log("სესიის მონაცემები:", JSON.stringify(sessionData));
-
-      if (sessionError) {
-        console.error("სესიის შეცდომა:", sessionError);
-        Alert.alert(
-          "შეცდომა",
-          "სესიის მიღება ვერ მოხერხდა: " + sessionError.message
-        );
+      if (error) {
+        Alert.alert("Error", error.message);
         setLoading(false);
         return;
       }
 
-      if (sessionData?.session) {
-        console.log("მომხმარებლის ID:", sessionData.session.user.id);
-
-        const { data: updateData, error: updateError } = await supabase
-          .from("drivers")
-          .upsert({
-            id: sessionData.session.user.id,
-            full_name: fullName,
-            phone: phoneNumber,
-            city: city,
-            van_option: vanOption,
-            user_type: "driver",
-            status: "incomplete",
-            updated_at: new Date(),
-          });
-
-        if (updateError) {
-          console.error("drivers ცხრილის შეცდომა:", updateError);
-          Alert.alert("შეცდომა", updateError.message);
-          setLoading(false);
-          return;
-        } else {
-          console.log("მძღოლის ჩანაწერი წარმატებით შეიქმნა!");
-          setCurrentStep(3);
-        }
-      } else {
-        // სესია არ არსებობს - უნდა მოხდეს აუთენტიფიკაცია
-        console.warn(
-          "სესია არ მოიძებნა! ვერ შეიქმნება ჩანაწერი აუთენტიფიკაციის გარეშე."
-        );
-
-        Alert.alert(
-          "აუთენტიფიკაცია საჭიროა",
-          "გთხოვთ დაასრულოთ აუთენტიფიკაციის პროცესი"
-        );
-
-        // შევინახოთ მონაცემები
-        await AsyncStorage.setItem(
-          "profile_data",
-          JSON.stringify({
-            full_name: fullName,
-            phone: phoneNumber,
-            city: city,
-            van_option: vanOption,
-          })
-        );
-
-        // დავრჩეთ იმავე ნაბიჯზე ან დავბრუნდეთ აუთენტიფიკაციაზე
-        // setCurrentStep(3); // ეს ხაზი ამოვაშოროთ
-      }
+      setTimer(60);
+      setCanResend(false);
+      Alert.alert(
+        "Verification Resent",
+        "A new verification email has been sent. Please check your inbox."
+      );
     } catch (error) {
-      console.error("ანგარიშის შექმნის შეცდომა:", error);
-      Alert.alert("შეცდომა", "ანგარიშის შექმნა ვერ მოხერხდა");
+      Alert.alert("Error", "Failed to resend verification code");
     } finally {
       setLoading(false);
     }
@@ -430,7 +372,6 @@ export default function DriverSignUp() {
           {contactMethod === "email" ? email : phoneNumber}
         </Text>
 
-        {/* Custom OTP Input */}
         <View
           style={{
             flexDirection: "row",
@@ -510,31 +451,54 @@ export default function DriverSignUp() {
   const renderRegistrationForm = () => {
     return (
       <View style={{ width: "100%" }}>
-        <Title>Welcome to The Van App driver Sign Up Process</Title>
-        <Text style={{ marginBottom: 20, textAlign: "center" }}>
+        <Title>Welcome to TheVanApp driver</Title>
+        <Title>Create account</Title>
+        <Text style={{ marginBottom: 20, marginTop: -10, textAlign: "center" }}>
           We will require a number of documents from you to complete the
           process.
         </Text>
 
-        <StyledInput
-          label="Full Name"
-          leftIcon={{
-            type: "material-community",
-            name: "account-outline",
-            size: 22,
-            color: "#27ae60",
-          }}
-          onChangeText={(text) => {
-            setFullName(text);
-            if (fullNameError) validateFullName(text);
-          }}
-          inputStyle={{ paddingTop: 5 }}
-          value={fullName}
-          placeholder="Enter your full name"
-          autoCapitalize="words"
-          errorMessage={fullNameError}
-          onBlur={() => validateFullName(fullName)}
-        />
+        <NameSurnameRow>
+          <NameInput
+            label="Name"
+            leftIcon={{
+              type: "material-community",
+              name: "account-outline",
+              size: 22,
+              color: "#27ae60",
+            }}
+            onChangeText={(text) => {
+              setName(text);
+              if (nameError) validateName(text);
+            }}
+            inputStyle={{ paddingTop: 5 }}
+            value={name}
+            placeholder="First name"
+            autoCapitalize="words"
+            errorMessage={nameError}
+            onBlur={() => validateName(name)}
+          />
+
+          <SurnameInput
+            label="Surname"
+            leftIcon={{
+              type: "material-community",
+              name: "account-outline",
+              size: 22,
+              color: "#27ae60",
+            }}
+            onChangeText={(text) => {
+              setSurname(text);
+              if (surnameError) validateSurname(text);
+            }}
+            inputStyle={{ paddingTop: 5 }}
+            value={surname}
+            placeholder="Last name"
+            autoCapitalize="words"
+            errorMessage={surnameError}
+            onBlur={() => validateSurname(surname)}
+          />
+        </NameSurnameRow>
 
         {contactMethod === "email" && (
           <StyledInput
@@ -637,26 +601,6 @@ export default function DriverSignUp() {
           autoCapitalize="none"
           errorMessage={confirmPasswordError}
           onBlur={() => validateConfirmPassword(confirmPassword)}
-        />
-
-        <StyledInput
-          label="City"
-          leftIcon={{
-            type: "material-community",
-            name: "city-variant-outline",
-            size: 22,
-            color: "#27ae60",
-          }}
-          onChangeText={(text) => {
-            setCity(text);
-            if (cityError) validateCity(text);
-          }}
-          inputStyle={{ paddingTop: 5 }}
-          value={city}
-          placeholder="Enter your city"
-          autoCapitalize="words"
-          errorMessage={cityError}
-          onBlur={() => validateCity(city)}
         />
 
         {/* Van Option Selection */}
@@ -871,16 +815,6 @@ export default function DriverSignUp() {
         />
 
         <View style={{ marginTop: 10, alignItems: "center" }}>
-          <Text
-            style={{
-              color: "green",
-              fontSize: 18,
-              marginTop: -8,
-              marginBottom: 15,
-            }}
-          >
-            TheVanApp - For Drivers
-          </Text>
           <View style={{ flexDirection: "row", gap: 5 }}>
             <Text
               style={{
@@ -912,11 +846,11 @@ export default function DriverSignUp() {
     return (
       <View style={{ width: "100%" }}>
         <Title>
-          {vanOption === "own" ? "I have my own van" : "Drive our van"}
+          {vanOption === "own" ? "I have my own van" : "Drive Our Van"}
         </Title>
 
         <Text style={{ marginBottom: 20, fontSize: 16 }}>
-          You will need to send us the following Documents before your account
+          You will need to send us the following documents before your account
           will be fully activated:
         </Text>
 
@@ -934,7 +868,7 @@ export default function DriverSignUp() {
           </View>
         ) : (
           <View>
-            <RequirementItem>1. Minimum age (usually 21+)</RequirementItem>
+            <RequirementItem>1. Minimum age 21+</RequirementItem>
             <RequirementItem>2. Valid driver's license</RequirementItem>
             <RequirementItem>3. Proof of ID</RequirementItem>
             <RequirementItem>4. Smartphone (iOS or Android)</RequirementItem>
@@ -942,7 +876,7 @@ export default function DriverSignUp() {
         )}
 
         <Text style={{ marginTop: 20, marginBottom: 20 }}>
-          Email all documents to{" "}
+          Email all documents to
           <Text style={{ color: "green" }}>driver@thevanapp.com</Text>
         </Text>
 
@@ -953,8 +887,10 @@ export default function DriverSignUp() {
             start: { x: 0, y: 0 },
             end: { x: 1, y: 0 },
           }}
+          onPress={() => {
+            setCurrentStep(3);
+          }}
           title="Continue"
-          onPress={createDriverAccount}
           loading={loading}
           buttonStyle={{
             borderRadius: 10,
@@ -1109,4 +1045,19 @@ const RequirementItem = styled.Text`
   font-size: 16px;
   margin-bottom: 10px;
   padding-left: 10px;
+`;
+
+const NameSurnameRow = styled.View`
+  justify-content: space-between;
+  margin-bottom: 10px;
+`;
+
+const NameInput = styled(Input)`
+  width: 48%;
+  margin-bottom: 5px;
+`;
+
+const SurnameInput = styled(Input)`
+  width: 48%;
+  margin-bottom: 5px;
 `;

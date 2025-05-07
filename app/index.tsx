@@ -149,7 +149,7 @@ export default function Auth() {
               size={50}
             />
           </LogoContainer>
-          <AppName>Thevanapp Driver</AppName>
+          <AppName>TheVanApp Driver</AppName>
           <FormContainer>
             {loading ? (
               <ActivityIndicator size="large" color="#27ae60" />

@@ -491,9 +491,13 @@ const HomeScreen: React.FC = () => {
                 <UserTextInfo>
                   <UserGreeting>Welcome, {capitalizedDisplayName}</UserGreeting>
                   {status === "incomplete" ? (
-                    <Text>Status: Incomplete</Text>
+                    <Text style={{ fontWeight: 500 }}>
+                      Status: <Text style={{ color: "red" }}>Incomplete</Text>
+                    </Text>
                   ) : (
-                    <Text>Status: Completed</Text>
+                    <Text style={{ fontWeight: 500 }}>
+                      Status: <Text style={{ color: "green" }}>Completed</Text>
+                    </Text>
                   )}
                 </UserTextInfo>
               </UserInfoSection>

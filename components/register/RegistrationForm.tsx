@@ -1,10 +1,30 @@
-import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
-import { Button } from "@rneui/themed";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  TextInput,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import styled from "styled-components/native";
 import { router } from "expo-router";
 
+const COUNTRIES = [
+  { name: "Georgia", code: "GE", dialCode: "+995", flag: "🇬🇪" },
+  { name: "United States", code: "US", dialCode: "+1", flag: "🇺🇸" },
+  { name: "United Kingdom", code: "GB", dialCode: "+44", flag: "🇬🇧" },
+  { name: "Germany", code: "DE", dialCode: "+49", flag: "🇩🇪" },
+  { name: "France", code: "FR", dialCode: "+33", flag: "🇫🇷" },
+  { name: "Spain", code: "ES", dialCode: "+34", flag: "🇪🇸" },
+  { name: "Italy", code: "IT", dialCode: "+39", flag: "🇮🇹" },
+  { name: "Russia", code: "RU", dialCode: "+7", flag: "🇷🇺" },
+  { name: "Turkey", code: "TR", dialCode: "+90", flag: "🇹🇷" },
+  { name: "Ukraine", code: "UA", dialCode: "+380", flag: "🇺🇦" },
+  { name: "Poland", code: "PL", dialCode: "+48", flag: "🇵🇱" },
+  { name: "Netherlands", code: "NL", dialCode: "+31", flag: "🇳🇱" },
+  { name: "Malta", code: "MT", dialCode: "+356", flag: "🇲🇹" },
+];
 export const RegistrationForm = ({
   name,
   surname,
@@ -49,6 +69,16 @@ export const RegistrationForm = ({
   StyledInput,
   StyledButton,
 }: any) => {
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[12]);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredCountries = COUNTRIES.filter(
+    (country) =>
+      country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      country.dialCode.includes(searchQuery)
+  );
+
   return (
     <View style={{ width: "100%" }}>
       <Title>Welcome to TheVanApp driver</Title>
@@ -123,26 +153,182 @@ export const RegistrationForm = ({
       )}
 
       {contactMethod === "phone" && (
-        <StyledInput
-          label="Phone Number"
-          leftIcon={{
-            type: "material-community",
-            name: "phone-outline",
-            size: 22,
-            color: "#27ae60",
-          }}
-          onChangeText={(text) => {
-            setPhoneNumber(text);
-            if (phoneNumberError) validatePhoneNumber(text);
-          }}
-          inputStyle={{ paddingTop: 5 }}
-          value={phoneNumber}
-          placeholder="Enter your phone number"
-          keyboardType="phone-pad"
-          errorMessage={phoneNumberError}
-          onBlur={() => validatePhoneNumber(phoneNumber)}
-        />
+        <View style={{ marginBottom: 10 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: "#86939e",
+              fontWeight: "bold",
+              marginBottom: 10,
+              marginLeft: 10,
+            }}
+          >
+            Phone Number
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              borderBottomWidth: 1,
+              borderBottomColor: "#86939e",
+              paddingBottom: 8,
+              marginHorizontal: 10,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => setShowCountryPicker(true)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                padding: 5,
+                marginRight: 10,
+                backgroundColor: "#f5f5f5",
+                borderRadius: 5,
+              }}
+            >
+              <Text style={{ fontSize: 20, marginRight: 5 }}>
+                {selectedCountry.flag}
+              </Text>
+              <Text style={{ fontSize: 16, color: "#2c3e50" }}>
+                {selectedCountry.dialCode}
+              </Text>
+              <Text style={{ fontSize: 12, marginLeft: 5, color: "#7f8c8d" }}>
+                ▼
+              </Text>
+            </TouchableOpacity>
+
+            <TextInput
+              style={{
+                flex: 1,
+                fontSize: 16,
+                paddingVertical: 5,
+                color: "#2c3e50",
+              }}
+              value={phoneNumber}
+              onChangeText={(text) => {
+                setPhoneNumber(text);
+                if (phoneNumberError) validatePhoneNumber(text);
+              }}
+              placeholder="Enter phone number"
+              keyboardType="phone-pad"
+              onBlur={() => validatePhoneNumber(phoneNumber)}
+            />
+          </View>
+          {phoneNumberError ? (
+            <Text
+              style={{
+                color: "#e74c3c",
+                fontSize: 12,
+                marginTop: 5,
+                marginLeft: 10,
+              }}
+            >
+              {phoneNumberError}
+            </Text>
+          ) : null}
+        </View>
       )}
+
+      <Modal
+        visible={showCountryPicker}
+        animationType="none"
+        transparent={true}
+        onRequestClose={() => setShowCountryPicker(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "flex-end",
+          }}
+          onPress={() => setShowCountryPicker(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              maxHeight: "80%",
+              minHeight: "80%",
+              paddingTop: 20,
+            }}
+            onPress={() => {}}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingHorizontal: 20,
+                marginBottom: 15,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+                Select Country
+              </Text>
+              <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                <Text style={{ fontSize: 16, color: "#27ae60" }}>Done</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                  borderRadius: 10,
+                  padding: 10,
+                  fontSize: 16,
+                }}
+                placeholder="Search country..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+            <ScrollView style={{ padding: 10 }}>
+              {filteredCountries.map((country) => (
+                <TouchableOpacity
+                  key={country.code}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 15,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#eee",
+                    backgroundColor:
+                      selectedCountry.code === country.code
+                        ? "#f0f9f4"
+                        : "#fff",
+                  }}
+                  onPress={() => {
+                    setSelectedCountry(country);
+                    setShowCountryPicker(false);
+                    setSearchQuery("");
+                  }}
+                >
+                  <Text style={{ fontSize: 24, marginRight: 15 }}>
+                    {country.flag}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "500" }}>
+                      {country.name}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: "#7f8c8d" }}>
+                      {country.dialCode}
+                    </Text>
+                  </View>
+                  {selectedCountry.code === country.code && (
+                    <Text style={{ fontSize: 20, color: "#27ae60" }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       <StyledInput
         label="Password"
@@ -202,7 +388,6 @@ export const RegistrationForm = ({
         onBlur={() => validateConfirmPassword(confirmPassword)}
       />
 
-      {/* Van Option Selection */}
       <View style={{ marginBottom: 20 }}>
         <Text
           style={{
@@ -309,7 +494,6 @@ export const RegistrationForm = ({
         ) : null}
       </View>
 
-      {/* Contact Method Selection */}
       <View style={{ marginBottom: 20 }}>
         <Text
           style={{

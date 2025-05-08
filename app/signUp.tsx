@@ -227,80 +227,34 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      const { data: checkData } = await supabase.auth.signInWithPassword({
+      setVerificationSent(true);
+      setIsVerifying(true);
+      setTimer(60);
+      setCanResend(false);
+
+      /* Comment out the Supabase logic for now
+    const { data: signUpData, error: signUpError } =
+      await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
-        password: "dummy_password",
+        password: password,
+        options: {
+          data: {
+            first_name: name,
+            last_name: surname,
+            phone: phoneNumber,
+            van_option: vanOption,
+            user_type: "driver",
+            status: "incomplete",
+          },
+          emailRedirectTo:
+            Platform.OS === "web"
+              ? `${window.location.origin}/authentication`
+              : "myapp://auth/callback",
+        },
       });
 
-      if (checkData?.user) {
-        Alert.alert("Error", "User already exists. Please sign in instead.");
-        setLoading(false);
-        return;
-      }
-
-      // ახალი მომხმარებლის შექმნა
-      const { data: signUpData, error: signUpError } =
-        await supabase.auth.signUp({
-          email: email.trim().toLowerCase(),
-          password: password,
-          options: {
-            data: {
-              first_name: name,
-              last_name: surname,
-              phone: phoneNumber,
-              van_option: vanOption,
-              user_type: "driver",
-              status: "incomplete",
-            },
-            emailRedirectTo:
-              Platform.OS === "web"
-                ? `${window.location.origin}/authentication`
-                : "thevanapp://authentication/verify",
-          },
-        });
-
-      if (signUpError) {
-        console.error("SignUp Error:", signUpError);
-        Alert.alert("Error", signUpError.message);
-        setLoading(false);
-        return;
-      }
-
-      // შევამოწმოთ მომხმარებელი შეიქმნა თუ არა
-      if (signUpData?.user) {
-        // თუ confirmation email არ გაიგზავნა ავტომატურად, ვცდით OTP-ს
-        if (!signUpData.session) {
-          console.log("No session, trying OTP method...");
-
-          const { error: otpError } = await supabase.auth.signInWithOtp({
-            email: email.trim().toLowerCase(),
-            options: {
-              shouldCreateUser: false,
-              emailRedirectTo:
-                Platform.OS === "web"
-                  ? `${window.location.origin}/authentication`
-                  : "thevanapp://authentication/verify",
-            },
-          });
-
-          if (otpError) {
-            console.error("OTP Error:", otpError);
-            Alert.alert("Error", otpError.message);
-            setLoading(false);
-            return;
-          }
-        }
-
-        setVerificationSent(true);
-        setIsVerifying(true);
-        setTimer(60);
-        setCanResend(false);
-
-        Alert.alert(
-          "Verification Sent",
-          "Verification email sent. Please check your inbox and spam folder."
-        );
-      }
+    // Rest of Supabase logic...
+    */
     } catch (error) {
       console.error("Unexpected error:", error);
       Alert.alert(
@@ -314,6 +268,9 @@ export default function DriverSignUp() {
 
   const verifyOtp = async () => {
     const otpValue = otpDigits.join("");
+
+    const TEST_OTP = "123456";
+
     if (otpValue.length !== 6) {
       Alert.alert("Error", "Please enter the complete 6-digit code");
       return;
@@ -321,8 +278,13 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      setIsVerifying(false);
-      setCurrentStep(2);
+      if (otpValue === TEST_OTP) {
+        setIsVerifying(false);
+        setCurrentStep(2);
+        setOtpDigits(["", "", "", "", "", ""]);
+      } else {
+        Alert.alert("Error", "Invalid OTP code. Use 123456 for testing.");
+      }
     } catch (error) {
       Alert.alert("Error", "Failed to verify code");
     } finally {

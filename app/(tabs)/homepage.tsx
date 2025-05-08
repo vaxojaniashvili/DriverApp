@@ -24,7 +24,7 @@ import {
   StatusProps,
   ThemeProps,
 } from "@/types/common";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import JobSelectionComponent from "@/components/homepage/jobs-selection/JobSelection";
 import PickupRadiusSelector from "@/components/homepage/pickup-radius/PickupRadiusSelector";
 
@@ -39,6 +39,7 @@ const HomeScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
+  const router = useRouter();
 
   const { setMode, mode, setmyID, isAutomatic } =
     useAuthStore() as unknown as AuthStoreState;
@@ -533,7 +534,9 @@ const HomeScreen: React.FC = () => {
                       </AlertDescription>
                     </AlertContent>
                   </VerificationAlert>
-                  <VerifyButton onPress={() => console.log("Verify clicked")}>
+                  <VerifyButton
+                    onPress={() => router.push("/(tabs)/driverVerification")}
+                  >
                     <VerifyButtonContent>
                       <VerifyButtonText>Verify</VerifyButtonText>
                       <MaterialIcons

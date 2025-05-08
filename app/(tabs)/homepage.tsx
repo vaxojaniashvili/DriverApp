@@ -4,6 +4,7 @@ import {
   RefreshControl,
   View,
   ActivityIndicator,
+  Text,
 } from "react-native";
 import styled from "styled-components/native";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -459,6 +460,8 @@ const HomeScreen: React.FC = () => {
     }
   };
 
+  let status = "incomplete";
+
   const displayName = userEmail ? userEmail.split("@")[0] : "Driver";
   const capitalizedDisplayName =
     displayName.charAt(0).toUpperCase() + displayName.slice(1);
@@ -478,66 +481,111 @@ const HomeScreen: React.FC = () => {
       >
         <Innercontainer>
           <Header>
-            <HeaderRow>
-              <UserInfo>
-                <UserGreeting>Welcome, {capitalizedDisplayName}</UserGreeting>
-                {driverData?.plate && (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      marginTop: 6,
-                    }}
-                  >
-                    <IconContainer>
-                      <FontAwesome5 name="car-alt" size={16} color="#FFF" />
-                    </IconContainer>
-                    <UserDetail>Vehicle: {driverData.plate}</UserDetail>
-                  </View>
-                )}
-              </UserInfo>
-            </HeaderRow>
-            <StatusContainer active={mode === "active"}>
-              <StatusIndicator active={mode === "active"} />
-              <StatusText active={mode === "active"}>
-                {mode === "active" ? "ONLINE" : "OFFLINE"}
-              </StatusText>
-            </StatusContainer>
+            <HeaderContent>
+              <UserInfoSection>
+                <AvatarContainer>
+                  <Avatar>
+                    {capitalizedDisplayName.charAt(0).toUpperCase()}
+                  </Avatar>
+                </AvatarContainer>
+                <UserTextInfo>
+                  <UserGreeting>Welcome, {capitalizedDisplayName}</UserGreeting>
+                  {status === "incomplete" ? (
+                    <Text>Status: Incomplete</Text>
+                  ) : (
+                    <Text>Status: Completed</Text>
+                  )}
+                </UserTextInfo>
+              </UserInfoSection>
 
-            {errorMsg ? (
-              <LocationStatus theme="error">
-                <MaterialIcons
-                  name="error-outline"
-                  size={18}
-                  color={DriverModeColors.danger}
-                />
-                <LocationStatusText theme="error">
-                  {errorMsg}
-                </LocationStatusText>
-              </LocationStatus>
-            ) : locationSendError ? (
-              <LocationStatus theme="error">
-                <MaterialIcons
-                  name="error-outline"
-                  size={18}
-                  color={DriverModeColors.danger}
-                />
-                <LocationStatusText theme="error">
-                  {locationSendError}
-                </LocationStatusText>
-              </LocationStatus>
-            ) : location ? (
-              <LocationStatus>
-                <MaterialIcons
-                  name="location-on"
-                  size={18}
-                  color={DriverModeColors.success}
-                />
-                <LocationStatusText>
-                  Location tracking active
-                </LocationStatusText>
-              </LocationStatus>
-            ) : null}
+              <UserDetailsSection>
+                <InfoCard>
+                  <InfoIcon>
+                    <MaterialIcons name="email" size={16} color="#666" />
+                  </InfoIcon>
+                  <InfoText>testuser@gmail.com</InfoText>
+                </InfoCard>
+
+                {driverData?.plate && (
+                  <InfoCard style={{ height: 50 }}>
+                    <View>
+                      <FontAwesome5 name="car-alt" size={16} color="#666" />
+                    </View>
+                    <Text style={{ marginLeft: 20 }}>{driverData.plate}</Text>
+                  </InfoCard>
+                )}
+              </UserDetailsSection>
+
+              {status === "incomplete" && (
+                <>
+                  <VerificationAlert>
+                    <AlertIcon>
+                      <MaterialIcons name="warning" size={24} color="#F59E0B" />
+                    </AlertIcon>
+                    <AlertContent>
+                      <AlertTitle>Account verification is required.</AlertTitle>
+                      <AlertDescription>
+                        Please verify your account to get started.
+                      </AlertDescription>
+                    </AlertContent>
+                  </VerificationAlert>
+                  <VerifyButton onPress={() => console.log("Verify clicked")}>
+                    <VerifyButtonContent>
+                      <VerifyButtonText>Verify</VerifyButtonText>
+                      <MaterialIcons
+                        name="arrow-forward"
+                        size={20}
+                        color="#FFF"
+                      />
+                    </VerifyButtonContent>
+                  </VerifyButton>
+                </>
+              )}
+
+              <StatusSection>
+                <StatusCard active={mode === "active"}>
+                  <StatusIndicator active={mode === "active"} />
+                  <StatusText active={mode === "active"}>
+                    {mode === "active" ? "ONLINE" : "OFFLINE"}
+                  </StatusText>
+                </StatusCard>
+
+                {errorMsg ? (
+                  <LocationCard theme="error">
+                    <MaterialIcons
+                      name="error-outline"
+                      size={18}
+                      color={DriverModeColors.danger}
+                    />
+                    <LocationCardText theme="error">
+                      {errorMsg}
+                    </LocationCardText>
+                  </LocationCard>
+                ) : locationSendError ? (
+                  <LocationCard theme="error">
+                    <MaterialIcons
+                      name="error-outline"
+                      size={18}
+                      color={DriverModeColors.danger}
+                    />
+                    <LocationCardText theme="error">
+                      {locationSendError}
+                    </LocationCardText>
+                  </LocationCard>
+                ) : location ? (
+                  <LocationCard>
+                    <MaterialIcons
+                      name="location-on"
+                      size={18}
+                      color={DriverModeColors.success}
+                    />
+                    <LocationCardText>
+                      Location tracking active
+                    </LocationCardText>
+                  </LocationCard>
+                ) : null}
+              </StatusSection>
+            </HeaderContent>
           </Header>
 
           <ModeContainer>
@@ -566,36 +614,45 @@ const HomeScreen: React.FC = () => {
             </JobsContainer>
           )}
 
-          {!isAutomatic && (
-            <JobsContainer>
-              <SectionTitle>Available Orders</SectionTitle>
-              {loadingData ? (
-                <>
-                  <ActivityIndicator
-                    size="large"
-                    color={DriverModeColors.primary}
-                  />
-                  <LoadingText>Loading your jobs...</LoadingText>
-                </>
-              ) : orders && orders.length > 0 ? (
-                orders.map((order: OrderData) => (
-                  <JobOfferComponent
-                    key={order.id}
-                    order={order}
-                    onAccept={() => handleAccept(order.id)}
-                  />
-                ))
-              ) : (
-                <NoJobsText>
-                  No available Orders at the moment. Pull down to refresh.
-                </NoJobsText>
+          {status === "incomplete" ? (
+            <Text style={{ marginBottom: 20, color: "red" }}>
+              Please verify your account for pickup orders
+            </Text>
+          ) : (
+            <>
+              {!isAutomatic && (
+                <JobsContainer>
+                  <SectionTitle>Available Orders</SectionTitle>
+                  {loadingData ? (
+                    <>
+                      <ActivityIndicator
+                        size="large"
+                        color={DriverModeColors.primary}
+                      />
+                      <LoadingText>Loading your jobs...</LoadingText>
+                    </>
+                  ) : orders && orders.length > 0 ? (
+                    orders.map((order: OrderData) => (
+                      <JobOfferComponent
+                        key={order.id}
+                        order={order}
+                        onAccept={() => handleAccept(order.id)}
+                      />
+                    ))
+                  ) : (
+                    <NoJobsText>
+                      No available Orders at the moment. Pull down to refresh.
+                    </NoJobsText>
+                  )}
+                </JobsContainer>
               )}
-            </JobsContainer>
-          )}
-          {isAutomatic && ongoingOrders.length === 0 && (
-            <NoOngoingJobsText>
-              No available ongoing Orders at the moment. Pull down to refresh.
-            </NoOngoingJobsText>
+              {isAutomatic && ongoingOrders.length === 0 && (
+                <NoOngoingJobsText>
+                  No available ongoing Orders at the moment. Pull down to
+                  refresh.
+                </NoOngoingJobsText>
+              )}
+            </>
           )}
         </Innercontainer>
       </ScrollableContent>
@@ -634,7 +691,7 @@ const Header = styled.View`
   border-radius: 20px;
   margin-bottom: 16px;
   elevation: 2;
-  shadow-opacity: 0.12;
+  shadow-opacity: 0.22;
   shadow-radius: 8px;
   shadow-color: #000;
   shadow-offset: 0px 3px;
@@ -642,65 +699,11 @@ const Header = styled.View`
   border-color: rgba(255, 255, 255, 0.8);
 `;
 
-const HeaderRow = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-`;
-
-const UserInfo = styled.View`
-  flex: 1;
-`;
-
 const UserGreeting = styled.Text`
   font-size: 22px;
   font-weight: 700;
   color: ${DriverModeColors.dark};
   margin-bottom: 4px;
-`;
-
-const UserDetail = styled.Text`
-  font-size: 14px;
-  color: ${DriverModeColors.darkGray};
-  font-weight: 500;
-  flex-direction: row;
-  align-items: center;
-  position: relative;
-  top: ${Platform.OS === "android" ? "7px" : "8px"};
-`;
-
-const StatusIndicator = styled.View<StatusProps>`
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
-  background-color: ${(props) =>
-    props.active ? DriverModeColors.success : DriverModeColors.danger};
-  margin-right: 6px;
-`;
-
-const StatusContainer = styled.View<StatusProps>`
-  flex-direction: row;
-  align-items: center;
-  margin-top: 12px;
-  background-color: ${(props) =>
-    props.active
-      ? DriverModeColors.statusBgOnline
-      : DriverModeColors.statusBgOffline};
-  padding: 8px 12px;
-  border-radius: 8px;
-  border-width: 0.5px;
-  border-color: ${(props) =>
-    props.active ? DriverModeColors.success : DriverModeColors.danger};
-`;
-
-const StatusText = styled.Text<StatusProps>`
-  font-size: 12px;
-  font-weight: 600;
-  color: ${(props) =>
-    props.active ? DriverModeColors.success : DriverModeColors.danger};
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
 `;
 
 const ModeContainer = styled.View`
@@ -758,36 +761,6 @@ const NoOngoingJobsText = styled.Text`
   border-width: 0.5px;
   border-color: rgba(255, 255, 255, 0.35);
 `;
-
-const LocationStatus = styled.View<ThemeProps>`
-  flex-direction: row;
-  align-items: center;
-  background-color: ${(props) =>
-    props.theme === "error"
-      ? DriverModeColors.statusBgOffline
-      : DriverModeColors.statusBgOnline};
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-top: 12px;
-  width: 100%;
-  border-width: 0.5px;
-  border-color: ${(props) =>
-    props.theme === "error"
-      ? DriverModeColors.danger
-      : DriverModeColors.success};
-`;
-
-const LocationStatusText = styled.Text<ThemeProps>`
-  color: ${(props) =>
-    props.theme === "error"
-      ? DriverModeColors.danger
-      : DriverModeColors.success};
-  font-size: 12px;
-  font-weight: 500;
-  margin-left: 6px;
-  letter-spacing: 0.1px;
-`;
-
 const LoadingText = styled.Text`
   font-size: 14px;
   font-weight: 500;
@@ -795,19 +768,178 @@ const LoadingText = styled.Text`
   margin-top: 12px;
 `;
 
-const IconContainer = styled.View`
-  padding: 6px;
-  border-radius: 8px;
-  margin-right: 8px;
-  background-color: ${DriverModeColors.vehicleGreen};
-`;
-
 const GradientHeader = styled(LinearGradient)`
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: ${Platform.OS === "android" ? "250px" : "270px"};
+  height: ${Platform.OS === "android" ? "250px" : "290px"};
   border-bottom-left-radius: 16px;
   border-bottom-right-radius: 16px;
+`;
+const HeaderContent = styled.View``;
+
+const UserInfoSection = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 20px;
+`;
+
+const AvatarContainer = styled.View`
+  margin-right: 16px;
+`;
+
+const Avatar = styled.Text`
+  width: 56px;
+  height: 56px;
+  background-color: #27ae60;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+  border-radius: 28px;
+  text-align: center;
+  line-height: 56px;
+`;
+
+const UserTextInfo = styled.View`
+  flex: 1;
+`;
+
+const UserFullName = styled.Text`
+  font-size: 20px;
+  color: #1a1a1a;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+`;
+
+const UserDetailsSection = styled.View`
+  margin-bottom: 20px;
+`;
+
+const InfoCard = styled.View`
+  flex-direction: row;
+  align-items: center;
+  background-color: #f8f9fa;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+`;
+
+const InfoIcon = styled.View`
+  margin-right: 10px;
+  width: 24px;
+  height: 24px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const InfoText = styled.Text`
+  font-size: 14px;
+  color: #333333;
+  font-weight: 500;
+  flex: 1;
+`;
+
+const VerificationAlert = styled.View`
+  flex-direction: row;
+  background-color: #fff7ed;
+  padding: 16px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  border-width: 1px;
+  border-color: #fed7aa;
+`;
+
+const AlertIcon = styled.View`
+  margin-right: 12px;
+  padding-top: 2px;
+`;
+
+const AlertContent = styled.View`
+  flex: 1;
+`;
+
+const AlertTitle = styled.Text`
+  font-size: 16px;
+  font-weight: 600;
+  color: #c05621;
+  margin-bottom: 4px;
+`;
+
+const AlertDescription = styled.Text`
+  font-size: 14px;
+  color: #92400e;
+  line-height: 20px;
+`;
+
+const VerifyButton = styled.TouchableOpacity`
+  background-color: #27ae60;
+  padding: 16px;
+  border-radius: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  active-opacity: 0.8;
+`;
+
+const VerifyButtonContent = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+`;
+
+const VerifyButtonText = styled.Text`
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-right: 8px;
+`;
+
+const StatusSection = styled.View`
+  gap: 10px;
+`;
+
+const StatusCard = styled.View<StatusProps>`
+  flex-direction: row;
+  align-items: center;
+  background-color: ${(props) => (props.active ? "#F0FDF4" : "#FEF2F2")};
+  padding: 12px 16px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: ${(props) => (props.active ? "#BBF7D0" : "#FECACA")};
+`;
+
+const StatusIndicator = styled.View<StatusProps>`
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: ${(props) => (props.active ? "#10B981" : "#EF4444")};
+  margin-right: 8px;
+`;
+
+const StatusText = styled.Text<StatusProps>`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${(props) => (props.active ? "#059669" : "#DC2626")};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const LocationCard = styled.View<ThemeProps>`
+  flex-direction: row;
+  align-items: center;
+  background-color: ${(props) =>
+    props.theme === "error" ? "#FEF2F2" : "#F0FDF4"};
+  padding: 12px 16px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: ${(props) => (props.theme === "error" ? "#FECACA" : "#BBF7D0")};
+`;
+
+const LocationCardText = styled.Text<ThemeProps>`
+  color: ${(props) => (props.theme === "error" ? "#DC2626" : "#059669")};
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 8px;
 `;

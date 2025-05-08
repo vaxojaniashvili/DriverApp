@@ -877,7 +877,7 @@ export default function DriverSignUp() {
 
         <Text style={{ marginTop: 20, marginBottom: 20 }}>
           Email all documents to
-          <Text style={{ color: "green" }}>driver@thevanapp.com</Text>
+          <Text style={{ color: "green" }}> driver@thevanapp.com</Text>
         </Text>
 
         <StyledButton

@@ -41,8 +41,6 @@ const HomeScreen: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [userId, setUserId] = useState(null);
 
-  const [verificationStatus, setVerificationStatus] =
-    useState<string>("incomplete");
   const [userIndicator, setUserIndicator] = useState<string | null>(null);
   const [driverDetails, setDriverDetails] = useState<any>(null);
 
@@ -72,7 +70,7 @@ const HomeScreen: React.FC = () => {
   const fetchDriverDetails = async () => {
     try {
       const response = await fetch(
-        `https://api.thevanapp.com/api/driver-details/4`
+        `https://api.thevanapp.com/api/driver-details/10`
       );
       const data = await response.json();
       console.log("Driver Details Response:", data);
@@ -81,9 +79,6 @@ const HomeScreen: React.FC = () => {
         const driverInfo = data[0];
         setDriverDetails(driverInfo);
         setUserIndicator(driverInfo.indicator);
-        setVerificationStatus(
-          driverInfo.status === "active" ? "complete" : "incomplete"
-        );
 
         if (driverInfo.email === userEmail) {
           setDriverData({
@@ -144,7 +139,7 @@ const HomeScreen: React.FC = () => {
 
       setUserProfile(profile);
 
-      if (verificationStatus === "complete" && userIndicator === "active") {
+      if (userIndicator === "active") {
         fetchOrders(user.id);
       }
     } catch (error) {
@@ -185,12 +180,7 @@ const HomeScreen: React.FC = () => {
     let subscription: { remove: () => void } | null = null;
 
     (async () => {
-      if (
-        !apiToken ||
-        verificationStatus !== "complete" ||
-        userIndicator !== "active"
-      )
-        return;
+      if (!apiToken || userIndicator !== "active") return;
 
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -222,16 +212,10 @@ const HomeScreen: React.FC = () => {
         subscription.remove();
       }
     };
-  }, [apiToken, verificationStatus, userIndicator]);
+  }, [apiToken, userIndicator]);
 
   useEffect(() => {
-    if (
-      !userEmail ||
-      !apiToken ||
-      verificationStatus !== "complete" ||
-      userIndicator !== "active"
-    )
-      return;
+    if (!userEmail || !apiToken || userIndicator !== "active") return;
 
     const fetchDriverData = async () => {
       setLoadingData(true);
@@ -277,18 +261,12 @@ const HomeScreen: React.FC = () => {
     };
 
     fetchDriverData();
-  }, [userEmail, apiToken, verificationStatus, userIndicator]);
+  }, [userEmail, apiToken, userIndicator]);
 
   const sendLocationToApi = async () => {
-    if (
-      !userEmail ||
-      !location ||
-      !apiToken ||
-      verificationStatus !== "complete" ||
-      userIndicator !== "active"
-    ) {
+    if (!userEmail || !location || !apiToken || userIndicator !== "active") {
       console.log(
-        "Missing data, not verified, or indicator not active, skipping location update"
+        "Missing data or indicator not active, skipping location update"
       );
       return;
     }
@@ -326,13 +304,7 @@ const HomeScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    if (
-      !userEmail ||
-      !location ||
-      !apiToken ||
-      verificationStatus !== "complete" ||
-      userIndicator !== "active"
-    ) {
+    if (!userEmail || !location || !apiToken || userIndicator !== "active") {
       return;
     }
 
@@ -343,19 +315,13 @@ const HomeScreen: React.FC = () => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [userEmail, location, apiToken, verificationStatus, userIndicator]);
+  }, [userEmail, location, apiToken, userIndicator]);
 
   const onRefresh = useCallback(async () => {
     await fetchDriverDetails();
 
-    if (
-      !apiToken ||
-      verificationStatus !== "complete" ||
-      userIndicator !== "active"
-    ) {
-      console.log(
-        "No API token, not verified, or indicator not active, skipping refresh"
-      );
+    if (!apiToken || userIndicator !== "active") {
+      console.log("No API token or indicator not active, skipping refresh");
       setRefreshing(false);
       return false;
     }
@@ -456,7 +422,7 @@ const HomeScreen: React.FC = () => {
       setRefreshing(false);
       return false;
     }
-  }, [apiToken, verificationStatus, userIndicator]);
+  }, [apiToken, userIndicator]);
 
   const processOrders = (ordersData: any[]) => {
     if (!Array.isArray(ordersData)) {
@@ -500,11 +466,7 @@ const HomeScreen: React.FC = () => {
       console.log("HomePage is focused - refreshing driver details and orders");
 
       fetchDriverDetails().then(() => {
-        if (
-          apiToken &&
-          verificationStatus === "complete" &&
-          userIndicator === "active"
-        ) {
+        if (apiToken && userIndicator === "active") {
           onRefresh();
         }
       });
@@ -512,19 +474,12 @@ const HomeScreen: React.FC = () => {
       return () => {
         console.log("HomePage lost focus");
       };
-    }, [onRefresh, apiToken, verificationStatus, userIndicator])
+    }, [onRefresh, apiToken, userIndicator])
   );
 
   const handleAccept = async (orderId: string) => {
-    if (
-      !driverData?.id ||
-      !apiToken ||
-      verificationStatus !== "complete" ||
-      userIndicator !== "active"
-    ) {
-      console.log(
-        "Missing driver data, API token, not verified, or indicator not active"
-      );
+    if (!driverData?.id || !apiToken || userIndicator !== "active") {
+      console.log("Missing driver data, API token, or indicator not active");
       return;
     }
 
@@ -582,9 +537,7 @@ const HomeScreen: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            enabled={
-              verificationStatus === "complete" && userIndicator === "active"
-            }
+            enabled={userIndicator === "active"}
           />
         }
       >
@@ -599,8 +552,7 @@ const HomeScreen: React.FC = () => {
                 </AvatarContainer>
                 <UserTextInfo>
                   <UserGreeting>Welcome, {capitalizedDisplayName}</UserGreeting>
-                  {verificationStatus === "incomplete" ||
-                  userIndicator !== "active" ? (
+                  {userIndicator !== "active" ? (
                     <Text style={{ fontWeight: 500 }}>
                       Status: <Text style={{ color: "red" }}>Incomplete</Text>
                     </Text>
@@ -620,7 +572,7 @@ const HomeScreen: React.FC = () => {
                   <InfoText>{userEmail}</InfoText>
                 </InfoCard>
 
-                {driverData?.plate && verificationStatus === "complete" && (
+                {driverData?.plate && userIndicator === "active" && (
                   <InfoCard style={{ height: 50 }}>
                     <View>
                       <FontAwesome5 name="car-alt" size={16} color="#666" />
@@ -630,91 +582,83 @@ const HomeScreen: React.FC = () => {
                 )}
               </UserDetailsSection>
 
-              {verificationStatus === "incomplete" ||
-                (userIndicator !== "active" && (
-                  <>
-                    <VerificationAlert>
-                      <AlertIcon>
-                        <MaterialIcons
-                          name="warning"
-                          size={24}
-                          color="#F59E0B"
-                        />
-                      </AlertIcon>
-                      <AlertContent>
-                        <AlertTitle>
-                          Account verification is required.
-                        </AlertTitle>
-                        <AlertDescription>
-                          Please verify your account to get started.
-                        </AlertDescription>
-                      </AlertContent>
-                    </VerificationAlert>
-                    <VerifyButton
-                      onPress={() => router.push("/(tabs)/driverVerification")}
-                    >
-                      <VerifyButtonContent>
-                        <VerifyButtonText>Verify</VerifyButtonText>
-                        <MaterialIcons
-                          name="arrow-forward"
-                          size={20}
-                          color="#FFF"
-                        />
-                      </VerifyButtonContent>
-                    </VerifyButton>
-                  </>
-                ))}
+              {userIndicator !== "active" && (
+                <>
+                  <VerificationAlert>
+                    <AlertIcon>
+                      <MaterialIcons name="warning" size={24} color="#F59E0B" />
+                    </AlertIcon>
+                    <AlertContent>
+                      <AlertTitle>Account verification is required.</AlertTitle>
+                      <AlertDescription>
+                        Please verify your account to get started.
+                      </AlertDescription>
+                    </AlertContent>
+                  </VerificationAlert>
+                  <VerifyButton
+                    onPress={() => router.push("/(tabs)/driverVerification")}
+                  >
+                    <VerifyButtonContent>
+                      <VerifyButtonText>Verify</VerifyButtonText>
+                      <MaterialIcons
+                        name="arrow-forward"
+                        size={20}
+                        color="#FFF"
+                      />
+                    </VerifyButtonContent>
+                  </VerifyButton>
+                </>
+              )}
 
-              {verificationStatus === "complete" &&
-                userIndicator === "active" && (
-                  <StatusSection>
-                    <StatusCard active={mode === "active"}>
-                      <StatusIndicator active={mode === "active"} />
-                      <StatusText active={mode === "active"}>
-                        {mode === "active" ? "ONLINE" : "OFFLINE"}
-                      </StatusText>
-                    </StatusCard>
+              {userIndicator === "active" && (
+                <StatusSection>
+                  <StatusCard active={mode === "active"}>
+                    <StatusIndicator active={mode === "active"} />
+                    <StatusText active={mode === "active"}>
+                      {mode === "active" ? "ONLINE" : "OFFLINE"}
+                    </StatusText>
+                  </StatusCard>
 
-                    {errorMsg ? (
-                      <LocationCard theme="error">
-                        <MaterialIcons
-                          name="error-outline"
-                          size={18}
-                          color={DriverModeColors.danger}
-                        />
-                        <LocationCardText theme="error">
-                          {errorMsg}
-                        </LocationCardText>
-                      </LocationCard>
-                    ) : locationSendError ? (
-                      <LocationCard theme="error">
-                        <MaterialIcons
-                          name="error-outline"
-                          size={18}
-                          color={DriverModeColors.danger}
-                        />
-                        <LocationCardText theme="error">
-                          {locationSendError}
-                        </LocationCardText>
-                      </LocationCard>
-                    ) : location && userIndicator === "active" ? (
-                      <LocationCard>
-                        <MaterialIcons
-                          name="location-on"
-                          size={18}
-                          color={DriverModeColors.success}
-                        />
-                        <LocationCardText>
-                          Location tracking active
-                        </LocationCardText>
-                      </LocationCard>
-                    ) : null}
-                  </StatusSection>
-                )}
+                  {errorMsg ? (
+                    <LocationCard theme="error">
+                      <MaterialIcons
+                        name="error-outline"
+                        size={18}
+                        color={DriverModeColors.danger}
+                      />
+                      <LocationCardText theme="error">
+                        {errorMsg}
+                      </LocationCardText>
+                    </LocationCard>
+                  ) : locationSendError ? (
+                    <LocationCard theme="error">
+                      <MaterialIcons
+                        name="error-outline"
+                        size={18}
+                        color={DriverModeColors.danger}
+                      />
+                      <LocationCardText theme="error">
+                        {locationSendError}
+                      </LocationCardText>
+                    </LocationCard>
+                  ) : location && userIndicator === "active" ? (
+                    <LocationCard>
+                      <MaterialIcons
+                        name="location-on"
+                        size={18}
+                        color={DriverModeColors.success}
+                      />
+                      <LocationCardText>
+                        Location tracking active
+                      </LocationCardText>
+                    </LocationCard>
+                  ) : null}
+                </StatusSection>
+              )}
             </HeaderContent>
           </Header>
 
-          {verificationStatus === "complete" && userIndicator === "active" && (
+          {userIndicator === "active" && (
             <>
               <ModeContainer>
                 <Drivermodecomponent />
@@ -788,12 +732,11 @@ const HomeScreen: React.FC = () => {
             </>
           )}
 
-          {verificationStatus === "incomplete" ||
-            (userIndicator !== "active" && (
-              <NoJobsText style={{ marginTop: 20, color: "red" }}>
-                Please verify your account to start accepting orders
-              </NoJobsText>
-            ))}
+          {userIndicator !== "active" && (
+            <NoJobsText style={{ marginTop: 20, color: "red" }}>
+              Please verify your account to start accepting orders
+            </NoJobsText>
+          )}
         </Innercontainer>
       </ScrollableContent>
     </Container>
@@ -802,6 +745,7 @@ const HomeScreen: React.FC = () => {
 
 export default HomeScreen;
 
+// Styled components remain the same as in original code
 const Container = styled.View`
   flex: 1;
   background-color: ${DriverModeColors.light};

@@ -20,8 +20,16 @@ const EditProfile = () => {
   const [name, setName] = useState("John Doe");
   const [email, setEmail] = useState("john.doe@example.com");
   const [bio, setBio] = useState("");
-  const [address, setAddress] = useState("");
   const [profileImage, setProfileImage] = useState("");
+
+  // Address fields
+  const [addressLine1, setAddressLine1] = useState("");
+  const [addressLine2, setAddressLine2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   useEffect(() => {
     const loadProfileData = async () => {
@@ -32,10 +40,18 @@ const EditProfile = () => {
           setName(parsedData.name || "");
           setEmail(parsedData.email || "");
           setBio(parsedData.bio || "");
-          setAddress(parsedData.address || "");
           setProfileImage(
             parsedData.profileImage || "https://via.placeholder.com/150"
           );
+
+          // Load address fields
+          setAddressLine1(parsedData.addressLine1 || "");
+          setAddressLine2(parsedData.addressLine2 || "");
+          setCity(parsedData.city || "");
+          setState(parsedData.state || "");
+          setPostalCode(parsedData.postalCode || "");
+          setCountry(parsedData.country || "");
+          setPhoneNumber(parsedData.phoneNumber || "");
         }
       } catch (error) {
         console.error("Error loading profile data:", error);
@@ -51,8 +67,14 @@ const EditProfile = () => {
         name,
         email,
         bio,
-        address,
         profileImage,
+        addressLine1,
+        addressLine2,
+        city,
+        state,
+        postalCode,
+        country,
+        phoneNumber,
       };
       await AsyncStorage.setItem("profileData", JSON.stringify(profileData));
       router.push("/settings");
@@ -142,7 +164,8 @@ const EditProfile = () => {
                   autoCapitalize="none"
                 />
               </InputGroup>
-              <SectionTitle>Additional Information</SectionTitle>
+
+              <SectionTitle>About</SectionTitle>
 
               <InputGroup>
                 <InputLabel>Bio</InputLabel>
@@ -156,12 +179,74 @@ const EditProfile = () => {
                 />
               </InputGroup>
 
+              <SectionTitle>Address Information</SectionTitle>
+
               <InputGroup>
-                <InputLabel>Address</InputLabel>
+                <InputLabel>Street Address Line 1</InputLabel>
                 <Input
-                  placeholder="Enter your address"
-                  value={address}
-                  onChangeText={setAddress}
+                  placeholder="Street address"
+                  value={addressLine1}
+                  onChangeText={setAddressLine1}
+                />
+              </InputGroup>
+
+              <InputGroup>
+                <InputLabel>Street Address Line 2 (Optional)</InputLabel>
+                <Input
+                  placeholder="Apartment, suite, unit, etc."
+                  value={addressLine2}
+                  onChangeText={setAddressLine2}
+                />
+              </InputGroup>
+
+              <RowContainer>
+                <HalfInputGroup>
+                  <InputLabel>City</InputLabel>
+                  <Input
+                    placeholder="City"
+                    value={city}
+                    onChangeText={setCity}
+                  />
+                </HalfInputGroup>
+
+                <HalfInputGroup>
+                  <InputLabel>State/Province</InputLabel>
+                  <Input
+                    placeholder="State"
+                    value={state}
+                    onChangeText={setState}
+                  />
+                </HalfInputGroup>
+              </RowContainer>
+
+              <RowContainer>
+                <HalfInputGroup>
+                  <InputLabel>ZIP/Postal Code</InputLabel>
+                  <Input
+                    placeholder="Postal Code"
+                    value={postalCode}
+                    onChangeText={setPostalCode}
+                    keyboardType="number-pad"
+                  />
+                </HalfInputGroup>
+
+                <HalfInputGroup>
+                  <InputLabel>Country</InputLabel>
+                  <Input
+                    placeholder="Country"
+                    value={country}
+                    onChangeText={setCountry}
+                  />
+                </HalfInputGroup>
+              </RowContainer>
+
+              <InputGroup>
+                <InputLabel>Phone Number (Optional)</InputLabel>
+                <Input
+                  placeholder="Phone number"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
                 />
               </InputGroup>
 
@@ -285,6 +370,17 @@ const TextArea = styled.TextInput`
   padding: 16px;
   font-size: 16px;
   color: #212529;
+`;
+
+const RowContainer = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 0;
+`;
+
+const HalfInputGroup = styled.View`
+  flex: 0.48;
+  margin-bottom: 20px;
 `;
 
 const SaveButton = styled.TouchableOpacity`

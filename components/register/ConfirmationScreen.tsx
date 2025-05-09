@@ -1,10 +1,39 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text } from "react-native";
 import { Button, Icon } from "@rneui/themed";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { supabase } from "@/infrastructure/db/supabase";
 
-export const ConfirmationScreen = ({ vanOption, Title, StyledButton }: any) => {
+export const ConfirmationScreen = ({
+  vanOption,
+  Title,
+  StyledButton,
+  completeRegistration,
+  loading,
+}: any) => {
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          return;
+        }
+
+        if (data.session) {
+          // Session exists
+        } else {
+          console.log("No active session");
+        }
+      } catch (e) {
+        console.error("Exception checking session:", e);
+      }
+    };
+
+    checkSession();
+  }, []);
+
   return (
     <View style={{ width: "100%" }}>
       <Title>
@@ -12,8 +41,7 @@ export const ConfirmationScreen = ({ vanOption, Title, StyledButton }: any) => {
       </Title>
 
       <Text style={{ fontSize: 16, textAlign: "center", marginBottom: 40 }}>
-        Once all documents are approved and your background check clears, you'll
-        get an email/text that your account is active.
+        Your registration is complete! Click below to start using the app.
       </Text>
 
       <Icon
@@ -31,8 +59,10 @@ export const ConfirmationScreen = ({ vanOption, Title, StyledButton }: any) => {
           start: { x: 0, y: 0 },
           end: { x: 1, y: 0 },
         }}
-        title="Back to Login"
-        onPress={() => router.push("/")}
+        title="Start Using the App"
+        onPress={completeRegistration}
+        loading={loading}
+        disabled={loading}
         buttonStyle={{
           borderRadius: 10,
           padding: 12,

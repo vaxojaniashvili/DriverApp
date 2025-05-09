@@ -9,12 +9,11 @@ import { supabase } from "../infrastructure/db/supabase";
 import { Button, Input, Icon } from "@rneui/themed";
 import styled from "styled-components/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { VerificationScreen } from "@/components/register/ VerificationScreen";
+import { router } from "expo-router";
 import { RegistrationForm } from "@/components/register/RegistrationForm";
 import { DocumentsScreen } from "@/components/register/DocumentsScreen";
 import { ConfirmationScreen } from "@/components/register/ConfirmationScreen";
-
-// Import UI components
+import { VerificationScreen } from "@/components/register/ VerificationScreen";
 
 export default function DriverSignUp() {
   const [email, setEmail] = useState("");
@@ -43,7 +42,7 @@ export default function DriverSignUp() {
   // Current registration step
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Form validation errors - Split full name errors
+  // Form validation errors
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
@@ -52,30 +51,6 @@ export default function DriverSignUp() {
   const [phoneNumberError, setPhoneNumberError] = useState("");
   const [cityError, setCityError] = useState("");
   const [vanOptionError, setVanOptionError] = useState("");
-
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const isVerified = await AsyncStorage.getItem(
-          "authentication_verified"
-        );
-        const nextStep = await AsyncStorage.getItem("next_step");
-
-        if (isVerified === "true" && nextStep === "2") {
-          setIsVerifying(false);
-          setCurrentStep(2);
-
-          // გავასუფთაოთ AsyncStorage, რომ არ მოხდეს ხელახლა ავტომატური გადასვლა
-          await AsyncStorage.removeItem("authentication_verified");
-          await AsyncStorage.removeItem("next_step");
-        }
-      } catch (error) {
-        console.error("Error checking auth status:", error);
-      }
-    };
-
-    checkAuthStatus();
-  }, []);
 
   useEffect(() => {
     if (otpInputRefs.current.length < 6) {
@@ -136,7 +111,6 @@ export default function DriverSignUp() {
     return true;
   };
 
-  // Split validation for name and surname
   const validateName = (name) => {
     if (!name.trim()) {
       setNameError("Name is required");
@@ -227,39 +201,24 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
+      // Just simulate OTP sending without actual Supabase call
       setVerificationSent(true);
       setIsVerifying(true);
       setTimer(60);
       setCanResend(false);
 
-      /* Comment out the Supabase logic for now
-    const { data: signUpData, error: signUpError } =
-      await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password: password,
-        options: {
-          data: {
-            first_name: name,
-            last_name: surname,
-            phone: phoneNumber,
-            van_option: vanOption,
-            user_type: "driver",
-            status: "incomplete",
-          },
-          emailRedirectTo:
-            Platform.OS === "web"
-              ? `${window.location.origin}/authentication`
-              : "myapp://auth/callback",
-        },
-      });
-
-    // Rest of Supabase logic...
-    */
+      // Simulate delay for realistic feel
+      setTimeout(() => {
+        Alert.alert(
+          "Success",
+          "Verification code sent successfully! Use 123456"
+        );
+      }, 500);
     } catch (error) {
       console.error("Unexpected error:", error);
       Alert.alert(
         "Error",
-        "Failed to send verification email. Please try again."
+        "Failed to send verification code. Please try again."
       );
     } finally {
       setLoading(false);
@@ -268,7 +227,6 @@ export default function DriverSignUp() {
 
   const verifyOtp = async () => {
     const otpValue = otpDigits.join("");
-
     const TEST_OTP = "123456";
 
     if (otpValue.length !== 6) {
@@ -297,25 +255,113 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: email.trim().toLowerCase(),
-      });
-
-      if (error) {
-        Alert.alert("Error", error.message);
-        setLoading(false);
-        return;
-      }
-
+      // Just simulate resending without actual email
       setTimer(60);
       setCanResend(false);
       Alert.alert(
-        "Verification Resent",
-        "A new verification email has been sent. Please check your inbox."
+        "Code Resent",
+        "A new verification code has been sent. Use 123456"
       );
     } catch (error) {
       Alert.alert("Error", "Failed to resend verification code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add function to complete registration (to be called from ConfirmationScreen)
+  // Function to complete registration
+  const completeRegistration = async () => {
+    setLoading(true);
+    try {
+      // Create new user
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          email: email.trim().toLowerCase(),
+          password: password,
+          options: {
+            data: {
+              first_name: name,
+              last_name: surname,
+              full_name: `${name} ${surname}`,
+              phone: phoneNumber,
+              van_option: vanOption,
+              user_type: "driver",
+              status: "complete",
+            },
+            emailRedirectTo:
+              Platform.OS === "web"
+                ? `${window.location.origin}/authentication`
+                : "myapp://auth/callback",
+          },
+        });
+
+      if (signUpError) throw signUpError;
+
+      // Sign in immediately after registration
+      const { data: signInData, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password: password,
+        });
+
+      if (signInError) throw signInError;
+
+      // Get current user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("Failed to get user data");
+      }
+
+      // Create or update user profile in the profiles table
+      const { error: profileError } = await supabase.from("profiles").upsert({
+        id: user.id,
+        email: email.trim().toLowerCase(),
+        first_name: name,
+        last_name: surname,
+        full_name: `${name} ${surname}`,
+        phone: phoneNumber,
+        van_option: vanOption,
+        user_type: "driver",
+        status: "complete",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        // Continue even if profile creation fails
+      }
+
+      // Get and verify session
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        throw new Error("Failed to establish session");
+      }
+
+      // Store session
+      await AsyncStorage.setItem(
+        "supabase_session",
+        JSON.stringify(sessionData.session)
+      );
+      await AsyncStorage.setItem("user_id", user.id);
+
+      // Small delay before navigation
+      setTimeout(() => {
+        router.replace("/(tabs)");
+      }, 1000);
+    } catch (error) {
+      console.error("Registration error:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to complete registration. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -417,6 +463,8 @@ export default function DriverSignUp() {
                 vanOption={vanOption}
                 Title={Title}
                 StyledButton={StyledButton}
+                completeRegistration={completeRegistration}
+                loading={loading}
               />
             )}
           </FormContainer>

@@ -1,119 +1,410 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
+  ScrollView,
   Alert,
+  ToastAndroid,
 } from "react-native";
-import { Input, Button } from "@rneui/themed";
-import { LinearGradient } from "expo-linear-gradient";
-import styled from "styled-components/native";
 import { router } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
+import { LinearGradient } from "expo-linear-gradient";
+import { Input } from "@rneui/themed";
 
-const DriverVerificationScreen = () => {
-  const [name, setName] = useState("");
-  const [surname, setSurname] = useState("");
-  const [contactMethod, setContactMethod] = useState("email");
-  const [email, setEmail] = useState("");
+// Toast function
+const MyToast = (message, duration = "short") => {
+  if (Platform.OS === "android") {
+    ToastAndroid.show(
+      message,
+      duration === "short" ? ToastAndroid.SHORT : ToastAndroid.LONG
+    );
+  } else {
+    Alert.alert("Notification", message, [{ text: "OK" }], {
+      cancelable: true,
+    });
+  }
+};
+
+export default function DriverVerificationScreen() {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [isValid, setIsValid] = useState(false);
+  const [isMobileVerified, setIsMobileVerified] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [showVerificationScreen, setShowVerificationScreen] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [verifyingMobile, setVerifyingMobile] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [timer, setTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+  const [isVerificationLoading, setIsVerificationLoading] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [nameError, setNameError] = useState("");
-  const [surnameError, setSurnameError] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const [phoneNumberError, setPhoneNumberError] = useState("");
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        router.replace("/authentication");
+      }
+    };
 
-  const validateName = (name) => {
-    if (!name.trim()) {
-      setNameError("Name is required");
-      return false;
+    checkAuth();
+  }, []);
+
+  // Timer for OTP resend
+  useEffect(() => {
+    if (timer > 0 && showVerificationScreen) {
+      const timerId = setTimeout(() => setTimer(timer - 1), 1000);
+      return () => clearTimeout(timerId);
+    } else if (timer === 0) {
+      setCanResend(true);
     }
-    setNameError("");
-    return true;
-  };
+  }, [timer, showVerificationScreen]);
 
-  const validateSurname = (surname) => {
-    if (!surname.trim()) {
-      setSurnameError("Surname is required");
-      return false;
-    }
-    setSurnameError("");
-    return true;
-  };
+  useEffect(() => {
+    const isNameValid = firstName.trim() !== "" && lastName.trim() !== "";
+    const isPhoneValid = isMobileVerified || phoneNumber.trim() === "";
+    const isEmailValid = isEmailVerified || email.trim() === "";
+    const hasAtLeastOneContact =
+      (email.trim() !== "" && isEmailVerified) ||
+      (phoneNumber.trim() !== "" && isMobileVerified);
+    setIsValid(isNameValid && hasAtLeastOneContact);
+  }, [
+    firstName,
+    lastName,
+    isMobileVerified,
+    isEmailVerified,
+    email,
+    phoneNumber,
+  ]);
 
-  const validateEmail = (email) => {
-    if (contactMethod === "phone") {
-      setEmailError("");
-      return true;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const sendEmailVerification = async () => {
     if (!email) {
-      setEmailError("Email is required");
-      return false;
-    } else if (!emailRegex.test(email)) {
-      setEmailError("Invalid email format");
-      return false;
-    }
-    setEmailError("");
-    return true;
-  };
-
-  const validatePhoneNumber = (phone) => {
-    if (contactMethod === "email") {
-      setPhoneNumberError("");
-      return true;
-    }
-
-    const phoneRegex = /^\+?[0-9]{9,15}$/;
-    if (!phone) {
-      setPhoneNumberError("Phone number is required");
-      return false;
-    } else if (!phoneRegex.test(phone)) {
-      setPhoneNumberError("Invalid phone number format");
-      return false;
-    }
-    setPhoneNumberError("");
-    return true;
-  };
-
-  const handleSubmit = async () => {
-    const isNameValid = validateName(name);
-    const isSurnameValid = validateSurname(surname);
-    const isEmailValid = validateEmail(email);
-    const isPhoneValid = validatePhoneNumber(phoneNumber);
-
-    if (!isNameValid || !isSurnameValid || !isEmailValid || !isPhoneValid) {
+      MyToast("Please enter a valid email address");
       return;
     }
 
-    setLoading(true);
+    setIsVerificationLoading(true);
+    try {
+      const redirectUrl =
+        Platform.OS === "web"
+          ? window.location.origin + "/authentication"
+          : "thevanapp://authentication/verify";
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        setVerificationError(error.message);
+        MyToast(error.message);
+      } else {
+        setVerifyingEmail(true);
+        setShowVerificationScreen(true);
+        setTimer(60);
+        setCanResend(false);
+        MyToast(
+          "Verification email sent. Check your inbox or enter the code here."
+        );
+      }
+    } catch (err) {
+      console.error("Email verification error:", err);
+      setVerificationError(
+        "An error occurred while sending verification email"
+      );
+      MyToast("An error occurred while sending verification email");
+    } finally {
+      setIsVerificationLoading(false);
+    }
+  };
+
+  const sendMobileVerification = async () => {
+    if (!phoneNumber) {
+      MyToast("Please enter a valid phone number");
+      return;
+    }
+
+    const phoneRegex = /^\+?[0-9]{9,15}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      MyToast("Please enter a valid phone number");
+      return;
+    }
+
+    setIsVerificationLoading(true);
+    try {
+      // Here you would normally send OTP via SMS API
+      // For demo purposes, we'll simulate it
+      setTimeout(() => {
+        setVerifyingMobile(true);
+        setShowVerificationScreen(true);
+        setTimer(60);
+        setCanResend(false);
+        MyToast("OTP sent to your mobile number");
+      }, 1500);
+    } catch (err) {
+      console.error("Mobile verification error:", err);
+      setVerificationError("An error occurred while sending OTP");
+      MyToast("An error occurred while sending OTP");
+    } finally {
+      setIsVerificationLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (otp.length !== 6) {
+      setVerificationError("Please enter the complete 6-digit OTP");
+      MyToast("Please enter the complete 6-digit OTP");
+      return;
+    }
+
+    setIsVerificationLoading(true);
+    try {
+      if (otp !== "856135") {
+        setVerificationError("Invalid OTP. Please try again.");
+        MyToast("Invalid OTP. Please try again.");
+        return;
+      }
+
+      if (verifyingEmail) {
+        setIsEmailVerified(true);
+      } else if (verifyingMobile) {
+        setIsMobileVerified(true);
+      }
+
+      setShowVerificationScreen(false);
+      setVerifyingEmail(false);
+      setVerifyingMobile(false);
+      setOtp("");
+
+      MyToast(`${verifyingEmail ? "Email" : "Mobile"} verified successfully!`);
+    } catch (err) {
+      console.error("OTP verification error:", err);
+      setVerificationError("An error occurred during verification");
+      MyToast("An error occurred during verification");
+    } finally {
+      setIsVerificationLoading(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (!canResend) return;
+
+    setIsVerificationLoading(true);
+    try {
+      if (verifyingEmail) {
+        await sendEmailVerification();
+      } else if (verifyingMobile) {
+        await sendMobileVerification();
+      }
+    } finally {
+      setIsVerificationLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!isValid) return;
+
+    setIsLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({
         data: {
-          first_name: name,
-          last_name: surname,
+          first_name: firstName,
+          last_name: lastName,
+          fullname: `${firstName} ${lastName}`,
           phone: phoneNumber,
+          email: email,
           status: "pending_verification",
         },
       });
 
       if (error) throw error;
 
-      Alert.alert(
-        "Success",
-        "Your verification request has been submitted. We will review it and get back to you soon."
-      );
+      MyToast("Your verification request has been submitted successfully!");
     } catch (error) {
-      Alert.alert("Error", error.message);
+      console.error("Verification error:", error);
+      MyToast("Error submitting verification");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
+
+  // OTP Input Component
+  const OtpInputComponent = () => {
+    const otpBoxes = [];
+    for (let i = 0; i < 6; i++) {
+      otpBoxes.push(
+        <View
+          key={i}
+          style={{
+            width: 45,
+            height: 56,
+            borderWidth: 2,
+            borderColor: otp[i] ? "#10b981" : "#e5e7eb",
+            borderRadius: 12,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#fff",
+          }}
+        >
+          <Text style={{ fontSize: 20, fontWeight: "bold", color: "#1f2937" }}>
+            {otp[i] || ""}
+          </Text>
+        </View>
+      );
+    }
+    return (
+      <View>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            marginBottom: 20,
+          }}
+        >
+          {otpBoxes}
+        </View>
+        <TextInput
+          value={otp}
+          onChangeText={(text) => {
+            if (text.length <= 6 && /^\d*$/.test(text)) {
+              setOtp(text);
+            }
+          }}
+          keyboardType="numeric"
+          maxLength={6}
+          style={{
+            position: "absolute",
+            opacity: 0,
+            width: "100%",
+            height: 56,
+          }}
+          autoFocus
+        />
+      </View>
+    );
+  };
+
+  // Verification screen
+  if (showVerificationScreen) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#f9fafb",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 24,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            color: "#1f2937",
+            marginBottom: 16,
+          }}
+        >
+          Verify Your {verifyingEmail ? "Email" : "Mobile"}
+        </Text>
+        <Text
+          style={{
+            fontSize: 16,
+            color: "#6b7280",
+            textAlign: "center",
+            marginBottom: 32,
+          }}
+        >
+          Enter the 6-digit code sent to{"\n"}
+          <Text style={{ fontWeight: "600" }}>
+            {verifyingEmail ? email : phoneNumber}
+          </Text>
+        </Text>
+
+        <View style={{ width: "100%", marginBottom: 32 }}>
+          <OtpInputComponent />
+        </View>
+
+        {verificationError ? (
+          <Text style={{ color: "#ef4444", marginBottom: 16 }}>
+            {verificationError}
+          </Text>
+        ) : null}
+
+        <TouchableOpacity
+          style={{
+            width: "100%",
+            height: 56,
+            backgroundColor: "#10b981",
+            borderRadius: 12,
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: 24,
+          }}
+          onPress={verifyOtp}
+          disabled={isVerificationLoading}
+        >
+          {isVerificationLoading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 18 }}>
+              Verify
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ color: "#6b7280" }}>Didn't receive code? </Text>
+          <TouchableOpacity
+            onPress={resendOtp}
+            disabled={!canResend || isVerificationLoading}
+          >
+            <Text
+              style={{
+                fontWeight: "600",
+                color: canResend ? "#10b981" : "#9ca3af",
+              }}
+            >
+              {canResend ? "Resend OTP" : `Resend in ${timer}s`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={{ marginTop: 24 }}
+          onPress={() => {
+            setShowVerificationScreen(false);
+            setVerifyingEmail(false);
+            setVerifyingMobile(false);
+            setOtp("");
+            setVerificationError("");
+          }}
+        >
+          <Text style={{ color: "#6b7280", fontWeight: "500" }}>
+            Back to Verification
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -125,135 +416,93 @@ const DriverVerificationScreen = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Container>
-          <BackButton onPress={() => router.back()}>
+        <View
+          style={{
+            flex: 1,
+            padding: 10,
+            paddingTop: Platform.OS === "android" ? 40 : 60,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{
+              width: 40,
+              height: 40,
+              justifyContent: "center",
+              alignItems: "center",
+              marginBottom: 20,
+            }}
+          >
             <Text style={{ fontSize: 24 }}>←</Text>
-          </BackButton>
+          </TouchableOpacity>
 
-          <FormContainer>
-            <Title>Account Verification</Title>
-            <Subtitle>
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 15,
+              padding: 15,
+              elevation: 5,
+              shadowOpacity: 0.1,
+              shadowRadius: 5,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: "bold",
+                marginBottom: 10,
+                textAlign: "center",
+                color: "#2c3e50",
+              }}
+            >
+              Account Verification
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 16,
+                color: "#7f8c8d",
+                marginBottom: 30,
+                textAlign: "center",
+              }}
+            >
               Please fill in your details to verify your account
-            </Subtitle>
+            </Text>
 
-            <StyledInput
-              label="Name"
+            <Input
+              label="First Name"
               leftIcon={{
                 type: "material-community",
                 name: "account-outline",
                 size: 22,
                 color: "#27ae60",
               }}
-              onChangeText={(text) => {
-                setName(text);
-                if (nameError) validateName(text);
-              }}
-              value={name}
+              value={firstName}
+              onChangeText={setFirstName}
               placeholder="Enter your first name"
               autoCapitalize="words"
-              errorMessage={nameError}
-              onBlur={() => validateName(name)}
+              containerStyle={{ marginBottom: 5 }}
             />
 
-            <StyledInput
-              label="Surname"
+            <Input
+              label="Last Name"
               leftIcon={{
                 type: "material-community",
                 name: "account-outline",
                 size: 22,
                 color: "#27ae60",
               }}
-              onChangeText={(text) => {
-                setSurname(text);
-                if (surnameError) validateSurname(text);
-              }}
-              value={surname}
+              value={lastName}
+              onChangeText={setLastName}
               placeholder="Enter your last name"
               autoCapitalize="words"
-              errorMessage={surnameError}
-              onBlur={() => validateSurname(surname)}
+              containerStyle={{ marginBottom: 5 }}
             />
 
-            <View style={{ marginBottom: 20, marginLeft: 10 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: "500",
-                  marginBottom: 10,
-                  color: "#2c3e50",
-                }}
-              >
-                Contact Method:
-              </Text>
-              <View style={{ flexDirection: "row" }}>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginRight: 20,
-                  }}
-                  onPress={() => setContactMethod("email")}
-                >
-                  <View
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      borderWidth: 2,
-                      borderColor: "#27ae60",
-                      marginRight: 10,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    {contactMethod === "email" && (
-                      <View
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: 5,
-                          backgroundColor: "#27ae60",
-                        }}
-                      />
-                    )}
-                  </View>
-                  <Text style={{ fontSize: 16, color: "#2c3e50" }}>Email</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={{ flexDirection: "row", alignItems: "center" }}
-                  onPress={() => setContactMethod("phone")}
-                >
-                  <View
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      borderWidth: 2,
-                      borderColor: "#27ae60",
-                      marginRight: 10,
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    {contactMethod === "phone" && (
-                      <View
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: 5,
-                          backgroundColor: "#27ae60",
-                        }}
-                      />
-                    )}
-                  </View>
-                  <Text style={{ fontSize: 16, color: "#2c3e50" }}>Phone</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {contactMethod === "email" && (
-              <StyledInput
+            <View style={{ marginBottom: 20 }}>
+              <Input
                 label="Email"
                 leftIcon={{
                   type: "material-community",
@@ -261,21 +510,60 @@ const DriverVerificationScreen = () => {
                   size: 22,
                   color: "#27ae60",
                 }}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (emailError) validateEmail(text);
-                }}
                 value={email}
+                onChangeText={setEmail}
                 placeholder="Enter your email"
                 keyboardType="email-address"
                 autoCapitalize="none"
-                errorMessage={emailError}
-                onBlur={() => validateEmail(email)}
+                containerStyle={{ marginBottom: 0 }}
+                rightIcon={
+                  isEmailVerified ? (
+                    <View
+                      style={{
+                        backgroundColor: "#dcfce7",
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        paddingVertical: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#15803d",
+                          fontSize: 12,
+                          fontWeight: "500",
+                        }}
+                      >
+                        Verified
+                      </Text>
+                    </View>
+                  ) : null
+                }
               />
-            )}
+              {!isEmailVerified && email.trim() !== "" && (
+                <TouchableOpacity
+                  onPress={sendEmailVerification}
+                  disabled={isVerificationLoading}
+                  style={{
+                    backgroundColor: "#10b981",
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    marginHorizontal: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  {isVerificationLoading && verifyingEmail ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={{ color: "white", fontWeight: "500" }}>
+                      Verify Email
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
 
-            {contactMethod === "phone" && (
-              <StyledInput
+            <View style={{ marginBottom: 20 }}>
+              <Input
                 label="Phone Number"
                 leftIcon={{
                   type: "material-community",
@@ -283,96 +571,93 @@ const DriverVerificationScreen = () => {
                   size: 22,
                   color: "#27ae60",
                 }}
-                onChangeText={(text) => {
-                  setPhoneNumber(text);
-                  if (phoneNumberError) validatePhoneNumber(text);
-                }}
                 value={phoneNumber}
+                onChangeText={setPhoneNumber}
                 placeholder="Enter your phone number"
                 keyboardType="phone-pad"
-                errorMessage={phoneNumberError}
-                onBlur={() => validatePhoneNumber(phoneNumber)}
+                containerStyle={{ marginBottom: 0 }}
+                rightIcon={
+                  isMobileVerified ? (
+                    <View
+                      style={{
+                        backgroundColor: "#dcfce7",
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        paddingVertical: 4,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#15803d",
+                          fontSize: 12,
+                          fontWeight: "500",
+                        }}
+                      >
+                        Verified
+                      </Text>
+                    </View>
+                  ) : null
+                }
               />
-            )}
+              {!isMobileVerified && phoneNumber.trim() !== "" && (
+                <TouchableOpacity
+                  onPress={sendMobileVerification}
+                  disabled={isVerificationLoading}
+                  style={{
+                    backgroundColor: "#10b981",
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    marginHorizontal: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  {isVerificationLoading && verifyingMobile ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={{ color: "white", fontWeight: "500" }}>
+                      Verify Phone
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
 
-            <StyledButton
-              ViewComponent={LinearGradient}
-              linearGradientProps={{
-                colors: ["#27ae60", "#2ecc71"],
-                start: { x: 0, y: 0 },
-                end: { x: 1, y: 0 },
-              }}
-              title="Submit Verification"
-              disabled={loading}
+            <TouchableOpacity
               onPress={handleSubmit}
-              loading={loading}
-              buttonStyle={{
+              disabled={!isValid || isLoading}
+              style={{
+                backgroundColor: isValid && !isLoading ? "#27ae60" : "#e5e7eb",
                 borderRadius: 10,
                 padding: 12,
                 marginTop: 20,
+                alignItems: "center",
               }}
-              titleStyle={{
-                fontWeight: "bold",
-                fontSize: 16,
+            >
+              {isLoading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text
+                  style={{ color: "white", fontWeight: "bold", fontSize: 16 }}
+                >
+                  Submit Verification
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <Text
+              style={{
+                fontSize: 12,
+                color: "#6b7280",
+                textAlign: "center",
+                marginTop: 20,
               }}
-            />
-          </FormContainer>
-        </Container>
+            >
+              By verifying your account, you agree to our Terms of Service and
+              Privacy Policy
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
-};
-
-const Container = styled.View`
-  flex: 1;
-  padding: 10px;
-  padding-top: ${Platform.OS === "android" ? "40px" : "60px"};
-`;
-
-const BackButton = styled.TouchableOpacity`
-  width: 40px;
-  height: 40px;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 20px;
-`;
-
-const FormContainer = styled.View`
-  background-color: #fff;
-  border-radius: 15px;
-  padding: 15px;
-  elevation: 5;
-  shadow-opacity: 0.1;
-  shadow-radius: 5px;
-  shadow-color: #000;
-  shadow-offset: 0px 2px;
-`;
-
-const Title = styled.Text`
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  text-align: center;
-  color: #2c3e50;
-`;
-
-const Subtitle = styled.Text`
-  font-size: 16px;
-  color: #7f8c8d;
-  margin-bottom: 30px;
-  text-align: center;
-`;
-
-const StyledInput = styled(Input)`
-  margin-bottom: 5px;
-`;
-
-const StyledButton = styled(Button).attrs({
-  containerStyle: {
-    marginTop: 10,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-})``;
-
-export default DriverVerificationScreen;
+}

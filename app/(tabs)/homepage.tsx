@@ -36,7 +36,6 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [apiToken, setApiToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [userId, setUserId] = useState(null);
@@ -73,7 +72,6 @@ const HomeScreen: React.FC = () => {
         `https://api.thevanapp.com/api/driver-details/10`
       );
       const data = await response.json();
-      console.log("Driver Details Response:", data);
 
       if (Array.isArray(data) && data.length > 0) {
         const driverInfo = data[0];
@@ -115,7 +113,7 @@ const HomeScreen: React.FC = () => {
       } = await supabase.auth.getUser();
       setUserId(user?.id as any);
 
-      console.log("dataaaa", user);
+      // console.log("dataaaa", user);
 
       if (userError || !user) {
         console.error("Error fetching user:", userError);
@@ -292,6 +290,10 @@ const HomeScreen: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
+      // if (response.ok) {
+      //   console.log("sending to api");
+      // }
+
       if (!response.ok) {
         throw new Error(`API response error: ${response.status}`);
       }
@@ -359,7 +361,6 @@ const HomeScreen: React.FC = () => {
       }
 
       const data = await res.json();
-      console.log("Checker response data:", data);
 
       if (
         data &&
@@ -373,9 +374,6 @@ const HomeScreen: React.FC = () => {
           );
 
           if (allCompleted) {
-            console.log(
-              "All orders are COMPLETED or CANCELLED, need to fetch pending orders"
-            );
             setActiveOrder(null);
           } else {
             processOrders(data);
@@ -404,7 +402,6 @@ const HomeScreen: React.FC = () => {
       }
 
       const pendingData = await pendingRes.json();
-      console.log("Pending orders data:", pendingData);
 
       if (Array.isArray(pendingData) && pendingData.length > 0) {
         processOrders(pendingData);
@@ -453,9 +450,6 @@ const HomeScreen: React.FC = () => {
       (order) => order.order_status === "PENDING"
     );
 
-    console.log("Active order:", active);
-    console.log("Pending orders:", pendingOrders);
-
     setActiveOrder(active || null);
     setOngoingOrders(ongoing);
     setOrders(pendingOrders);
@@ -463,17 +457,13 @@ const HomeScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      console.log("HomePage is focused - refreshing driver details and orders");
-
       fetchDriverDetails().then(() => {
         if (apiToken && userIndicator === "active") {
           onRefresh();
         }
       });
 
-      return () => {
-        console.log("HomePage lost focus");
-      };
+      return () => {};
     }, [onRefresh, apiToken, userIndicator])
   );
 

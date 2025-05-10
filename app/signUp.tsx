@@ -269,8 +269,6 @@ export default function DriverSignUp() {
     }
   };
 
-  // Add function to complete registration (to be called from ConfirmationScreen)
-  // Function to complete registration
   const completeRegistration = async () => {
     setLoading(true);
     try {
@@ -334,10 +332,8 @@ export default function DriverSignUp() {
 
       if (profileError) {
         console.error("Profile creation error:", profileError);
-        // Continue even if profile creation fails
       }
 
-      // Get and verify session
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
 
@@ -345,14 +341,12 @@ export default function DriverSignUp() {
         throw new Error("Failed to establish session");
       }
 
-      // Store session
       await AsyncStorage.setItem(
         "supabase_session",
         JSON.stringify(sessionData.session)
       );
       await AsyncStorage.setItem("user_id", user.id);
 
-      // Small delay before navigation
       setTimeout(() => {
         router.replace("/(tabs)");
       }, 1000);

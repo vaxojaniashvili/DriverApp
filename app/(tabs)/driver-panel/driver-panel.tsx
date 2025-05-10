@@ -116,6 +116,7 @@ const DriverDashboard = () => {
             `https://api.thevanapp.com/api/driver-stats/total/${driverUUID}`
           );
           const data = await res.json();
+          // console.log("Dataaa", data);
           setDriverData(data);
         } catch (apiError) {
           console.log("API error, using fake data:", apiError);

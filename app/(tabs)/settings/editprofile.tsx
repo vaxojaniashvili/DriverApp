@@ -15,11 +15,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useNavigation } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "@/infrastructure/db/supabase";
 
 const EditProfile = () => {
-  const [name, setName] = useState("John Doe");
-  const [email, setEmail] = useState("john.doe@example.com");
-  const [bio, setBio] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [profileImage, setProfileImage] = useState("");
 
   // Address fields
@@ -32,6 +32,30 @@ const EditProfile = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
 
   useEffect(() => {
+    const fetchDriverData = async () => {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+        setName(
+          user?.user_metadata.fullname || user?.user_metadata.full_name || ""
+        );
+        setEmail(user?.email || "");
+        setPhoneNumber(user?.user_metadata.phone || "");
+        if (userError) {
+          console.error("Error fetching user:", userError);
+          return;
+        }
+      } catch (error) {
+        console.error("Unexpected error:", error);
+      }
+    };
+
+    fetchDriverData();
+  }, []);
+
+  useEffect(() => {
     const loadProfileData = async () => {
       try {
         const savedData = await AsyncStorage.getItem("profileData");
@@ -39,12 +63,10 @@ const EditProfile = () => {
           const parsedData = JSON.parse(savedData);
           setName(parsedData.name || "");
           setEmail(parsedData.email || "");
-          setBio(parsedData.bio || "");
           setProfileImage(
             parsedData.profileImage || "https://via.placeholder.com/150"
           );
 
-          // Load address fields
           setAddressLine1(parsedData.addressLine1 || "");
           setAddressLine2(parsedData.addressLine2 || "");
           setCity(parsedData.city || "");
@@ -66,7 +88,6 @@ const EditProfile = () => {
       const profileData = {
         name,
         email,
-        bio,
         profileImage,
         addressLine1,
         addressLine2,
@@ -162,20 +183,6 @@ const EditProfile = () => {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                />
-              </InputGroup>
-
-              <SectionTitle>About</SectionTitle>
-
-              <InputGroup>
-                <InputLabel>Bio</InputLabel>
-                <TextArea
-                  placeholder="Tell us about yourself"
-                  value={bio}
-                  onChangeText={setBio}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
                 />
               </InputGroup>
 

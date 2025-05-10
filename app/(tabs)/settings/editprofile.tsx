@@ -12,15 +12,15 @@ import {
 } from "react-native";
 import styled from "styled-components/native";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useNavigation } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 
 const EditProfile = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [profileImage, setProfileImage] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState("");
 
   // Address fields
   const [addressLine1, setAddressLine1] = useState("");
@@ -29,101 +29,100 @@ const EditProfile = () => {
   const [state, setState] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
 
   useEffect(() => {
-    const fetchDriverData = async () => {
-      try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-        setName(
-          user?.user_metadata.fullname || user?.user_metadata.full_name || ""
-        );
-        setEmail(user?.email || "");
-        setPhoneNumber(user?.user_metadata.phone || "");
-        if (userError) {
-          console.error("Error fetching user:", userError);
-          return;
-        }
-      } catch (error) {
-        console.error("Unexpected error:", error);
-      }
-    };
-
-    fetchDriverData();
+    fetchUserData();
   }, []);
 
-  useEffect(() => {
-    const loadProfileData = async () => {
-      try {
-        const savedData = await AsyncStorage.getItem("profileData");
-        if (savedData) {
-          const parsedData = JSON.parse(savedData);
-          setName(parsedData.name || "");
-          setEmail(parsedData.email || "");
-          setProfileImage(
-            parsedData.profileImage || "https://via.placeholder.com/150"
-          );
+  const fetchUserData = async () => {
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-          setAddressLine1(parsedData.addressLine1 || "");
-          setAddressLine2(parsedData.addressLine2 || "");
-          setCity(parsedData.city || "");
-          setState(parsedData.state || "");
-          setPostalCode(parsedData.postalCode || "");
-          setCountry(parsedData.country || "");
-          setPhoneNumber(parsedData.phoneNumber || "");
-        }
-      } catch (error) {
-        console.error("Error loading profile data:", error);
+      if (userError || !user) {
+        console.error("Error fetching user:", userError);
+        return;
       }
-    };
 
-    loadProfileData();
-  }, []);
+      const metadata = user.user_metadata;
+
+      setUserId(user.id);
+      setEmail(user.email || "");
+
+      const { data: driverData, error: driverError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (driverData) {
+        setName(metadata.fullname || "");
+        setPhoneNumber(metadata.phone || "");
+        setAddressLine1(metadata.address_line_1 || "");
+        setAddressLine2(metadata.address_line_2 || "");
+        setCity(metadata.city || "");
+        setState(metadata.state || "");
+        setPostalCode(metadata.postal_code || "");
+        setCountry(metadata.country || "Malta");
+      } else {
+        setName(metadata.fullname || metadata.full_name || "");
+        setPhoneNumber(metadata.phone || "");
+      }
+    } catch (error) {
+      console.error("Unexpected error:", error);
+    }
+  };
 
   const handleSubmit = async () => {
+    if (!name.trim()) {
+      Alert.alert("Error", "Please enter your name");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const profileData = {
-        name,
-        email,
-        profileImage,
+      const fullAddress = [
         addressLine1,
         addressLine2,
         city,
         state,
         postalCode,
         country,
-        phoneNumber,
-      };
-      await AsyncStorage.setItem("profileData", JSON.stringify(profileData));
-      router.push("/settings");
-    } catch (error) {
-      Alert.alert("Error", "Failed to save profile data");
-      console.error("Error saving profile data:", error);
-    }
-  };
+      ]
+        .filter(Boolean)
+        .join(", ");
 
-  const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          fullname: name,
+          first_name: name.split(" ")[0] || name,
+          last_name: name.split(" ").slice(1).join(" ") || "",
+          phone: phoneNumber,
+          address: fullAddress,
+          address_line_1: addressLine1,
+          address_line_2: addressLine2,
+          city: city,
+          state: state,
+          postal_code: postalCode,
+          country: country,
+        },
       });
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setProfileImage(result.assets[0].uri);
+      if (error) {
+        throw error;
       }
+
+      Alert.alert("Success", "Profile updated successfully");
+      router.push("/settings");
     } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
-      console.error("Image picker error:", error);
+      Alert.alert("Error", "Failed to update profile");
+      console.error("Error updating profile:", error);
+    } finally {
+      setLoading(false);
     }
   };
-
-  const navigation = useNavigation();
 
   return (
     <Container>
@@ -136,7 +135,7 @@ const EditProfile = () => {
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ContentContainer showsVerticalScrollIndicator={false}>
             <Header>
-              <BackButton onPress={handleSubmit}>
+              <BackButton onPress={() => router.push("/settings")}>
                 <Ionicons name="chevron-back" size={24} color="#212529" />
               </BackButton>
               <Title>Edit Profile</Title>
@@ -148,22 +147,6 @@ const EditProfile = () => {
               contentContainerStyle={{ paddingBottom: 120 }}
               keyboardShouldPersistTaps="handled"
             >
-              <ProfileImageSection>
-                <ProfileImageContainer>
-                  <ProfileImage
-                    source={
-                      profileImage
-                        ? { uri: profileImage }
-                        : require("../../../assets/images/profileDefaultImage.png")
-                    }
-                  />
-                  <EditIconButton onPress={pickImage}>
-                    <Ionicons name="camera" size={18} color="#fff" />
-                  </EditIconButton>
-                </ProfileImageContainer>
-                <ProfileName>{name}</ProfileName>
-              </ProfileImageSection>
-
               <SectionTitle>Personal Information</SectionTitle>
 
               <InputGroup>
@@ -183,13 +166,25 @@ const EditProfile = () => {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  editable={false}
+                  style={{ backgroundColor: "#f1f3f5" }}
+                />
+              </InputGroup>
+
+              <InputGroup>
+                <InputLabel>Phone Number</InputLabel>
+                <Input
+                  placeholder="Phone number"
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
                 />
               </InputGroup>
 
               <SectionTitle>Address Information</SectionTitle>
 
               <InputGroup>
-                <InputLabel>Street Address Line 1</InputLabel>
+                <InputLabel>Street Address</InputLabel>
                 <Input
                   placeholder="Street address"
                   value={addressLine1}
@@ -198,7 +193,7 @@ const EditProfile = () => {
               </InputGroup>
 
               <InputGroup>
-                <InputLabel>Street Address Line 2 (Optional)</InputLabel>
+                <InputLabel>Apartment, Suite, etc. (Optional)</InputLabel>
                 <Input
                   placeholder="Apartment, suite, unit, etc."
                   value={addressLine2}
@@ -247,18 +242,10 @@ const EditProfile = () => {
                 </HalfInputGroup>
               </RowContainer>
 
-              <InputGroup>
-                <InputLabel>Phone Number (Optional)</InputLabel>
-                <Input
-                  placeholder="Phone number"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  keyboardType="phone-pad"
-                />
-              </InputGroup>
-
-              <SaveButton onPress={handleSubmit}>
-                <SaveButtonText>Save Changes</SaveButtonText>
+              <SaveButton onPress={handleSubmit} disabled={loading}>
+                <SaveButtonText>
+                  {loading ? "Saving..." : "Save Changes"}
+                </SaveButtonText>
               </SaveButton>
             </ScrollView>
           </ContentContainer>
@@ -270,6 +257,7 @@ const EditProfile = () => {
 
 export default EditProfile;
 
+// Styled components remain the same, just emove the photo-related ones
 const Container = styled(SafeAreaView)`
   flex: 1;
   background-color: #f8f9fa;
@@ -304,42 +292,6 @@ const Title = styled.Text`
   color: #212529;
 `;
 
-const ProfileImageSection = styled.View`
-  align-items: center;
-  margin-bottom: 32px;
-`;
-
-const ProfileImageContainer = styled.View`
-  position: relative;
-  margin-bottom: 12px;
-`;
-
-const ProfileImage = styled.Image`
-  width: 100px;
-  height: 100px;
-  border-radius: 50px;
-  background-color: #e9ecef;
-`;
-
-const EditIconButton = styled.TouchableOpacity`
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  background-color: #4361ee;
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #fff;
-`;
-
-const ProfileName = styled.Text`
-  font-size: 18px;
-  font-weight: 600;
-  color: #212529;
-`;
-
 const SectionTitle = styled.Text`
   font-size: 16px;
   font-weight: 600;
@@ -369,16 +321,6 @@ const Input = styled.TextInput`
   color: #212529;
 `;
 
-const TextArea = styled.TextInput`
-  min-height: 120px;
-  background-color: #fff;
-  border: 1px solid #dee2e6;
-  border-radius: 12px;
-  padding: 16px;
-  font-size: 16px;
-  color: #212529;
-`;
-
 const RowContainer = styled.View`
   flex-direction: row;
   justify-content: space-between;
@@ -397,6 +339,7 @@ const SaveButton = styled.TouchableOpacity`
   align-items: center;
   margin-top: 8px;
   margin-bottom: 24px;
+  opacity: ${(props) => (props.disabled ? 0.6 : 1)};
 `;
 
 const SaveButtonText = styled.Text`

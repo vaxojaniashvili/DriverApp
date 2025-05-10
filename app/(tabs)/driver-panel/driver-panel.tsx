@@ -56,24 +56,29 @@ const monthlyData = {
 };
 
 const DriverDashboard = () => {
-  const [driverData, setDriverData] = useState([]);
+  const [driverData, setDriverData] = useState<any>([]);
   const [incomeTimeframe, setIncomeTimeframe] = useState("daily");
   const [chartData, setChartData] = useState(dailyData);
   const [ordersExpanded, setOrdersExpanded] = useState(false);
   const animatedHeight = useState(new Animated.Value(0))[0];
+  const [apiToken, setApiToken] = useState<string | null>(null);
 
   const statCards = [
     { title: "Trip Count", value: "52", icon: "car-outline" },
-    { title: "Income", value: "$1,240", icon: "wallet-outline" },
-    { title: "Your %", value: "25%", icon: "pie-chart-outline" },
-    { title: "Rating", value: "4.8", icon: "star-outline" },
+    {
+      title: "Income",
+      value: driverData.totalPaid || 0,
+      icon: "wallet-outline",
+    },
+    // { title: "Your %", value: "25%", icon: "pie-chart-outline" },
+    { title: "Rating", value: driverData.rating || 0, icon: "star-outline" },
     {
       title: "Order History",
       value: "View Details",
       icon: "time-outline",
       isButton: true,
     },
-    { title: "Feedback", value: "3.5", icon: "star-half-outline" },
+    // { title: "Feedback", value: "3.5", icon: "star-half-outline" },
   ];
 
   const recentOrders = [
@@ -100,6 +105,11 @@ const DriverDashboard = () => {
     const fetchStats = async () => {
       try {
         const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+        setApiToken(session.access_token);
+        const {
           data: { user },
           error: userError,
         } = await supabase.auth.getUser();
@@ -113,10 +123,15 @@ const DriverDashboard = () => {
 
         try {
           const res = await fetch(
-            `https://api.thevanapp.com/api/driver-stats/total/${driverUUID}`
+            `https://api.thevanapp.com/api/driver-stats/total/${driverUUID}`,
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiToken}`,
+              },
+            }
           );
           const data = await res.json();
-          // console.log("Dataaa", data);
           setDriverData(data);
         } catch (apiError) {
           console.log("API error, using fake data:", apiError);
@@ -166,7 +181,6 @@ const DriverDashboard = () => {
         return "Last 7 days";
     }
   };
-
   return (
     <Container>
       <StatusBar

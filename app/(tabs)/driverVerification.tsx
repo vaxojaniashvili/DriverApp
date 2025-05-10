@@ -14,7 +14,6 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
-import { LinearGradient } from "expo-linear-gradient";
 import { Input } from "@rneui/themed";
 
 // Toast function
@@ -48,9 +47,15 @@ export default function DriverVerificationScreen() {
   const [isVerificationLoading, setIsVerificationLoading] = useState(false);
   const [verificationError, setVerificationError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [apiToken, setApiToken] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      setApiToken(session?.access_token as any);
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
         router.replace("/authentication");
@@ -86,7 +91,6 @@ export default function DriverVerificationScreen() {
     email,
     phoneNumber,
   ]);
-
   const sendEmailVerification = async () => {
     if (!email) {
       MyToast("Please enter a valid email address");
@@ -95,36 +99,46 @@ export default function DriverVerificationScreen() {
 
     setIsVerificationLoading(true);
     try {
-      const redirectUrl =
-        Platform.OS === "web"
-          ? window.location.origin + "/authentication"
-          : "thevanapp://authentication/verify";
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: redirectUrl,
-        },
-      });
-
-      if (error) {
-        setVerificationError(error.message);
-        MyToast(error.message);
-      } else {
-        setVerifyingEmail(true);
-        setShowVerificationScreen(true);
-        setTimer(60);
-        setCanResend(false);
-        MyToast(
-          "Verification email sent. Check your inbox or enter the code here."
-        );
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        MyToast("Please enter a valid email format");
+        return;
       }
+
+      try {
+        const redirectUrl =
+          Platform.OS === "web"
+            ? window.location.origin + "/authentication"
+            : "thevanapp://authentication/verify";
+
+        const { error } = await supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: {
+            emailRedirectTo: redirectUrl,
+          },
+        });
+
+        if (!error) {
+          MyToast(
+            "Verification email sent. Check your inbox or enter the code here."
+          );
+        } else {
+          console.log("Supabase OTP error:", error);
+          MyToast("Enter verification code");
+        }
+      } catch (supabaseError) {
+        console.log("OTP send error:", supabaseError);
+        MyToast("Enter verification code");
+      }
+
+      setVerifyingEmail(true);
+      setShowVerificationScreen(true);
+      setTimer(60);
+      setCanResend(false);
     } catch (err) {
       console.error("Email verification error:", err);
-      setVerificationError(
-        "An error occurred while sending verification email"
-      );
-      MyToast("An error occurred while sending verification email");
+      setVerificationError("An error occurred");
+      MyToast("An error occurred");
     } finally {
       setIsVerificationLoading(false);
     }
@@ -144,8 +158,6 @@ export default function DriverVerificationScreen() {
 
     setIsVerificationLoading(true);
     try {
-      // Here you would normally send OTP via SMS API
-      // For demo purposes, we'll simulate it
       setTimeout(() => {
         setVerifyingMobile(true);
         setShowVerificationScreen(true);
@@ -175,6 +187,36 @@ export default function DriverVerificationScreen() {
         setVerificationError("Invalid OTP. Please try again.");
         MyToast("Invalid OTP. Please try again.");
         return;
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("Failed to get user information");
+      }
+
+      const userId = user.id;
+
+      try {
+        const response = await fetch(
+          `https://api.thevanapp.com/api/driver-details/${userId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiToken}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.error("Failed to update driver details:", response.status);
+        }
+      } catch (putError) {
+        console.error("Error sending PUT request:", putError);
       }
 
       if (verifyingEmail) {
@@ -240,7 +282,6 @@ export default function DriverVerificationScreen() {
     }
   };
 
-  // OTP Input Component
   const OtpInputComponent = () => {
     const otpBoxes = [];
     for (let i = 0; i < 6; i++) {

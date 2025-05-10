@@ -69,7 +69,13 @@ const HomeScreen: React.FC = () => {
   const fetchDriverDetails = async () => {
     try {
       const response = await fetch(
-        `https://api.thevanapp.com/api/driver-details/10`
+        `https://api.thevanapp.com/api/driver-details/${userId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiToken}`,
+          },
+        }
       );
       const data = await response.json();
 
@@ -111,9 +117,9 @@ const HomeScreen: React.FC = () => {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
-      setUserId(user?.id as any);
+      // console.log(user);
 
-      // console.log("dataaaa", user);
+      setUserId(user?.id as any);
 
       if (userError || !user) {
         console.error("Error fetching user:", userError);
@@ -149,7 +155,7 @@ const HomeScreen: React.FC = () => {
     if (userEmail && apiToken) {
       const interval = setInterval(() => {
         fetchDriverDetails();
-      }, 10000);
+      }, 100);
 
       return () => clearInterval(interval);
     }

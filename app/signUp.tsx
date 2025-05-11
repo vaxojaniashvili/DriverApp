@@ -331,7 +331,7 @@ export default function DriverSignUp() {
       });
 
       if (profileError) {
-        console.error("Profile creation error:", profileError);
+        // console.error("Profile creation error:", profileError);
       }
 
       const { data: sessionData, error: sessionError } =
@@ -348,7 +348,7 @@ export default function DriverSignUp() {
       await AsyncStorage.setItem("user_id", user.id);
 
       setTimeout(() => {
-        router.replace("/(tabs)");
+        // router.replace("/(tabs)");
       }, 1000);
     } catch (error) {
       console.error("Registration error:", error);

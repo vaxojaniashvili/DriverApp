@@ -2058,7 +2058,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
-  - react-native-google-maps (from `/Users/mac/Desktop/DriverApp/node_modules/react-native-maps`)
+  - react-native-google-maps (from `/Users/mac/Desktop/driverApp/node_modules/react-native-maps`)
   - react-native-maps (from `../node_modules/react-native-maps`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-nativeconfig (from `../node_modules/react-native/ReactCommon`)
@@ -2224,7 +2224,7 @@ EXTERNAL SOURCES:
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
   react-native-google-maps:
-    :path: "/Users/mac/Desktop/DriverApp/node_modules/react-native-maps"
+    :path: "/Users/mac/Desktop/driverApp/node_modules/react-native-maps"
   react-native-maps:
     :path: "../node_modules/react-native-maps"
   react-native-safe-area-context:

@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,7 +15,6 @@ import { router } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 import { Input } from "@rneui/themed";
 
-// Toast function
 const MyToast = (message, duration = "short") => {
   if (Platform.OS === "android") {
     ToastAndroid.show(
@@ -31,10 +29,17 @@ const MyToast = (message, duration = "short") => {
 };
 
 export default function DriverVerificationScreen() {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
+
+  const [streetAddress1, setStreetAddress1] = useState("");
+  const [streetAddress2, setStreetAddress2] = useState("");
+  const [city, setCity] = useState("");
+  const [stateProvince, setStateProvince] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [country, setCountry] = useState("");
+
   const [isValid, setIsValid] = useState(false);
   const [isMobileVerified, setIsMobileVerified] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
@@ -65,7 +70,6 @@ export default function DriverVerificationScreen() {
     checkAuth();
   }, []);
 
-  // Timer for OTP resend
   useEffect(() => {
     if (timer > 0 && showVerificationScreen) {
       const timerId = setTimeout(() => setTimer(timer - 1), 1000);
@@ -76,21 +80,30 @@ export default function DriverVerificationScreen() {
   }, [timer, showVerificationScreen]);
 
   useEffect(() => {
-    const isNameValid = firstName.trim() !== "" && lastName.trim() !== "";
-    const isPhoneValid = isMobileVerified || phoneNumber.trim() === "";
-    const isEmailValid = isEmailVerified || email.trim() === "";
+    const isNameValid = name.trim() !== "";
     const hasAtLeastOneContact =
       (email.trim() !== "" && isEmailVerified) ||
       (phoneNumber.trim() !== "" && isMobileVerified);
-    setIsValid(isNameValid && hasAtLeastOneContact);
+    const isAddressValid =
+      streetAddress1.trim() !== "" &&
+      city.trim() !== "" &&
+      stateProvince.trim() !== "" &&
+      zipCode.trim() !== "" &&
+      country.trim() !== "";
+    setIsValid(isNameValid && hasAtLeastOneContact && isAddressValid);
   }, [
-    firstName,
-    lastName,
+    name,
     isMobileVerified,
     isEmailVerified,
     email,
     phoneNumber,
+    streetAddress1,
+    city,
+    stateProvince,
+    zipCode,
+    country,
   ]);
+
   const sendEmailVerification = async () => {
     if (!email) {
       MyToast("Please enter a valid email address");
@@ -262,14 +275,28 @@ export default function DriverVerificationScreen() {
     try {
       const { error } = await supabase.auth.updateUser({
         data: {
-          first_name: firstName,
-          last_name: lastName,
-          fullname: `${firstName} ${lastName}`,
+          full_name: name,
           phone: phoneNumber,
           email: email,
+          address_line_1: streetAddress1,
+          address_line_2: streetAddress2,
+          city: city,
+          state: stateProvince,
+          postal_code: zipCode,
+          country: country,
           status: "pending_verification",
         },
       });
+      setName("");
+      setPhoneNumber("");
+      setEmail("");
+      setStreetAddress1("");
+      setStreetAddress2("");
+      setCity("");
+      setStreetAddress1("");
+      setStateProvince("");
+      setZipCode("");
+      setCountry("");
 
       if (error) throw error;
 
@@ -337,7 +364,6 @@ export default function DriverVerificationScreen() {
     );
   };
 
-  // Verification screen
   if (showVerificationScreen) {
     return (
       <View
@@ -513,31 +539,16 @@ export default function DriverVerificationScreen() {
             </Text>
 
             <Input
-              label="First Name"
+              label="Full Name"
               leftIcon={{
                 type: "material-community",
                 name: "account-outline",
                 size: 22,
                 color: "#27ae60",
               }}
-              value={firstName}
-              onChangeText={setFirstName}
+              value={name}
+              onChangeText={setName}
               placeholder="Enter your first name"
-              autoCapitalize="words"
-              containerStyle={{ marginBottom: 5 }}
-            />
-
-            <Input
-              label="Last Name"
-              leftIcon={{
-                type: "material-community",
-                name: "account-outline",
-                size: 22,
-                color: "#27ae60",
-              }}
-              value={lastName}
-              onChangeText={setLastName}
-              placeholder="Enter your last name"
               autoCapitalize="words"
               containerStyle={{ marginBottom: 5 }}
             />
@@ -662,6 +673,97 @@ export default function DriverVerificationScreen() {
                 </TouchableOpacity>
               )}
             </View>
+
+            {/* Address fields */}
+            <Input
+              label="Street Address Line 1"
+              leftIcon={{
+                type: "material-community",
+                name: "home-outline",
+                size: 22,
+                color: "#27ae60",
+              }}
+              value={streetAddress1}
+              onChangeText={setStreetAddress1}
+              placeholder="Enter street address"
+              autoCapitalize="words"
+              containerStyle={{ marginBottom: 5 }}
+            />
+
+            <Input
+              label="Street Address Line 2 (Optional)"
+              leftIcon={{
+                type: "material-community",
+                name: "home-outline",
+                size: 22,
+                color: "#27ae60",
+              }}
+              value={streetAddress2}
+              onChangeText={setStreetAddress2}
+              placeholder="Apartment, suite, unit etc."
+              autoCapitalize="words"
+              containerStyle={{ marginBottom: 5 }}
+            />
+
+            <Input
+              label="City"
+              leftIcon={{
+                type: "material-community",
+                name: "city",
+                size: 22,
+                color: "#27ae60",
+              }}
+              value={city}
+              onChangeText={setCity}
+              placeholder="Enter city"
+              autoCapitalize="words"
+              containerStyle={{ marginBottom: 5 }}
+            />
+
+            <Input
+              label="State / Province / Region"
+              leftIcon={{
+                type: "material-community",
+                name: "map-marker-outline",
+                size: 22,
+                color: "#27ae60",
+              }}
+              value={stateProvince}
+              onChangeText={setStateProvince}
+              placeholder="Enter state or province"
+              autoCapitalize="words"
+              containerStyle={{ marginBottom: 5 }}
+            />
+
+            <Input
+              label="ZIP / Postal Code"
+              leftIcon={{
+                type: "material-community",
+                name: "mailbox-outline",
+                size: 22,
+                color: "#27ae60",
+              }}
+              value={zipCode}
+              onChangeText={setZipCode}
+              placeholder="Enter ZIP or postal code"
+              keyboardType="default"
+              containerStyle={{ marginBottom: 5 }}
+            />
+
+            <Input
+              label="Country"
+              leftIcon={{
+                type: "material-community",
+                name: "earth",
+                size: 22,
+                color: "#27ae60",
+              }}
+              value={country}
+              onChangeText={setCountry}
+              placeholder="Enter country"
+              autoCapitalize="words"
+              containerStyle={{ marginBottom: 5 }}
+            />
 
             <TouchableOpacity
               onPress={handleSubmit}

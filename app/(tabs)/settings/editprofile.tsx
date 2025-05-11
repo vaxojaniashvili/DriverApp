@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ScrollView,
   SafeAreaView,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import styled from "styled-components/native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 
 const EditProfile = () => {
@@ -29,6 +29,7 @@ const EditProfile = () => {
   const [state, setState] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("");
+  const [apiToken, setApiToken] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserData();
@@ -36,6 +37,18 @@ const EditProfile = () => {
 
   const fetchUserData = async () => {
     try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        console.error("No active session found");
+        router.replace("/authentication" as any);
+        return;
+      }
+
+      setApiToken(session.access_token);
       const {
         data: { user },
         error: userError,
@@ -47,6 +60,7 @@ const EditProfile = () => {
       }
 
       const metadata = user.user_metadata;
+      // console.log(metadata);
 
       setUserId(user.id);
       setEmail(user.email || "");
@@ -58,7 +72,7 @@ const EditProfile = () => {
         .single();
 
       if (driverData) {
-        setName(metadata.fullname || "");
+        setName(metadata.full_name || metadata.fullname || "");
         setPhoneNumber(metadata.phone || "");
         setAddressLine1(metadata.address_line_1 || "");
         setAddressLine2(metadata.address_line_2 || "");
@@ -96,7 +110,7 @@ const EditProfile = () => {
 
       const { error } = await supabase.auth.updateUser({
         data: {
-          fullname: name,
+          full_name: name,
           first_name: name.split(" ")[0] || name,
           last_name: name.split(" ").slice(1).join(" ") || "",
           phone: phoneNumber,
@@ -123,6 +137,11 @@ const EditProfile = () => {
       setLoading(false);
     }
   };
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserData();
+    }, [apiToken])
+  );
 
   return (
     <Container>
@@ -257,7 +276,6 @@ const EditProfile = () => {
 
 export default EditProfile;
 
-// Styled components remain the same, just emove the photo-related ones
 const Container = styled(SafeAreaView)`
   flex: 1;
   background-color: #f8f9fa;

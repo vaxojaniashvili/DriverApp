@@ -32,6 +32,7 @@ export default function DriverVerificationScreen() {
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
+  const [licensePlate, setLicensePlate] = useState("");
 
   const [streetAddress1, setStreetAddress1] = useState("");
   const [streetAddress2, setStreetAddress2] = useState("");
@@ -90,7 +91,14 @@ export default function DriverVerificationScreen() {
       stateProvince.trim() !== "" &&
       zipCode.trim() !== "" &&
       country.trim() !== "";
-    setIsValid(isNameValid && hasAtLeastOneContact && isAddressValid);
+    const isLicensePlateValid = licensePlate.trim() !== "";
+
+    setIsValid(
+      isNameValid &&
+        hasAtLeastOneContact &&
+        isAddressValid &&
+        isLicensePlateValid
+    );
   }, [
     name,
     isMobileVerified,
@@ -102,6 +110,7 @@ export default function DriverVerificationScreen() {
     stateProvince,
     zipCode,
     country,
+    licensePlate,
   ]);
 
   const sendEmailVerification = async () => {
@@ -211,27 +220,6 @@ export default function DriverVerificationScreen() {
         throw new Error("Failed to get user information");
       }
 
-      const userId = user.id;
-
-      try {
-        const response = await fetch(
-          `https://api.thevanapp.com/api/driver-details/${userId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiToken}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          console.error("Failed to update driver details:", response.status);
-        }
-      } catch (putError) {
-        console.error("Error sending PUT request:", putError);
-      }
-
       if (verifyingEmail) {
         setIsEmailVerified(true);
       } else if (verifyingMobile) {
@@ -273,6 +261,17 @@ export default function DriverVerificationScreen() {
 
     setIsLoading(true);
     try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("Failed to get user information");
+      }
+
+      const userId = user.id;
+
       const { error } = await supabase.auth.updateUser({
         data: {
           full_name: name,
@@ -287,18 +286,43 @@ export default function DriverVerificationScreen() {
           status: "pending_verification",
         },
       });
+
+      if (error) throw error;
+
+      // try {
+      //   const response = await fetch(
+      //     `https://api.thevanapp.com/api/driver-details/verify/${userId}`,
+      //     {
+      //       method: "PUT",
+      //       headers: {
+      //         "Content-Type": "application/json",
+      //         Authorization: `Bearer ${apiToken}`,
+      //       },
+      //       body: JSON.stringify({
+      //         plate: licensePlate,
+      //       }),
+      //     }
+      //   );
+
+      //   if (!response.ok) {
+      //     console.error("Failed to update driver details:", response.status);
+      //     throw new Error("Failed to update driver details");
+      //   }
+      // } catch (putError) {
+      //   console.error("Error sending PUT request:", putError);
+      //   throw putError;
+      // }
+
       setName("");
       setPhoneNumber("");
       setEmail("");
       setStreetAddress1("");
       setStreetAddress2("");
       setCity("");
-      setStreetAddress1("");
       setStateProvince("");
       setZipCode("");
       setCountry("");
-
-      if (error) throw error;
+      setLicensePlate("");
 
       MyToast("Your verification request has been submitted successfully!");
     } catch (error) {
@@ -673,6 +697,21 @@ export default function DriverVerificationScreen() {
                 </TouchableOpacity>
               )}
             </View>
+
+            <Input
+              label="Vehicle License Plate"
+              leftIcon={{
+                type: "material-community",
+                name: "car",
+                size: 22,
+                color: "#27ae60",
+              }}
+              value={licensePlate}
+              onChangeText={setLicensePlate}
+              placeholder="Enter your vehicle license plate"
+              autoCapitalize="characters"
+              containerStyle={{ marginBottom: 5 }}
+            />
 
             {/* Address fields */}
             <Input

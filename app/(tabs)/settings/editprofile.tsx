@@ -79,7 +79,7 @@ const EditProfile = () => {
         setCity(metadata.city || "");
         setState(metadata.state || "");
         setPostalCode(metadata.postal_code || "");
-        setCountry(metadata.country || "Malta");
+        setCountry(metadata.country || "");
       } else {
         setName(metadata.fullname || metadata.full_name || "");
         setPhoneNumber(metadata.phone || "");

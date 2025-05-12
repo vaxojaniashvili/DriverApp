@@ -54,6 +54,7 @@ export default function DriverVerificationScreen() {
   const [verificationError, setVerificationError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
+  const [firstEmail, setFirstEmail] = useState("");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -265,7 +266,6 @@ export default function DriverVerificationScreen() {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
-
       if (userError || !user) {
         throw new Error("Failed to get user information");
       }
@@ -289,29 +289,29 @@ export default function DriverVerificationScreen() {
 
       if (error) throw error;
 
-      // try {
-      //   const response = await fetch(
-      //     `https://api.thevanapp.com/api/driver-details/verify/${userId}`,
-      //     {
-      //       method: "PUT",
-      //       headers: {
-      //         "Content-Type": "application/json",
-      //         Authorization: `Bearer ${apiToken}`,
-      //       },
-      //       body: JSON.stringify({
-      //         plate: licensePlate,
-      //       }),
-      //     }
-      //   );
+      try {
+        const response = await fetch(
+          `https://api.thevanapp.com/api/driver-details/verify/${userId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiToken}`,
+            },
+            body: JSON.stringify({
+              plate: licensePlate,
+            }),
+          }
+        );
 
-      //   if (!response.ok) {
-      //     console.error("Failed to update driver details:", response.status);
-      //     throw new Error("Failed to update driver details");
-      //   }
-      // } catch (putError) {
-      //   console.error("Error sending PUT request:", putError);
-      //   throw putError;
-      // }
+        if (!response.ok) {
+          console.error("Failed to update driver details:", response.status);
+          throw new Error("Failed to update driver details");
+        }
+      } catch (putError) {
+        console.error("Error sending PUT request:", putError);
+        throw putError;
+      }
 
       setName("");
       setPhoneNumber("");

@@ -51,6 +51,7 @@ export default function DriverSignUp() {
   const [phoneNumberError, setPhoneNumberError] = useState("");
   const [cityError, setCityError] = useState("");
   const [vanOptionError, setVanOptionError] = useState("");
+  const [apiToken, setApiToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (otpInputRefs.current.length < 6) {
@@ -310,6 +311,7 @@ export default function DriverSignUp() {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
+      const driverUUID = user?.id;
 
       if (userError || !user) {
         throw new Error("Failed to get user data");
@@ -330,26 +332,50 @@ export default function DriverSignUp() {
         updated_at: new Date().toISOString(),
       });
 
-      if (profileError) {
-        // console.error("Profile creation error:", profileError);
-      }
+      // if (profileError) {
+      //   console.error("Profile creation error:", profileError);
+      // }
 
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
+      setApiToken(sessionData?.session?.access_token as any);
 
       if (sessionError || !sessionData.session) {
         throw new Error("Failed to establish session");
       }
+      setTimeout(async () => {
+        try {
+          const res = await fetch(
+            "https://api.thevanapp.com/api/driver-details",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiToken}`,
+              },
+              body: JSON.stringify({
+                unique_id: driverUUID,
+                name: name,
+                last_name: surname,
+                email: email,
+              }),
+            }
+          );
+          const data = await res.json();
+          console.log("Data", data);
+          await AsyncStorage.setItem(
+            "supabase_session",
+            JSON.stringify(sessionData.session)
+          );
+          await AsyncStorage.setItem("user_id", user.id);
 
-      await AsyncStorage.setItem(
-        "supabase_session",
-        JSON.stringify(sessionData.session)
-      );
-      await AsyncStorage.setItem("user_id", user.id);
-
-      setTimeout(() => {
-        // router.replace("/(tabs)");
-      }, 1000);
+          if (!res.ok) {
+            console.log("errror");
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      }, 3000);
     } catch (error) {
       console.error("Registration error:", error);
       Alert.alert(

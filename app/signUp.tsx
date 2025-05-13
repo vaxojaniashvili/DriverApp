@@ -256,7 +256,6 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      // Just simulate resending without actual email
       setTimer(60);
       setCanResend(false);
       Alert.alert(

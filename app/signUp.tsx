@@ -9,11 +9,11 @@ import { supabase } from "../infrastructure/db/supabase";
 import { Button, Input, Icon } from "@rneui/themed";
 import styled from "styled-components/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
 import { RegistrationForm } from "@/components/register/RegistrationForm";
 import { DocumentsScreen } from "@/components/register/DocumentsScreen";
 import { ConfirmationScreen } from "@/components/register/ConfirmationScreen";
 import { VerificationScreen } from "@/components/register/ VerificationScreen";
+import { COUNTRIES } from "@/components/Countries";
 
 export default function DriverSignUp() {
   const [email, setEmail] = useState("");
@@ -52,6 +52,8 @@ export default function DriverSignUp() {
   const [cityError, setCityError] = useState("");
   const [vanOptionError, setVanOptionError] = useState("");
   const [apiToken, setApiToken] = useState<string | null>(null);
+
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
 
   useEffect(() => {
     if (otpInputRefs.current.length < 6) {
@@ -202,13 +204,11 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      // Just simulate OTP sending without actual Supabase call
       setVerificationSent(true);
       setIsVerifying(true);
       setTimer(60);
       setCanResend(false);
 
-      // Simulate delay for realistic feel
       setTimeout(() => {
         Alert.alert(
           "Success",
@@ -273,7 +273,6 @@ export default function DriverSignUp() {
   const completeRegistration = async () => {
     setLoading(true);
     try {
-      // Create new user
       const { data: signUpData, error: signUpError } =
         await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
@@ -297,7 +296,6 @@ export default function DriverSignUp() {
 
       if (signUpError) throw signUpError;
 
-      // Sign in immediately after registration
       const { data: signInData, error: signInError } =
         await supabase.auth.signInWithPassword({
           email: email.trim().toLowerCase(),
@@ -306,7 +304,6 @@ export default function DriverSignUp() {
 
       if (signInError) throw signInError;
 
-      // Get current user
       const {
         data: { user },
         error: userError,
@@ -316,25 +313,6 @@ export default function DriverSignUp() {
       if (userError || !user) {
         throw new Error("Failed to get user data");
       }
-
-      // Create or update user profile in the profiles table
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: user.id,
-        email: email.trim().toLowerCase(),
-        first_name: name,
-        last_name: surname,
-        full_name: `${name} ${surname}`,
-        phone: phoneNumber,
-        van_option: vanOption,
-        user_type: "driver",
-        status: "complete",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-
-      // if (profileError) {
-      //   console.error("Profile creation error:", profileError);
-      // }
 
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
@@ -430,6 +408,9 @@ export default function DriverSignUp() {
                 surname={surname}
                 email={email}
                 phoneNumber={phoneNumber}
+                COUNTRIES={COUNTRIES}
+                selectedCountry={selectedCountry}
+                setSelectedCountry={setSelectedCountry}
                 password={password}
                 confirmPassword={confirmPassword}
                 vanOption={vanOption}

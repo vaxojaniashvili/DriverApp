@@ -10,21 +10,6 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 
-const COUNTRIES = [
-  { name: "Georgia", code: "GE", dialCode: "+995", flag: "🇬🇪" },
-  { name: "United States", code: "US", dialCode: "+1", flag: "🇺🇸" },
-  { name: "United Kingdom", code: "GB", dialCode: "+44", flag: "🇬🇧" },
-  { name: "Germany", code: "DE", dialCode: "+49", flag: "🇩🇪" },
-  { name: "France", code: "FR", dialCode: "+33", flag: "🇫🇷" },
-  { name: "Spain", code: "ES", dialCode: "+34", flag: "🇪🇸" },
-  { name: "Italy", code: "IT", dialCode: "+39", flag: "🇮🇹" },
-  { name: "Russia", code: "RU", dialCode: "+7", flag: "🇷🇺" },
-  { name: "Turkey", code: "TR", dialCode: "+90", flag: "🇹🇷" },
-  { name: "Ukraine", code: "UA", dialCode: "+380", flag: "🇺🇦" },
-  { name: "Poland", code: "PL", dialCode: "+48", flag: "🇵🇱" },
-  { name: "Netherlands", code: "NL", dialCode: "+31", flag: "🇳🇱" },
-  { name: "Malta", code: "MT", dialCode: "+356", flag: "🇲🇹" },
-];
 export const RegistrationForm = ({
   name,
   surname,
@@ -68,8 +53,10 @@ export const RegistrationForm = ({
   SurnameInput,
   StyledInput,
   StyledButton,
+  selectedCountry,
+  setSelectedCountry,
+  COUNTRIES,
 }: any) => {
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[12]);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 

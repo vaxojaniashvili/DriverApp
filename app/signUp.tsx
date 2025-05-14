@@ -22,7 +22,6 @@ export default function DriverSignUp() {
   const [surname, setSurname] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [city, setCity] = useState("");
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -49,7 +48,6 @@ export default function DriverSignUp() {
   const [nameError, setNameError] = useState("");
   const [surnameError, setSurnameError] = useState("");
   const [phoneNumberError, setPhoneNumberError] = useState("");
-  const [cityError, setCityError] = useState("");
   const [vanOptionError, setVanOptionError] = useState("");
   const [apiToken, setApiToken] = useState<string | null>(null);
 
@@ -204,22 +202,27 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
+      const formattedPhone = phoneNumber.startsWith("+")
+        ? phoneNumber
+        : `${selectedCountry.dialCode}${phoneNumber}`;
+
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+      });
+
+      if (error) throw error;
+
       setVerificationSent(true);
       setIsVerifying(true);
       setTimer(60);
       setCanResend(false);
 
-      setTimeout(() => {
-        Alert.alert(
-          "Success",
-          "Verification code sent successfully! Use 123456"
-        );
-      }, 500);
+      Alert.alert("Success", "Verification code sent successfully!");
     } catch (error) {
-      console.error("Unexpected error:", error);
+      console.error("OTP send error:", error);
       Alert.alert(
         "Error",
-        "Failed to send verification code. Please try again."
+        error.message || "Failed to send verification code. Please try again."
       );
     } finally {
       setLoading(false);
@@ -228,7 +231,6 @@ export default function DriverSignUp() {
 
   const verifyOtp = async () => {
     const otpValue = otpDigits.join("");
-    const TEST_OTP = "123456";
 
     if (otpValue.length !== 6) {
       Alert.alert("Error", "Please enter the complete 6-digit code");
@@ -237,15 +239,33 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      if (otpValue === TEST_OTP) {
+      const formattedPhone = phoneNumber.startsWith("+")
+        ? phoneNumber
+        : `${selectedCountry.dialCode}${phoneNumber}`;
+
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.verifyOtp({
+        phone: formattedPhone,
+        token: otpValue,
+        type: "sms",
+      });
+
+      if (error) throw error;
+
+      if (session) {
         setIsVerifying(false);
         setCurrentStep(2);
         setOtpDigits(["", "", "", "", "", ""]);
+
+        await AsyncStorage.setItem("supabase_session", JSON.stringify(session));
       } else {
-        Alert.alert("Error", "Invalid OTP code. Use 123456 for testing.");
+        Alert.alert("Error", "Verification failed. Please try again.");
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to verify code");
+      console.error("OTP verification error:", error);
+      Alert.alert("Error", error.message || "Failed to verify code");
     } finally {
       setLoading(false);
     }
@@ -256,14 +276,28 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
+      const formattedPhone = phoneNumber.startsWith("+")
+        ? phoneNumber
+        : `${selectedCountry.dialCode}${phoneNumber}`;
+
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+      });
+
+      if (error) throw error;
+
       setTimer(60);
       setCanResend(false);
       Alert.alert(
         "Code Resent",
-        "A new verification code has been sent. Use 123456"
+        "A new verification code has been sent to your phone."
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to resend verification code");
+      console.error("OTP resend error:", error);
+      Alert.alert(
+        "Error",
+        error.message || "Failed to resend verification code"
+      );
     } finally {
       setLoading(false);
     }
@@ -272,87 +306,64 @@ export default function DriverSignUp() {
   const completeRegistration = async () => {
     setLoading(true);
     try {
-      const { data: signUpData, error: signUpError } =
-        await supabase.auth.signUp({
-          email: email.trim().toLowerCase(),
-          password: password,
-          options: {
-            data: {
-              first_name: name,
-              last_name: surname,
-              full_name: `${name} ${surname}`,
-              phone: phoneNumber,
-              van_option: vanOption,
-              user_type: "driver",
-              status: "complete",
-            },
-            emailRedirectTo:
-              Platform.OS === "web"
-                ? `${window.location.origin}/authentication`
-                : "myapp://auth/callback",
-          },
-        });
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (signUpError) throw signUpError;
-
-      const { data: signInData, error: signInError } =
-        await supabase.auth.signInWithPassword({
-          email: email.trim().toLowerCase(),
-          password: password,
-        });
-
-      if (signInError) throw signInError;
+      if (sessionError || !session) {
+        throw new Error(
+          "Invalid session. Please verify your phone number again."
+        );
+      }
 
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
-      const driverUUID = user?.id;
 
       if (userError || !user) {
         throw new Error("Failed to get user data");
       }
 
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-      setApiToken(sessionData?.session?.access_token as any);
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: email.trim().toLowerCase(),
+        data: {
+          first_name: name,
+          last_name: surname,
+          full_name: `${name} ${surname}`,
+          phone: phoneNumber,
+          van_option: vanOption,
+          user_type: "driver",
+          status: "complete",
+        },
+      });
 
-      if (sessionError || !sessionData.session) {
-        throw new Error("Failed to establish session");
+      if (updateError) throw updateError;
+
+      setApiToken(session.access_token);
+
+      const res = await fetch("https://api.thevanapp.com/api/driver-details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          unique_id: user.id,
+          name: name,
+          last_name: surname,
+          email: email,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "API call failed");
       }
-      setTimeout(async () => {
-        try {
-          const res = await fetch(
-            "https://api.thevanapp.com/api/driver-details",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${apiToken}`,
-              },
-              body: JSON.stringify({
-                unique_id: driverUUID,
-                name: name,
-                last_name: surname,
-                email: email,
-              }),
-            }
-          );
-          const data = await res.json();
-          console.log("Data", data);
-          await AsyncStorage.setItem(
-            "supabase_session",
-            JSON.stringify(sessionData.session)
-          );
-          await AsyncStorage.setItem("user_id", user.id);
 
-          if (!res.ok) {
-            console.log("errror");
-          }
-        } catch (error) {
-          console.log(error);
-        }
-      }, 3000);
+      await AsyncStorage.setItem("supabase_session", JSON.stringify(session));
+      await AsyncStorage.setItem("user_id", user.id);
     } catch (error) {
       console.error("Registration error:", error);
       Alert.alert(
@@ -363,7 +374,6 @@ export default function DriverSignUp() {
       setLoading(false);
     }
   };
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}

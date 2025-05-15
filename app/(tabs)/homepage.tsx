@@ -155,8 +155,6 @@ const HomeScreen: React.FC = () => {
               console.error("Failed to update user status:", updateError);
             } else {
               console.log("User status updated to complete");
-              const updatedUser = await supabase.auth.getUser();
-              console.log("Updated user data:", updatedUser.data.user);
             }
           } else {
             console.error("API request failed with status:", res.status);

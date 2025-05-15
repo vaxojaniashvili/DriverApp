@@ -14,6 +14,7 @@ import {
 import { router } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 import { Input } from "@rneui/themed";
+import { AntDesign } from "@expo/vector-icons";
 
 const MyToast = (message, duration = "short") => {
   if (Platform.OS === "android") {
@@ -147,7 +148,7 @@ export default function DriverVerificationScreen() {
           );
         } else {
           console.log("Supabase OTP error:", error);
-          MyToast("Enter verification code");
+          MyToast("Enter verification code,Code is:856135");
         }
       } catch (supabaseError) {
         console.log("OTP send error:", supabaseError);
@@ -186,7 +187,7 @@ export default function DriverVerificationScreen() {
         setShowVerificationScreen(true);
         setTimer(60);
         setCanResend(false);
-        MyToast("OTP sent to your mobile number");
+        MyToast("OTP sent to your mobile number,code is: 856135");
       }, 1500);
     } catch (err) {
       console.error("Mobile verification error:", err);
@@ -517,14 +518,15 @@ export default function DriverVerificationScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={{
-              width: 40,
-              height: 40,
+              width: 30,
+              height: 30,
               justifyContent: "center",
               alignItems: "center",
               marginBottom: 20,
+              borderRadius: 30,
             }}
           >
-            <Text style={{ fontSize: 24 }}>←</Text>
+            <AntDesign name="arrowleft" size={28} color="#27ae60" />
           </TouchableOpacity>
 
           <View

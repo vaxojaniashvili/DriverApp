@@ -4,7 +4,7 @@ import styled from "styled-components/native";
 import { LineChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
 import FinanceDetails from "@/components/driver-dashboard/finance";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -62,9 +62,11 @@ const DriverDashboard = () => {
   const [ordersExpanded, setOrdersExpanded] = useState(false);
   const animatedHeight = useState(new Animated.Value(0))[0];
   const [apiToken, setApiToken] = useState<string | null>(null);
+  const [orders, setOrders] = useState([]);
+  const [driverId, setDriverId] = useState(null);
 
   const statCards = [
-    { title: "Trip Count", value: "52", icon: "car-outline" },
+    { title: "Trip Count", value: orders.length || 0, icon: "car-outline" },
     {
       title: "Income",
       value: driverData.totalPaid || 0,
@@ -143,6 +145,39 @@ const DriverDashboard = () => {
 
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    const fetchOrderHistory = async () => {
+      try {
+        const res = await fetch(
+          `https://api.thevanapp.com/api/history/driver/${driverId}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiToken}`,
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error(`API error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        console.log("Dataaa", data);
+        if (Array.isArray(data)) {
+          setOrders(data as any);
+        } else {
+          console.error("Unexpected API response format:", data);
+          setOrders([]);
+        }
+      } catch (error) {
+        console.log("Error fetching order history:", error);
+        setOrders([]);
+      }
+    };
+    fetchOrderHistory();
+  }, [driverId]);
 
   const toggleTimeframe = () => {
     if (incomeTimeframe === "daily") {

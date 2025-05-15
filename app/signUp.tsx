@@ -8,7 +8,6 @@ import {
 import { supabase } from "../infrastructure/db/supabase";
 import { Button, Input, Icon } from "@rneui/themed";
 import styled from "styled-components/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RegistrationForm } from "@/components/register/RegistrationForm";
 import { DocumentsScreen } from "@/components/register/DocumentsScreen";
 import { ConfirmationScreen } from "@/components/register/ConfirmationScreen";
@@ -202,22 +201,31 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      const formattedPhone = phoneNumber.startsWith("+")
-        ? phoneNumber
-        : `${selectedCountry.dialCode}${phoneNumber}`;
+      if (contactMethod === "phone") {
+        const formattedPhone = phoneNumber.startsWith("+")
+          ? phoneNumber
+          : `${selectedCountry.dialCode}${phoneNumber}`;
 
-      const { data, error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-      });
+        const { data, error } = await supabase.auth.signInWithOtp({
+          phone: formattedPhone,
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        console.log("Simulated email OTP sent: 123456");
+      }
 
       setVerificationSent(true);
       setIsVerifying(true);
       setTimer(60);
       setCanResend(false);
 
-      Alert.alert("Success", "Verification code sent successfully!");
+      Alert.alert(
+        "Success",
+        contactMethod === "phone"
+          ? "Verification code sent successfully!"
+          : "Verification code sent successfully! Use 123456"
+      );
     } catch (error) {
       console.error("OTP send error:", error);
       Alert.alert(
@@ -239,29 +247,64 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      const formattedPhone = phoneNumber.startsWith("+")
-        ? phoneNumber
-        : `${selectedCountry.dialCode}${phoneNumber}`;
+      if (contactMethod === "phone") {
+        const formattedPhone = phoneNumber.startsWith("+")
+          ? phoneNumber
+          : `${selectedCountry.dialCode}${phoneNumber}`;
 
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.verifyOtp({
-        phone: formattedPhone,
-        token: otpValue,
-        type: "sms",
-      });
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.verifyOtp({
+          phone: formattedPhone,
+          token: otpValue,
+          type: "sms",
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (session) {
-        setIsVerifying(false);
-        setCurrentStep(2);
-        setOtpDigits(["", "", "", "", "", ""]);
-
-        await AsyncStorage.setItem("supabase_session", JSON.stringify(session));
+        if (session) {
+          setIsVerifying(false);
+          setCurrentStep(2);
+          setOtpDigits(["", "", "", "", "", ""]);
+        } else {
+          Alert.alert("Error", "Verification failed. Please try again.");
+        }
       } else {
-        Alert.alert("Error", "Verification failed. Please try again.");
+        if (otpValue === "123456") {
+          const { data: signUpData, error: signUpError } =
+            await supabase.auth.signUp({
+              email: email.trim().toLowerCase(),
+              password: password,
+              options: {
+                data: {
+                  first_name: name,
+                  last_name: surname,
+                  full_name: `${name} ${surname}`,
+                  phone: phoneNumber,
+                  van_option: vanOption,
+                  user_type: "driver",
+                  status: "incomplete",
+                },
+              },
+            });
+
+          if (signUpError) throw signUpError;
+
+          const { data: signInData, error: signInError } =
+            await supabase.auth.signInWithPassword({
+              email: email.trim().toLowerCase(),
+              password: password,
+            });
+
+          if (signInError) throw signInError;
+
+          setIsVerifying(false);
+          setCurrentStep(2);
+          setOtpDigits(["", "", "", "", "", ""]);
+        } else {
+          Alert.alert("Error", "Invalid verification code. Please use 123456");
+        }
       }
     } catch (error) {
       console.error("OTP verification error:", error);
@@ -276,21 +319,28 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      const formattedPhone = phoneNumber.startsWith("+")
-        ? phoneNumber
-        : `${selectedCountry.dialCode}${phoneNumber}`;
+      if (contactMethod === "phone") {
+        // მობილური OTP ხელახლა გაგზავნა - არსებული კოდი უცვლელად
+        const formattedPhone = phoneNumber.startsWith("+")
+          ? phoneNumber
+          : `${selectedCountry.dialCode}${phoneNumber}`;
 
-      const { data, error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-      });
+        const { data, error } = await supabase.auth.signInWithOtp({
+          phone: formattedPhone,
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        console.log("Simulated email OTP resent: 123456");
+      }
 
       setTimer(60);
       setCanResend(false);
       Alert.alert(
         "Code Resent",
-        "A new verification code has been sent to your phone."
+        contactMethod === "phone"
+          ? "A new verification code has been sent to your phone."
+          : "A new verification code has been sent to your email. Use 123456"
       );
     } catch (error) {
       console.error("OTP resend error:", error);
@@ -335,35 +385,11 @@ export default function DriverSignUp() {
           phone: phoneNumber,
           van_option: vanOption,
           user_type: "driver",
-          status: "complete",
+          status: "incomplete",
         },
       });
 
       if (updateError) throw updateError;
-
-      setApiToken(session.access_token);
-
-      const res = await fetch("https://api.thevanapp.com/api/driver-details", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          unique_id: user.id,
-          name: name,
-          last_name: surname,
-          email: email,
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "API call failed");
-      }
-
-      await AsyncStorage.setItem("supabase_session", JSON.stringify(session));
-      await AsyncStorage.setItem("user_id", user.id);
     } catch (error) {
       console.error("Registration error:", error);
       Alert.alert(

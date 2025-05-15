@@ -39,6 +39,7 @@ const HomeScreen: React.FC = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [userId, setUserId] = useState(null);
+  const [statusUser, setStatusUser] = useState(false);
 
   const [userIndicator, setUserIndicator] = useState<string | null>(null);
   const [driverDetails, setDriverDetails] = useState<any>(null);
@@ -117,7 +118,53 @@ const HomeScreen: React.FC = () => {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
-      // console.log(user);
+
+      if (user?.user_metadata.status === "incomplete") {
+        console.log("User status is incomplete. Sending API request...");
+
+        try {
+          const res = await fetch(
+            "https://api.thevanapp.com/api/driver-details",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                unique_id: user.id,
+                name: user.user_metadata.first_name,
+                last_name: user.user_metadata.last_name,
+                email: user.email,
+              }),
+            }
+          );
+
+          if (res.ok || res.status === 409) {
+            console.log(
+              "API request successful or data already exists. Updating status to complete..."
+            );
+
+            const { error: updateError } = await supabase.auth.updateUser({
+              data: {
+                status: "complete",
+              },
+            });
+
+            if (updateError) {
+              console.error("Failed to update user status:", updateError);
+            } else {
+              console.log("User status updated to complete");
+              const updatedUser = await supabase.auth.getUser();
+              console.log("Updated user data:", updatedUser.data.user);
+            }
+          } else {
+            console.error("API request failed with status:", res.status);
+          }
+        } catch (apiError) {
+          console.error("Error sending API request:", apiError);
+        }
+      }
 
       setUserId(user?.id as any);
 
@@ -127,25 +174,7 @@ const HomeScreen: React.FC = () => {
       }
 
       setUserEmail(user.email || "");
-
       await fetchDriverDetails();
-
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError) {
-        console.error("Error fetching profile:", profileError);
-        return;
-      }
-
-      setUserProfile(profile);
-
-      if (userIndicator === "active") {
-        fetchOrders(user.id);
-      }
     } catch (error) {
       console.error("Error in fetchUserData:", error);
     }
@@ -160,25 +189,6 @@ const HomeScreen: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [userEmail, apiToken]);
-
-  const fetchOrders = async (userId: string) => {
-    try {
-      const { data: orders, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("driver_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching orders:", error);
-        return;
-      }
-
-      setOrders(orders || []);
-    } catch (error) {
-      console.error("Error in fetchOrders:", error);
-    }
-  };
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
@@ -333,8 +343,6 @@ const HomeScreen: React.FC = () => {
       setRefreshing(false);
       return false;
     }
-
-    // setRefreshing(true);
 
     try {
       const {

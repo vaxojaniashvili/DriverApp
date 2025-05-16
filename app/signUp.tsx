@@ -179,6 +179,7 @@ export default function DriverSignUp() {
   };
 
   const sendVerificationCode = async () => {
+    console.log("=== STARTING sendVerificationCode ===");
     const isEmailValid = validateEmail(email);
     const isPhoneValid = validatePhoneNumber(phoneNumber);
     const isNameValid = validateName(name);
@@ -206,13 +207,25 @@ export default function DriverSignUp() {
           ? phoneNumber
           : `${selectedCountry.dialCode}${phoneNumber}`;
 
+        console.log("Sending OTP to phone:", formattedPhone);
         const { data, error } = await supabase.auth.signInWithOtp({
           phone: formattedPhone,
         });
 
         if (error) throw error;
       } else {
-        console.log("Simulated email OTP sent: 123456");
+        // ემაილი - ვითხოვთ ციფრულ კოდს და არა მაგიკ ლინკს
+        console.log("Sending OTP to email:", email);
+        const { data, error } = await supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: {
+            // უთითებთ, რომ გვინდა OTP კოდი
+            channel: "email",
+            type: "otp",
+          },
+        });
+
+        if (error) throw error;
       }
 
       setVerificationSent(true);
@@ -224,7 +237,7 @@ export default function DriverSignUp() {
         "Success",
         contactMethod === "phone"
           ? "Verification code sent successfully!"
-          : "Verification code sent successfully! Use 123456"
+          : "Verification code sent successfully! Check your email for the code."
       );
     } catch (error) {
       console.error("OTP send error:", error);
@@ -236,7 +249,6 @@ export default function DriverSignUp() {
       setLoading(false);
     }
   };
-
   const verifyOtp = async () => {
     const otpValue = otpDigits.join("");
 
@@ -252,6 +264,7 @@ export default function DriverSignUp() {
           ? phoneNumber
           : `${selectedCountry.dialCode}${phoneNumber}`;
 
+        console.log("Verifying phone OTP:", otpValue);
         const {
           data: { session },
           error,
@@ -264,24 +277,28 @@ export default function DriverSignUp() {
         if (error) throw error;
 
         if (session) {
-          const { data: signUpData, error: signUpError } =
-            await supabase.auth.signUp({
-              phone: formattedPhone,
-              password: password,
-              options: {
-                data: {
-                  first_name: name,
-                  last_name: surname,
-                  full_name: `${name} ${surname}`,
-                  phone: phoneNumber,
-                  van_option: vanOption,
-                  user_type: "driver",
-                  status: "incomplete",
-                },
+          console.log("Phone OTP verified successfully, updating user data");
+
+          // ნაცვლად signUp-ისა ვიყენებთ updateUser
+          const { data: userData, error: updateError } =
+            await supabase.auth.updateUser({
+              data: {
+                first_name: name,
+                last_name: surname,
+                full_name: `${name} ${surname}`,
+                phone: phoneNumber,
+                van_option: vanOption,
+                user_type: "driver",
+                status: "incomplete",
               },
             });
 
-          if (signUpError) throw signUpError;
+          if (updateError) throw updateError;
+
+          console.log(
+            "User data updated successfully:",
+            userData?.user?.user_metadata
+          );
 
           setIsVerifying(false);
           setCurrentStep(2);
@@ -290,39 +307,47 @@ export default function DriverSignUp() {
           Alert.alert("Error", "Verification failed. Please try again.");
         }
       } else {
-        if (otpValue === "123456") {
-          const { data: signUpData, error: signUpError } =
-            await supabase.auth.signUp({
-              email: email.trim().toLowerCase(),
-              password: password,
-              options: {
-                data: {
-                  first_name: name,
-                  last_name: surname,
-                  full_name: `${name} ${surname}`,
-                  phone: phoneNumber,
-                  van_option: vanOption,
-                  user_type: "driver",
-                  status: "incomplete",
-                },
+        // ემაილისთვისაც იგივე ლოგიკა
+        console.log("Verifying email OTP:", otpValue);
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.verifyOtp({
+          email: email.trim().toLowerCase(),
+          token: otpValue,
+          type: "email",
+        });
+
+        if (error) throw error;
+
+        if (session) {
+          console.log("Email OTP verified successfully, updating user data");
+
+          const { data: userData, error: updateError } =
+            await supabase.auth.updateUser({
+              data: {
+                first_name: name,
+                last_name: surname,
+                full_name: `${name} ${surname}`,
+                phone: phoneNumber,
+                van_option: vanOption,
+                user_type: "driver",
+                status: "incomplete",
               },
             });
 
-          if (signUpError) throw signUpError;
+          if (updateError) throw updateError;
 
-          const { data: signInData, error: signInError } =
-            await supabase.auth.signInWithPassword({
-              email: email.trim().toLowerCase(),
-              password: password,
-            });
-
-          if (signInError) throw signInError;
+          console.log(
+            "User data updated successfully:",
+            userData?.user?.user_metadata
+          );
 
           setIsVerifying(false);
           setCurrentStep(2);
           setOtpDigits(["", "", "", "", "", ""]);
         } else {
-          Alert.alert("Error", "Invalid verification code. Please use 123456");
+          Alert.alert("Error", "Verification failed. Please try again.");
         }
       }
     } catch (error) {
@@ -334,6 +359,7 @@ export default function DriverSignUp() {
   };
 
   const resendVerificationCode = async () => {
+    console.log("=== STARTING resendVerificationCode ===");
     if (!canResend) return;
 
     setLoading(true);
@@ -343,13 +369,24 @@ export default function DriverSignUp() {
           ? phoneNumber
           : `${selectedCountry.dialCode}${phoneNumber}`;
 
+        console.log("Resending OTP to phone:", formattedPhone);
         const { data, error } = await supabase.auth.signInWithOtp({
           phone: formattedPhone,
         });
 
         if (error) throw error;
       } else {
-        console.log("Simulated email OTP resent: 123456");
+        // ემაილზე OTP-ის ხელახლა გაგზავნა - ვითხოვთ ციფრულ კოდს
+        console.log("Resending OTP to email:", email);
+        const { data, error } = await supabase.auth.signInWithOtp({
+          email: email.trim().toLowerCase(),
+          options: {
+            channel: "email",
+            type: "otp",
+          },
+        });
+
+        if (error) throw error;
       }
 
       setTimer(60);
@@ -358,7 +395,7 @@ export default function DriverSignUp() {
         "Code Resent",
         contactMethod === "phone"
           ? "A new verification code has been sent to your phone."
-          : "A new verification code has been sent to your email. Use 123456"
+          : "A new verification code has been sent to your email."
       );
     } catch (error) {
       console.error("OTP resend error:", error);
@@ -372,6 +409,7 @@ export default function DriverSignUp() {
   };
 
   const completeRegistration = async () => {
+    console.log("=== STARTING completeRegistration ===");
     setLoading(true);
     try {
       const {
@@ -381,7 +419,7 @@ export default function DriverSignUp() {
 
       if (sessionError || !session) {
         throw new Error(
-          "Invalid session. Please verify your phone number again."
+          "Invalid session. Please verify your information again."
         );
       }
 
@@ -408,6 +446,8 @@ export default function DriverSignUp() {
       });
 
       if (updateError) throw updateError;
+
+      console.log("Registration completed successfully");
     } catch (error) {
       console.error("Registration error:", error);
       Alert.alert(

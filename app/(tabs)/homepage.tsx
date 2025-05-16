@@ -5,6 +5,7 @@ import {
   View,
   ActivityIndicator,
   Text,
+  Alert,
 } from "react-native";
 import styled from "styled-components/native";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -117,6 +118,8 @@ const HomeScreen: React.FC = () => {
         error: userError,
       } = await supabase.auth.getUser();
 
+      console.log("userrr", user);
+
       if (user?.user_metadata.status === "incomplete") {
         console.log("User status is incomplete. Sending API request...");
 
@@ -137,6 +140,9 @@ const HomeScreen: React.FC = () => {
               }),
             }
           );
+          if (res.ok) {
+            Alert.alert("okeyaa");
+          }
 
           if (res.ok || res.status === 409) {
             console.log(
@@ -169,7 +175,7 @@ const HomeScreen: React.FC = () => {
         return;
       }
 
-      setUserEmail(user.email || "");
+      setUserEmail(user.email || user.user_metadata.email || "");
       await fetchDriverDetails();
     } catch (error) {
       console.error("Error in fetchUserData:", error);

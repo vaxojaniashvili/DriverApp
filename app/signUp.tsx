@@ -135,7 +135,7 @@ export default function DriverSignUp() {
       return true;
     }
 
-    const phoneRegex = /^\+?[0-9]{9,15}$/;
+    const phoneRegex = /^[+]?[\d\s()-]{6,20}$/;
     if (!phone) {
       setPhoneNumberError("Phone number is required");
       return false;
@@ -264,6 +264,25 @@ export default function DriverSignUp() {
         if (error) throw error;
 
         if (session) {
+          const { data: signUpData, error: signUpError } =
+            await supabase.auth.signUp({
+              phone: formattedPhone,
+              password: password,
+              options: {
+                data: {
+                  first_name: name,
+                  last_name: surname,
+                  full_name: `${name} ${surname}`,
+                  phone: phoneNumber,
+                  van_option: vanOption,
+                  user_type: "driver",
+                  status: "incomplete",
+                },
+              },
+            });
+
+          if (signUpError) throw signUpError;
+
           setIsVerifying(false);
           setCurrentStep(2);
           setOtpDigits(["", "", "", "", "", ""]);
@@ -320,7 +339,6 @@ export default function DriverSignUp() {
     setLoading(true);
     try {
       if (contactMethod === "phone") {
-        // მობილური OTP ხელახლა გაგზავნა - არსებული კოდი უცვლელად
         const formattedPhone = phoneNumber.startsWith("+")
           ? phoneNumber
           : `${selectedCountry.dialCode}${phoneNumber}`;

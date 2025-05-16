@@ -14,29 +14,45 @@ import { KeyboardAvoidingView, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 export default function Auth() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState(""); // Single state for email or phone
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const [emailError, setEmailError] = useState("");
+  const [identifierError, setIdentifierError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [identifierType, setIdentifierType] = useState(""); // "email" or "phone"
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError("Email is required");
-      return false;
-    } else if (!emailRegex.test(email)) {
-      setEmailError("Invalid email format");
+  const validateIdentifier = (text) => {
+    // Check if empty
+    if (!text) {
+      setIdentifierError("Email or phone number is required");
+      setIdentifierType("");
       return false;
     }
-    setEmailError("");
-    return true;
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Phone number validation (international format)
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
+
+    if (emailRegex.test(text)) {
+      setIdentifierType("email");
+      setIdentifierError("");
+      return true;
+    } else if (phoneRegex.test(text)) {
+      setIdentifierType("phone");
+      setIdentifierError("");
+      return true;
+    } else {
+      setIdentifierError("Invalid email or phone number format");
+      setIdentifierType("");
+      return false;
+    }
   };
 
-  const validatePassword = (password: string) => {
+  const validatePassword = (password) => {
     if (!password) {
       setPasswordError("Password is required");
       return false;
@@ -48,20 +64,33 @@ export default function Auth() {
     return true;
   };
 
-  async function signInWithEmail() {
-    const isEmailValid = validateEmail(email);
+  async function signIn() {
+    const isIdentifierValid = validateIdentifier(identifier);
     const isPasswordValid = validatePassword(password);
 
-    if (!isEmailValid || !isPasswordValid) {
+    if (!isIdentifierValid || !isPasswordValid) {
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
-      });
+      let result;
+
+      if (identifierType === "email") {
+        // Sign in with email
+        result = await supabase.auth.signInWithPassword({
+          email: identifier,
+          password: password,
+        });
+      } else if (identifierType === "phone") {
+        // Sign in with phone number
+        result = await supabase.auth.signInWithPassword({
+          phone: identifier,
+          password: password,
+        });
+      }
+
+      const { error } = result || {};
 
       if (error) {
         Alert.alert("Error", error.message);
@@ -158,29 +187,34 @@ export default function Auth() {
                 <Title>Please enter your credentials</Title>
 
                 <StyledInput
-                  label="Email"
+                  label="Email or Phone Number"
                   leftIcon={{
                     type: "material-community",
-                    name: "email-outline",
+                    name:
+                      identifierType === "phone"
+                        ? "phone-outline"
+                        : "email-outline",
                     size: 22,
                     color: "#27ae60",
                   }}
                   onChangeText={(text) => {
-                    setEmail(text);
-                    if (emailError) validateEmail(text);
+                    setIdentifier(text);
+                    if (identifierError) validateIdentifier(text);
                   }}
-                  value={email}
-                  placeholder="Enter your email"
+                  value={identifier}
+                  placeholder="Enter email or phone number"
                   autoCapitalize="none"
                   inputStyle={{ paddingLeft: 10, paddingTop: 5 }}
                   labelStyle={{ color: "#2c3e50", fontWeight: "normal" }}
                   inputContainerStyle={{
-                    borderColor: emailError ? "#e74c3c" : "#ddd",
+                    borderColor: identifierError ? "#e74c3c" : "#ddd",
                     borderBottomWidth: 1,
                   }}
-                  onBlur={() => validateEmail(email)}
+                  onBlur={() => validateIdentifier(identifier)}
                 />
-                {emailError ? <ErrorText>{emailError}</ErrorText> : null}
+                {identifierError ? (
+                  <ErrorText>{identifierError}</ErrorText>
+                ) : null}
 
                 <StyledInput
                   label="Password"
@@ -235,7 +269,7 @@ export default function Auth() {
                   }}
                   title="Sign In"
                   disabled={loading}
-                  onPress={() => signInWithEmail()}
+                  onPress={() => signIn()}
                   icon={{
                     name: "login",
                     type: "material-community",

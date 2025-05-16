@@ -36,10 +36,8 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [apiToken, setApiToken] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [userId, setUserId] = useState(null);
-  const [statusUser, setStatusUser] = useState(false);
 
   const [userIndicator, setUserIndicator] = useState<string | null>(null);
   const [driverDetails, setDriverDetails] = useState<any>(null);

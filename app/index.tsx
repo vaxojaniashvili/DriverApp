@@ -35,7 +35,7 @@ export default function Auth() {
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     // Phone number validation (international format)
-    const phoneRegex = /^\+?[0-9]{10,15}$/;
+    const phoneRegex = /^\+?[0-9]{8,15}$/;
 
     if (emailRegex.test(text)) {
       setIdentifierType("email");

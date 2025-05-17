@@ -140,8 +140,6 @@ export default function DriverVerificationScreen() {
 
       if (error) {
         console.log("Supabase OTP error:", error);
-        // ფოლბექი თუ ვერ გაიგზავნა ახალი OTP
-        MyToast("Enter verification code, Code is: 856135");
       } else {
         MyToast("Verification code sent. Check your email for the code.");
       }
@@ -257,14 +255,9 @@ export default function DriverVerificationScreen() {
 
         if (error) {
           console.log("Email OTP resend error:", error);
-          MyToast("Verification code resent. Code is: 856135");
         } else {
           MyToast("Verification code resent. Check your email.");
         }
-      } else if (verifyingMobile) {
-        setTimeout(() => {
-          MyToast("OTP resent to your mobile number, code is: 856135");
-        }, 1500);
       }
 
       setTimer(60);
@@ -658,7 +651,7 @@ export default function DriverVerificationScreen() {
               )}
             </View>
 
-            <View style={{ marginBottom: 20 }}>
+            {/* <View style={{ marginBottom: 20 }}>
               <Input
                 label="Phone Number"
                 leftIcon={{
@@ -715,8 +708,8 @@ export default function DriverVerificationScreen() {
                     </Text>
                   )}
                 </TouchableOpacity>
-              )}
-            </View>
+              )} */}
+            {/* </View> */}
 
             <Input
               label="Vehicle License Plate"

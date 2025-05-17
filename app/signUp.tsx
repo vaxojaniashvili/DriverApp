@@ -50,7 +50,7 @@ export default function DriverSignUp() {
   const [vanOptionError, setVanOptionError] = useState("");
   const [apiToken, setApiToken] = useState<string | null>(null);
 
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[12]);
 
   useEffect(() => {
     if (otpInputRefs.current.length < 6) {
@@ -214,12 +214,10 @@ export default function DriverSignUp() {
 
         if (error) throw error;
       } else {
-        // ემაილი - ვითხოვთ ციფრულ კოდს და არა მაგიკ ლინკს
         console.log("Sending OTP to email:", email);
         const { data, error } = await supabase.auth.signInWithOtp({
           email: email.trim().toLowerCase(),
           options: {
-            // უთითებთ, რომ გვინდა OTP კოდი
             channel: "email",
             type: "otp",
           },

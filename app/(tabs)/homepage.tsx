@@ -31,12 +31,14 @@ import PickupRadiusSelector from "@/components/homepage/pickup-radius/PickupRadi
 
 const HomeScreen: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>("");
+  const [phoneNumber, setPhoneNumber] = useState<number>();
   const [driverData, setDriverData] = useState<DriverData | null>(null);
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [activeOrder, setActiveOrder] = useState<OrderData | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [loadingData, setLoadingData] = useState<boolean>(true);
   const [apiToken, setApiToken] = useState<string | null>(null);
+  const [fullname, setFullname] = useState("");
   const [session, setSession] = useState<any>(null);
   const [userId, setUserId] = useState(null);
 
@@ -118,7 +120,7 @@ const HomeScreen: React.FC = () => {
         error: userError,
       } = await supabase.auth.getUser();
 
-      console.log("userrr", user);
+      // console.log("userrr", user);
 
       if (user?.user_metadata.status === "incomplete") {
         console.log("User status is incomplete. Sending API request...");
@@ -137,6 +139,7 @@ const HomeScreen: React.FC = () => {
                 name: user.user_metadata.first_name,
                 last_name: user.user_metadata.last_name,
                 email: user.email,
+                phone: user.user_metadata.phone,
               }),
             }
           );
@@ -176,6 +179,8 @@ const HomeScreen: React.FC = () => {
       }
 
       setUserEmail(user.email || user.user_metadata.email || "");
+      setPhoneNumber(user.phone || user.user_metadata.phone || "");
+      setFullname(user.user_metadata.full_name || "");
       await fetchDriverDetails();
     } catch (error) {
       console.error("Error in fetchUserData:", error);
@@ -552,12 +557,10 @@ const HomeScreen: React.FC = () => {
             <HeaderContent>
               <UserInfoSection>
                 <AvatarContainer>
-                  <Avatar>
-                    {capitalizedDisplayName.charAt(0).toUpperCase()}
-                  </Avatar>
+                  <Avatar>{fullname.charAt(0).toUpperCase()}</Avatar>
                 </AvatarContainer>
                 <UserTextInfo>
-                  <UserGreeting>Welcome, {capitalizedDisplayName}</UserGreeting>
+                  <UserGreeting>Welcome, {fullname}</UserGreeting>
                   {userIndicator !== "active" ? (
                     <Text style={{ fontWeight: 500 }}>
                       Status: <Text style={{ color: "red" }}>Incomplete</Text>
@@ -573,9 +576,13 @@ const HomeScreen: React.FC = () => {
               <UserDetailsSection>
                 <InfoCard>
                   <InfoIcon>
-                    <MaterialIcons name="email" size={16} color="#666" />
+                    <MaterialIcons
+                      name={userEmail ? "email" : "phone"}
+                      size={16}
+                      color="#666"
+                    />
                   </InfoIcon>
-                  <InfoText>{userEmail}</InfoText>
+                  <InfoText>{userEmail ? userEmail : phoneNumber}</InfoText>
                 </InfoCard>
 
                 {driverData?.plate && userIndicator === "active" && (

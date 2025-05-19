@@ -531,10 +531,6 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  const displayName = userEmail ? userEmail.split("@")[0] : "Driver";
-  const capitalizedDisplayName =
-    displayName.charAt(0).toUpperCase() + displayName.slice(1);
-
   return (
     <Container>
       <GradientHeader

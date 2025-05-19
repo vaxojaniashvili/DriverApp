@@ -414,6 +414,31 @@ const OrderScreen = () => {
 
                     <SectionDivider />
 
+                    <ContentSection>
+                      <DetailSectionHeader>
+                        <DetailSectionIcon>
+                          <Ionicons name="business" size={18} color="#555" />
+                        </DetailSectionIcon>
+                        <DetailSectionTitle>Building Access</DetailSectionTitle>
+                      </DetailSectionHeader>
+
+                      <SectionContent>
+                        <CustomerDetail>
+                          <CustomerLabel>Floor:</CustomerLabel>
+                          <CustomerValue>
+                            {activeOrder.floor || "Ground Floor"}
+                          </CustomerValue>
+                        </CustomerDetail>
+                        <CustomerDetail style={{ marginTop: 3 }}>
+                          <CustomerLabel>Elevator:</CustomerLabel>
+                          <CustomerValue style={{ marginLeft: 5 }}>
+                            {activeOrder.elevator
+                              ? "Available"
+                              : "Not Available"}
+                          </CustomerValue>
+                        </CustomerDetail>
+                      </SectionContent>
+                    </ContentSection>
                     {/* Order Items Section - MODIFIED */}
                     {activeOrder.items && activeOrder.items.length > 0 && (
                       <ContentSection>

@@ -128,4 +128,6 @@ export interface Order {
   live: boolean;
   assigned_driver: string;
   items: Item[];
+  floor?: string | number;
+  elevator?: boolean;
 }

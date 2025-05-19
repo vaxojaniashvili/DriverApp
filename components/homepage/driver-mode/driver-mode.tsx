@@ -198,17 +198,6 @@ const DriverModeComponent: React.FC = () => {
       if (!response.ok) {
         throw new Error(`API response error: ${response.status}`);
       }
-
-      const { error } = await supabase
-        .from("drivers")
-        .update({ status: currentMode })
-        .eq("email", userEmail);
-
-      if (error) {
-        console.error("Error updating Supabase status:", error);
-      } else {
-        console.log("Status updated in Supabase:", currentMode);
-      }
     } catch (error) {
       console.error("Error sending status to API:", error);
       Alert.alert(

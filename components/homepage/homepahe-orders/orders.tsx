@@ -74,6 +74,15 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
             <Label>Destination:</Label>
             <Value>{order.destination_name}</Value>
           </JobDetail>
+          <JobDetail>
+            <Label>Floor:</Label>
+            <Value>{order.floor || "Ground Floor"}</Value>
+          </JobDetail>
+
+          <JobDetail>
+            <Label>Elevator:</Label>
+            <Value>{order.elevator ? "Available" : "Not Available"}</Value>
+          </JobDetail>
           <CustomerInfoSection>
             <TouchableOpacity
               onPress={handleCustomerDetailsShow}

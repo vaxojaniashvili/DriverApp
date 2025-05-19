@@ -30,10 +30,7 @@ export default function Auth() {
 
   // იდენტიფიკატორის ვალიდაცია
   const validateIdentifier = (text) => {
-    console.log("ვალიდაცია დაიწყო ტექსტისთვის:", text);
-
     if (!text) {
-      console.log("იდენტიფიკატორი ცარიელია");
       setIdentifierError("Email or phone number is required");
       setIdentifierType("");
       return false;
@@ -45,17 +42,14 @@ export default function Auth() {
     const phoneRegex = /^\+?[0-9]{8,15}$/;
 
     if (emailRegex.test(text)) {
-      console.log("იდენტიფიცირებულია როგორც იმეილი");
       setIdentifierType("email");
       setIdentifierError("");
       return true;
     } else if (phoneRegex.test(text)) {
-      console.log("იდენტიფიცირებულია როგორც ტელეფონი");
       setIdentifierType("phone");
       setIdentifierError("");
       return true;
     } else {
-      console.log("არ გაიარა ვალიდაცია: არც ტელეფონია, არც იმეილი");
       setIdentifierError("Invalid email or phone number format");
       setIdentifierType("");
       return false;
@@ -90,9 +84,6 @@ export default function Auth() {
 
   // OTP კოდის გაგზავნა
   async function sendOtp() {
-    console.log("დაიწყო OTP-ის გაგზავნა");
-    console.log("ტელეფონის ნომერი:", identifier);
-
     const isIdentifierValid = validateIdentifier(identifier);
 
     if (!isIdentifierValid || identifierType !== "phone") {
@@ -108,8 +99,6 @@ export default function Auth() {
         ? identifier.substring(1)
         : identifier;
 
-      console.log("ვცდით OTP-ის გაგზავნას ნომერზე:", phoneToUse);
-
       const result = await supabase.auth.signInWithOtp({
         phone: phoneToUse,
         options: {
@@ -117,38 +106,32 @@ export default function Auth() {
         },
       });
 
-      console.log(
-        "OTP გაგზავნის შედეგი:",
-        JSON.stringify(result || {}, null, 2)
-      );
-
       const { data, error } = result || {};
 
       if (error) {
-        console.error("OTP გაგზავნის შეცდომა:", error.message);
+        // console.error("OTP sending error:", error.message);
 
         if (
           error.message.includes("not found") ||
           error.message.includes("doesn't exist")
         ) {
           Alert.alert(
-            "შეცდომა",
-            "ეს ტელეფონის ნომერი არ არის რეგისტრირებული. გთხოვთ, შეამოწმოთ ან დარეგისტრირდეთ."
+            "error",
+            "This phone number is not registered. Please check or register."
           );
         } else {
-          Alert.alert("შეცდომა", `OTP გაგზავნა ვერ მოხერხდა: ${error.message}`);
+          Alert.alert("error", `OTP can not sended: ${error.message}`);
         }
       } else {
-        console.log("OTP წარმატებით გაიგზავნა");
         setOtpSent(true);
         Alert.alert(
-          "კოდი გაიგზავნა",
-          "გთხოვთ, შეამოწმოთ SMS და შეიყვანოთ მიღებული კოდი"
+          "Code sent",
+          "Please check your SMS and enter the code you received"
         );
       }
     } catch (error) {
-      console.error("გაუთვალისწინებელი შეცდომა OTP გაგზავნისას:", error);
-      Alert.alert("შეცდომა", "OTP გაგზავნისას მოხდა გაუთვალისწინებელი შეცდომა");
+      console.error("Unexpected error while sending OTP:", error);
+      Alert.alert("error", "OTP Unexpected error while sending OTP:");
     } finally {
       setLoading(false);
     }
@@ -156,9 +139,6 @@ export default function Auth() {
 
   // OTP კოდის ვერიფიკაცია ტელეფონისთვის
   async function verifyOtp() {
-    console.log("OTP კოდის ვერიფიკაცია");
-    console.log("შეყვანილი კოდი:", otpCode);
-
     const isOtpValid = validateOtp(otpCode);
 
     if (!isOtpValid) {
@@ -169,13 +149,9 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      // ტელეფონის ფორმატირება, ზუსტად როგორც გაგზავნის დროს
       let phoneToUse = identifier.startsWith("+")
         ? identifier.substring(1)
         : identifier;
-
-      console.log("ვერიფიკაცია ტელეფონით:", phoneToUse);
-      console.log("შეყვანილი კოდი:", otpCode);
 
       const result = await supabase.auth.verifyOtp({
         phone: phoneToUse,
@@ -183,38 +159,20 @@ export default function Auth() {
         type: "sms",
       });
 
-      console.log(
-        "OTP ვერიფიკაციის შედეგი:",
-        JSON.stringify(result || {}, null, 2)
-      );
-
       const { data, error } = result || {};
 
       if (error) {
-        console.error("OTP ვერიფიკაციის შეცდომა:", error.message);
-        Alert.alert(
-          "შეცდომა",
-          `კოდის ვერიფიკაცია ვერ მოხერხდა: ${error.message}`
-        );
+        console.error("OTP error:", error.message);
+        Alert.alert("error", `error: ${error.message}`);
       } else if (data?.user) {
-        console.log(
-          "წარმატებული OTP ავთენტიკაცია, მომხმარებლის ID:",
-          data.user.id
-        );
+        console.log("success", data.user.id);
         router.push("/homepage");
       } else {
-        console.log("უცნაური პასუხი - არც შეცდომა, არც მომხმარებელი");
-        Alert.alert(
-          "შეცდომა",
-          "ვერიფიკაცია ვერ მოხერხდა. გთხოვთ, სცადოთ თავიდან."
-        );
+        Alert.alert("error", "error");
       }
     } catch (error) {
-      console.error("გაუთვალისწინებელი შეცდომა OTP ვერიფიკაციისას:", error);
-      Alert.alert(
-        "შეცდომა",
-        "კოდის ვერიფიკაციისას მოხდა გაუთვალისწინებელი შეცდომა"
-      );
+      console.error("unexpected error:", error);
+      Alert.alert("error", "error");
     } finally {
       setLoading(false);
     }
@@ -222,9 +180,6 @@ export default function Auth() {
 
   // იმეილით ავტორიზაცია (ძველი მეთოდით)
   async function signInWithEmail() {
-    console.log("დაიწყო იმეილით ავტორიზაცია");
-    console.log("იმეილი:", identifier);
-
     const isIdentifierValid = validateIdentifier(identifier);
     const isPasswordValid = validatePassword(password);
 
@@ -243,35 +198,24 @@ export default function Auth() {
         password: password,
       });
 
-      console.log(
-        "იმეილით ავტორიზაციის შედეგი:",
-        JSON.stringify(result || {}, null, 2)
-      );
-
       const { data, error } = result || {};
 
       if (error) {
-        console.error("ავთენტიკაციის შეცდომა:", error.message);
-        Alert.alert("შეცდომა", `Authentication failed: ${error.message}`);
+        Alert.alert("error", `Authentication failed: ${error.message}`);
       } else if (data?.user) {
-        console.log("წარმატებული ავტორიზაცია, მომხმარებლის ID:", data.user.id);
+        console.log("success", data.user.id);
         router.push("/homepage");
       } else {
-        console.log("უცნაური პასუხი - არც შეცდომა, არც მომხმარებელი");
-        Alert.alert(
-          "შეცდომა",
-          "ავთენტიკაცია ვერ მოხერხდა. გთხოვთ, სცადოთ თავიდან."
-        );
+        Alert.alert("error", "error");
       }
     } catch (error) {
-      console.error("გაუთვალისწინებელი შეცდომა:", error);
-      Alert.alert("შეცდომა", "ავთენტიკაციისას მოხდა გაუთვალისწინებელი შეცდომა");
+      console.error("error:", error);
+      Alert.alert("error", "error");
     } finally {
       setLoading(false);
     }
   }
 
-  // დაბრუნება OTP შეყვანის ეკრანიდან
   const goBack = () => {
     setOtpSent(false);
     setOtpCode("");

@@ -441,7 +441,39 @@ const HomeScreen: React.FC = () => {
       return false;
     }
   }, [apiToken, userIndicator]);
+  // Modify your useFocusEffect to also fetch user data
 
+  useFocusEffect(
+    useCallback(() => {
+      const refreshUserData = async () => {
+        try {
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser();
+
+          if (userError || !user) {
+            console.error("Error fetching user:", userError);
+            return;
+          }
+
+          setFullname(user.user_metadata.full_name || "");
+        } catch (error) {
+          console.error("Error refreshing user data:", error);
+        }
+      };
+
+      refreshUserData().then(() => {
+        fetchDriverDetails().then(() => {
+          if (apiToken && userIndicator === "active") {
+            onRefresh();
+          }
+        });
+      });
+
+      return () => {};
+    }, [onRefresh, apiToken, userIndicator])
+  );
   const processOrders = (ordersData: any[]) => {
     if (!Array.isArray(ordersData)) {
       console.log("Order data is not an array:", ordersData);

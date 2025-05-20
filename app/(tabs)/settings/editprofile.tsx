@@ -65,24 +65,22 @@ const EditProfile = () => {
       setUserId(user.id);
       setEmail(user.email || "");
 
+      setName(metadata.full_name || metadata.fullname || "");
+      setPhoneNumber(metadata.phone || "");
+      setAddressLine1(metadata.address_line_1 || "");
+      setAddressLine2(metadata.address_line_2 || "");
+      setCity(metadata.city || "");
+      setState(metadata.state || "");
+      setPostalCode(metadata.postal_code || "");
+      setCountry(metadata.country || "");
       const { data: driverData, error: driverError } = await supabase
         .from("users")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      if (driverData) {
-        setName(metadata.full_name || metadata.fullname || "");
-        setPhoneNumber(metadata.phone || "");
-        setAddressLine1(metadata.address_line_1 || "");
-        setAddressLine2(metadata.address_line_2 || "");
-        setCity(metadata.city || "");
-        setState(metadata.state || "");
-        setPostalCode(metadata.postal_code || "");
-        setCountry(metadata.country || "");
-      } else {
-        setName(metadata.fullname || metadata.full_name || "");
-        setPhoneNumber(metadata.phone || "");
+      if (driverError) {
+        console.log("No driver data found or error:", driverError);
       }
     } catch (error) {
       console.error("Unexpected error:", error);
@@ -111,6 +109,7 @@ const EditProfile = () => {
       const { error } = await supabase.auth.updateUser({
         data: {
           full_name: name,
+          fullname: name,
           first_name: name.split(" ")[0] || name,
           last_name: name.split(" ").slice(1).join(" ") || "",
           phone: phoneNumber,

@@ -86,17 +86,6 @@ const SectionTitle = styled.Text`
   color: #212529;
 `;
 
-const ViewAllButton = styled.TouchableOpacity`
-  flex-direction: row;
-  align-items: center;
-`;
-
-const ViewAllText = styled.Text`
-  font-size: 14px;
-  color: #28c76f;
-  font-weight: 500;
-`;
-
 const ItemsContainer = styled.View`
   margin-bottom: 16px;
 `;
@@ -150,8 +139,6 @@ const AmountText = styled.Text`
   color: #2b6a49;
   margin-right: 10px;
 `;
-
-const DownloadIcon = styled(Ionicons)``;
 
 const TotalRow = styled.View`
   flex-direction: row;

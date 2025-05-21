@@ -28,10 +28,6 @@ const FinanceDetails = () => {
     <Container>
       <SectionHeader>
         <SectionTitle>Recent Earnings</SectionTitle>
-        <ViewAllButton>
-          <ViewAllText>View All</ViewAllText>
-          <Ionicons name="chevron-forward" size={16} color="#28c76f" />
-        </ViewAllButton>
       </SectionHeader>
 
       <ItemsContainer>
@@ -51,7 +47,6 @@ const FinanceDetails = () => {
 
             <ItemRightSection>
               <AmountText>{item.amount}</AmountText>
-              <DownloadIcon name="download-outline" size={18} color="#28c76f" />
             </ItemRightSection>
           </Item>
         ))}

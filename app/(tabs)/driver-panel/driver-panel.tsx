@@ -342,6 +342,7 @@ const DriverDashboard = () => {
             />
           </ChartContainer>
 
+          {/* 
           <RecentOrdersContainer>
             <OrdersHeader onPress={toggleOrdersExpanded}>
               <SectionTitle style={{ marginTop: 0, marginBottom: 0 }}>
@@ -407,6 +408,7 @@ const DriverDashboard = () => {
               </OrdersContent>
             </Animated.View>
           </RecentOrdersContainer>
+*/}
 
           <View
             style={

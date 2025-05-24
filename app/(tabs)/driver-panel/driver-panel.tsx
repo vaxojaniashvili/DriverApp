@@ -221,6 +221,10 @@ const DriverDashboard = () => {
     return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
+  const handleBackPress = () => {
+    router.push("/settings");
+  };
+
   return (
     <Container>
       <StatusBar
@@ -247,8 +251,14 @@ const DriverDashboard = () => {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          <Title>Driver Dashboard</Title>
-          <Subtitle>Welcome back, let's check your stats</Subtitle>
+          <HeaderContainer>
+            <BackButton onPress={handleBackPress}>
+              <Ionicons name="arrow-back" size={24} color="#ffffff" />
+            </BackButton>
+            <HeaderTextContainer>
+              <Title>Driver Dashboard</Title>
+            </HeaderTextContainer>
+          </HeaderContainer>
         </HeaderGradient>
 
         <ContentContainer>
@@ -477,6 +487,27 @@ const HeaderGradient = styled(LinearGradient)`
   padding-bottom: 23px;
 `;
 
+const HeaderContainer = styled.View`
+  flex-direction: row;
+  align-items: flex-start;
+  width: 100%;
+`;
+
+const BackButton = styled.TouchableOpacity`
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.15);
+  justify-content: center;
+  align-items: center;
+  margin-right: 16px;
+  margin-top: 2px;
+`;
+
+const HeaderTextContainer = styled.View`
+  flex: 1;
+`;
+
 const ContentContainer = styled.View`
   padding-horizontal: 20px;
   margin-top: -15px;
@@ -612,6 +643,7 @@ const ChartHeader = styled.View`
   align-items: center;
   margin-bottom: 8px;
 `;
+
 const IncomeCardGradient = styled(LinearGradient)`
   border-radius: 16px;
   padding: 24px;

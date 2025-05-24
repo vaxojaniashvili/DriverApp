@@ -43,11 +43,11 @@ const Settings = () => {
       onPress: () => router.push("/settings/editprofile"),
     },
     {
-      label: "Notifications",
+      label: "Driver-Panel",
       icon: "notifications",
       color: "#ffffff",
       bgColor: "#27ae60",
-      onPress: () => router.push("/settings/notifications"),
+      onPress: () => router.push("/(tabs)/driver-panel/driver-panel"),
     },
     {
       label: "Privacy & Security",
@@ -55,13 +55,6 @@ const Settings = () => {
       color: "#ffffff",
       bgColor: "#2ecc71",
       onPress: () => router.push("settings/privace"),
-    },
-    {
-      label: "Contact Support",
-      icon: "headset",
-      color: "#ffffff",
-      bgColor: "#27ae60",
-      onPress: () => router.push("/settings/support"),
     },
     {
       label: "Deactivate Account",

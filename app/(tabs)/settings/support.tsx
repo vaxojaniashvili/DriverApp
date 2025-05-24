@@ -114,7 +114,7 @@ const SupportChat: React.FC = () => {
   const [isTyping, setIsTyping] = useState<boolean>(false);
 
   const handleBack = (): void => {
-    router.push("/settings");
+    router.push("/(tabs)/Activity/activity");
   };
 
   useEffect(() => {

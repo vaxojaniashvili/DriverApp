@@ -6,7 +6,7 @@ import { router } from "expo-router";
 
 const Notifications = () => {
   const handleBack = () => {
-    router.push("/settings");
+    router.push("/(tabs)/Activity/activity");
   };
 
   const dummyNotifications = [

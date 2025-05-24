@@ -26,9 +26,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="driver-panel/driver-panel"
+        name="Activity/activity"
         options={{
-          title: "Panel",
+          title: "Activity",
         }}
       />
       <Tabs.Screen name="orderHistory" options={{ title: "orderHistory" }} />

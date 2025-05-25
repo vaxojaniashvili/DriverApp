@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Text,
   View,
@@ -13,6 +13,7 @@ import {
   Platform,
   Image,
   StatusBar,
+  Keyboard,
 } from "react-native";
 
 const initialMessages = [
@@ -52,6 +53,28 @@ export function Chat({ route }) {
   const router = useRouter();
   const [messages, setMessages] = useState(initialMessages);
   const [inputText, setInputText] = useState("");
+  const flatListRef = useRef(null);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      () => {
+        setTimeout(() => {
+          scrollToEnd();
+        }, 100);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener?.remove();
+    };
+  }, []);
+
+  const scrollToEnd = () => {
+    if (flatListRef.current && messages.length > 0) {
+      flatListRef.current.scrollToEnd({ animated: true });
+    }
+  };
 
   const handleBackPress = () => {
     router.push("/(tabs)/Activity/messages/Messages");
@@ -73,6 +96,10 @@ export function Chat({ route }) {
 
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setInputText("");
+
+      setTimeout(() => {
+        scrollToEnd();
+      }, 100);
     }
   };
 
@@ -112,36 +139,39 @@ export function Chat({ route }) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBackPress}>
-            <Ionicons name="chevron-back" size={24} color="#212529" />
-          </TouchableOpacity>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBackPress}>
+          <Ionicons name="chevron-back" size={24} color="#212529" />
+        </TouchableOpacity>
 
-          <View style={styles.userInfo}>
-            <Image
-              source={{
-                uri: "https://avatars.githubusercontent.com/u/147712790?v=4",
-              }}
-              style={styles.headerAvatar}
-            />
-            <View>
-              <Text style={styles.headerUserName}>{params.userName}</Text>
-              <Text style={styles.onlineStatus}>Online</Text>
-            </View>
+        <View style={styles.userInfo}>
+          <Image
+            source={{
+              uri: "https://avatars.githubusercontent.com/u/147712790?v=4",
+            }}
+            style={styles.headerAvatar}
+          />
+          <View>
+            <Text style={styles.headerUserName}>{params.userName}</Text>
+            <Text style={styles.onlineStatus}>Online</Text>
           </View>
         </View>
+      </View>
 
+      <KeyboardAvoidingView
+        style={styles.chatContainer}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
         <FlatList
+          ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContainer}
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={scrollToEnd}
         />
 
         <View style={styles.inputContainer}>
@@ -188,6 +218,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E0E0E0",
   },
+  chatContainer: {
+    flex: 1,
+  },
   backButton: {
     padding: 8,
   },
@@ -229,6 +262,7 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     paddingVertical: 16,
+    paddingBottom: Platform.OS === "android" ? 80 : 16,
   },
   messageContainer: {
     marginVertical: 4,
@@ -291,6 +325,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E0E0E0",
+    paddingBottom: Platform.OS === "android" ? 16 : 12,
   },
   textInput: {
     flex: 1,

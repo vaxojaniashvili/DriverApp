@@ -14,8 +14,9 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import ActionModal from "@/components/ActionModal";
 
-const messagesData = [
+const initialMessagesData = [
   {
     id: "1",
     name: "Vaxo Janiashvili",
@@ -107,6 +108,9 @@ export function Messages() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [messagesData, setMessagesData] = useState(initialMessagesData);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState(null);
 
   const handleMessagePress = (messageId, userName) => {
     router.push({
@@ -120,6 +124,54 @@ export function Messages() {
 
   const handleBackPress = () => {
     router.push("/(tabs)/Activity/activity");
+  };
+
+  const toggleFavorite = (messageId) => {
+    setMessagesData((prevMessages) =>
+      prevMessages.map((message) =>
+        message.id === messageId
+          ? { ...message, isFavorite: !message.isFavorite }
+          : message
+      )
+    );
+  };
+
+  const toggleArchive = (messageId) => {
+    setMessagesData((prevMessages) =>
+      prevMessages.map((message) =>
+        message.id === messageId
+          ? { ...message, isArchived: !message.isArchived }
+          : message
+      )
+    );
+  };
+
+  const handleLongPress = (messageId, userName) => {
+    const message = messagesData.find((m) => m.id === messageId);
+    setSelectedMessage(message);
+    setModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setModalVisible(false);
+    setSelectedMessage(null);
+  };
+
+  const handleModalFavorite = () => {
+    if (selectedMessage) {
+      toggleFavorite(selectedMessage.id);
+    }
+  };
+
+  const handleModalArchive = () => {
+    if (selectedMessage) {
+      toggleArchive(selectedMessage.id);
+    }
+  };
+
+  const handleQuickFavorite = (messageId, event) => {
+    event.stopPropagation();
+    toggleFavorite(messageId);
   };
 
   const getFilteredMessages = () => {
@@ -149,8 +201,13 @@ export function Messages() {
 
   const renderMessageItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.messageItem}
+      style={[
+        styles.messageItem,
+        item.isArchived && styles.archivedMessageItem,
+      ]}
       onPress={() => handleMessagePress(item.id, item.name)}
+      onLongPress={() => handleLongPress(item.id, item.name)}
+      delayLongPress={500}
     >
       <View style={styles.avatarContainer}>
         <Image source={{ uri: item.avatar }} style={styles.avatar} />
@@ -159,26 +216,42 @@ export function Messages() {
             <Ionicons name="people" size={12} color="#FFFFFF" />
           </View>
         )}
+        {item.isArchived && (
+          <View style={styles.archiveBadge}>
+            <Ionicons name="archive" size={10} color="#FFFFFF" />
+          </View>
+        )}
       </View>
 
       <View style={styles.messageContent}>
         <View style={styles.messageHeader}>
           <View style={styles.nameContainer}>
-            <Text style={styles.userName}>{item.name}</Text>
-            {item.isFavorite && (
+            <Text
+              style={[styles.userName, item.isArchived && styles.archivedText]}
+            >
+              {item.name}
+            </Text>
+            <View
+              style={styles.favoriteButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons
-                name="heart"
-                size={14}
-                color="#FF6B6B"
-                style={styles.favoriteIcon}
+                name={item.isFavorite ? "heart" : "heart-outline"}
+                size={16}
+                color={item.isFavorite ? "#FF6B6B" : "#C7C7CC"}
               />
-            )}
+            </View>
           </View>
-          <Text style={styles.time}>{item.time}</Text>
+          <Text style={[styles.time, item.isArchived && styles.archivedText]}>
+            {item.time}
+          </Text>
         </View>
 
         <View style={styles.messageFooter}>
-          <Text style={styles.lastMessage} numberOfLines={1}>
+          <Text
+            style={[styles.lastMessage, item.isArchived && styles.archivedText]}
+            numberOfLines={1}
+          >
             {item.lastMessage}
           </Text>
           {item.unreadCount > 0 && (
@@ -227,6 +300,7 @@ export function Messages() {
           )}
         </View>
       </View>
+
       <View style={styles.tabsContainer}>
         <ScrollView
           horizontal
@@ -276,6 +350,16 @@ export function Messages() {
           </Text>
         </View>
       )}
+
+      <ActionModal
+        visible={modalVisible}
+        onClose={handleModalClose}
+        userName={selectedMessage?.name || ""}
+        isFavorite={selectedMessage?.isFavorite || false}
+        isArchived={selectedMessage?.isArchived || false}
+        onFavorite={handleModalFavorite}
+        onArchive={handleModalArchive}
+      />
     </SafeAreaView>
   );
 }
@@ -370,6 +454,10 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
     backgroundColor: "#FFFFFF",
   },
+  archivedMessageItem: {
+    backgroundColor: "#F8F9FA",
+    opacity: 0.7,
+  },
   avatarContainer: {
     position: "relative",
     marginRight: 12,
@@ -392,6 +480,19 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
+  archiveBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    backgroundColor: "#8E8E93",
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+  },
   messageContent: {
     flex: 1,
     justifyContent: "center",
@@ -412,8 +513,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#000000",
   },
-  favoriteIcon: {
-    marginLeft: 6,
+  archivedText: {
+    color: "#8E8E93",
+  },
+  favoriteButton: {
+    marginLeft: 8,
+    padding: 4,
   },
   time: {
     fontSize: 12,

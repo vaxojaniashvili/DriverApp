@@ -31,8 +31,8 @@ const TAB_ITEMS: TabItemType[] = [
     key: "settings",
     route: "settings/index",
     title: "View",
-    icon: "settings-outline",
-    activeIcon: "settings",
+    icon: "eye",
+    activeIcon: "eye",
   },
 ];
 

@@ -122,10 +122,6 @@ export function Messages() {
     });
   };
 
-  const handleBackPress = () => {
-    router.push("/(tabs)/Activity/activity");
-  };
-
   const toggleFavorite = (messageId) => {
     setMessagesData((prevMessages) =>
       prevMessages.map((message) =>
@@ -168,12 +164,6 @@ export function Messages() {
       toggleArchive(selectedMessage.id);
     }
   };
-
-  const handleQuickFavorite = (messageId, event) => {
-    event.stopPropagation();
-    toggleFavorite(messageId);
-  };
-
   const getFilteredMessages = () => {
     let filtered = messagesData;
 

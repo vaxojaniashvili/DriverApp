@@ -182,7 +182,13 @@ const Activity = () => {
                   Our support team is available 24/7 to assist you
                 </SupportText>
                 <SupportButton>
-                  <SupportButtonText>Contact Support</SupportButtonText>
+                  <SupportButtonText
+                    onPress={() => {
+                      router.push("/(tabs)/settings/support");
+                    }}
+                  >
+                    Contact Support
+                  </SupportButtonText>
                 </SupportButton>
               </SupportCard>
             </SupportContainer>
@@ -203,6 +209,8 @@ const Container = styled(View)`
 const HeaderGradient = styled(LinearGradient)`
   padding-horizontal: 20px;
   padding-bottom: 20px;
+  background-color: red;
+  height: 149px;
 `;
 
 const Header = styled.View`
@@ -215,6 +223,7 @@ const ContentContainer = styled.View`
   margin-top: -10px;
   border-top-right-radius: 20px;
   border-top-left-radius: 20px;
+  margin-top: -20px;
 `;
 
 const Title = styled.Text`

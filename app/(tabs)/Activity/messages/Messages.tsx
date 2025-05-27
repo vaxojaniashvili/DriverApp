@@ -8,8 +8,6 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
-  StatusBar,
-  Platform,
   TextInput,
   ScrollView,
 } from "react-native";
@@ -299,7 +297,7 @@ export function Messages() {
               <Ionicons
                 name={tab.icon}
                 size={18}
-                color={activeTab === tab.id ? "#007AFF" : "#8E8E93"}
+                color={activeTab === tab.id ? "white" : "#8E8E93"}
               />
               <Text
                 style={[
@@ -394,7 +392,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8F9FA",
   },
   activeTabItem: {
-    backgroundColor: "#E3F2FD",
+    backgroundColor: "#28c76f",
   },
   tabLabel: {
     fontSize: 14,
@@ -403,7 +401,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   activeTabLabel: {
-    color: "#007AFF",
+    color: "white",
     fontWeight: "600",
   },
   messagesList: {

@@ -10,6 +10,8 @@ import Messages from "./messages/Messages";
 const Activity = () => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState("notifications");
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const notifications = [
     {
@@ -21,6 +23,7 @@ const Activity = () => {
       icon: "car-outline",
       color: "#28c76f",
       unread: true,
+      isGroup: false,
     },
     {
       id: 2,
@@ -31,6 +34,7 @@ const Activity = () => {
       icon: "card-outline",
       color: "#00a8ff",
       unread: true,
+      isGroup: false,
     },
     {
       id: 3,
@@ -41,6 +45,7 @@ const Activity = () => {
       icon: "star-outline",
       color: "#ffa502",
       unread: false,
+      isGroup: false,
     },
     {
       id: 4,
@@ -51,6 +56,7 @@ const Activity = () => {
       icon: "download-outline",
       color: "#8854d0",
       unread: false,
+      isGroup: true,
     },
     {
       id: 5,
@@ -61,6 +67,7 @@ const Activity = () => {
       icon: "gift-outline",
       color: "#ff6b6b",
       unread: false,
+      isGroup: true,
     },
   ];
 
@@ -71,6 +78,7 @@ const Activity = () => {
       icon: "notifications-outline",
       onPress: () => {
         setActiveTab("notifications");
+        setActiveFilter("all");
       },
     },
     {
@@ -79,6 +87,7 @@ const Activity = () => {
       icon: "chatbubbles-outline",
       onPress: () => {
         setActiveTab("messages");
+        setActiveFilter("all");
       },
     },
     {
@@ -87,9 +96,50 @@ const Activity = () => {
       icon: "help-circle-outline",
       onPress: () => {
         setActiveTab("support");
+        setActiveFilter("all");
       },
     },
   ];
+
+  const filterTabs = [
+    {
+      id: "all",
+      label: "All",
+    },
+    {
+      id: "unread",
+      label: "Unread",
+    },
+    {
+      id: "groups",
+      label: "Groups",
+    },
+  ];
+
+  const getFilteredData = () => {
+    let filteredData = notifications;
+
+    switch (activeFilter) {
+      case "unread":
+        filteredData = notifications.filter((item) => item.unread);
+        break;
+      case "groups":
+        filteredData = notifications.filter((item) => item.isGroup);
+        break;
+      default:
+        filteredData = notifications;
+    }
+
+    if (searchQuery.trim()) {
+      filteredData = filteredData.filter(
+        (item) =>
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.message.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    return filteredData;
+  };
 
   const renderNotificationItem = ({ item }) => (
     <NotificationCard>
@@ -108,6 +158,11 @@ const Activity = () => {
       </NotificationContent>
 
       {item.unread && <UnreadDot />}
+      {item.isGroup && (
+        <GroupBadge>
+          <Ionicons name="people-outline" size={12} color="#ffffff" />
+        </GroupBadge>
+      )}
     </NotificationCard>
   );
 
@@ -152,22 +207,73 @@ const Activity = () => {
             </MainTab>
           ))}
         </MainTabsContainer>
+
+        {activeTab === "notifications" && (
+          <>
+            <SearchContainer>
+              <SearchInputContainer>
+                <Ionicons name="search-outline" size={20} color="#666" />
+                <SearchInput
+                  placeholder="Search notifications..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholderTextColor="#999"
+                />
+                {searchQuery.length > 0 && (
+                  <ClearButton onPress={() => setSearchQuery("")}>
+                    <Ionicons name="close-circle" size={20} color="#666" />
+                  </ClearButton>
+                )}
+              </SearchInputContainer>
+            </SearchContainer>
+
+            <FilterTabsContainer>
+              {filterTabs.map((tab) => (
+                <FilterTab
+                  key={tab.id}
+                  onPress={() => setActiveFilter(tab.id)}
+                  isActive={activeFilter === tab.id}
+                >
+                  <FilterTabText isActive={activeFilter === tab.id}>
+                    {tab.label}
+                  </FilterTabText>
+                </FilterTab>
+              ))}
+            </FilterTabsContainer>
+          </>
+        )}
+
         <ContentArea>
           {activeTab === "notifications" && (
             <NotificationsContainer>
               <SectionHeader>
-                <SectionTitle>Recent Notifications</SectionTitle>
+                <SectionTitle>
+                  {activeFilter === "all" && "All Notifications"}
+                  {activeFilter === "unread" && "Unread Notifications"}
+                  {activeFilter === "groups" && "Group Notifications"}
+                </SectionTitle>
                 <NotificationCount>
-                  {notifications.filter((n) => n.unread).length} unread
+                  {getFilteredData().length} items
                 </NotificationCount>
               </SectionHeader>
-              <FlatList
-                data={notifications}
-                renderItem={renderNotificationItem}
-                keyExtractor={(item) => item.id.toString()}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 20 }}
-              />
+              {getFilteredData().length === 0 ? (
+                <EmptyState>
+                  <Ionicons
+                    name="notifications-outline"
+                    size={48}
+                    color="#ccc"
+                  />
+                  <EmptyStateText>No notifications found</EmptyStateText>
+                </EmptyState>
+              ) : (
+                <FlatList
+                  data={getFilteredData()}
+                  renderItem={renderNotificationItem}
+                  keyExtractor={(item) => item.id.toString()}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                />
+              )}
             </NotificationsContainer>
           )}
 
@@ -261,6 +367,49 @@ const MainTabText = styled.Text`
   color: ${(props) => (props.isActive ? "#28c76f" : "#666")};
 `;
 
+const FilterTabsContainer = styled.View`
+  flex-direction: row;
+  padding: 16px 20px 12px 20px;
+  gap: 8px;
+`;
+
+const FilterTab = styled.TouchableOpacity`
+  padding: 8px 16px;
+  border-radius: 20px;
+  border-width: 1px;
+  border-color: ${(props) => (props.isActive ? "#28c76f" : "#e0e0e0")};
+  background-color: ${(props) => (props.isActive ? "#28c76f" : "transparent")};
+`;
+
+const FilterTabText = styled.Text`
+  font-size: 14px;
+  font-weight: 500;
+  color: ${(props) => (props.isActive ? "#ffffff" : "#666")};
+`;
+
+const SearchContainer = styled.View`
+  padding: 16px 20px 0 20px;
+`;
+
+const SearchInputContainer = styled.View`
+  flex-direction: row;
+  align-items: center;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  padding: 12px 16px;
+`;
+
+const SearchInput = styled.TextInput`
+  flex: 1;
+  margin-left: 12px;
+  font-size: 16px;
+  color: #333;
+`;
+
+const ClearButton = styled.TouchableOpacity`
+  padding: 4px;
+`;
+
 const ContentArea = styled.View`
   flex: 1;
   padding: 20px;
@@ -303,6 +452,7 @@ const NotificationCard = styled.TouchableOpacity`
   shadow-opacity: 0.05;
   shadow-radius: 8px;
   elevation: 2;
+  position: relative;
 `;
 
 const NotificationIconContainer = styled.View`
@@ -353,29 +503,10 @@ const UnreadDot = styled.View`
   margin-left: 8px;
 `;
 
-const MessageCard = styled.TouchableOpacity`
-  flex-direction: row;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom-width: 1px;
-  border-bottom-color: #f0f0f0;
-`;
-
-const MessageAvatarContainer = styled.View`
-  position: relative;
-  margin-right: 16px;
-`;
-
-const MessageAvatar = styled.Image`
-  width: 50px;
-  height: 50px;
-  border-radius: 25px;
-`;
-
 const GroupBadge = styled.View`
   position: absolute;
-  bottom: -2px;
-  right: -2px;
+  bottom: 10;
+  right: 12px;
   background-color: #007aff;
   border-radius: 10px;
   width: 20px;
@@ -386,62 +517,18 @@ const GroupBadge = styled.View`
   border-color: #ffffff;
 `;
 
-const MessageContent = styled.View`
+const EmptyState = styled.View`
   flex: 1;
-`;
-
-const MessageHeader = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-`;
-
-const MessageName = styled.Text`
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  flex: 1;
-  margin-right: 8px;
-`;
-
-const MessageTime = styled.Text`
-  font-size: 12px;
-  color: #888;
-`;
-
-const MessageFooter = styled.View`
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const LastMessage = styled.Text`
-  font-size: 14px;
-  color: #666;
-  flex: 1;
-  margin-right: 8px;
-`;
-
-const UnreadBadge = styled.View`
-  background-color: #28c76f;
-  border-radius: 10px;
-  min-width: 20px;
-  height: 20px;
   justify-content: center;
   align-items: center;
-  padding-horizontal: 6px;
+  padding: 40px 20px;
 `;
 
-const UnreadText = styled.Text`
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 600;
-`;
-
-const FavoriteIcon = styled.View`
-  margin-left: 8px;
-  padding: 4px;
+const EmptyStateText = styled.Text`
+  font-size: 16px;
+  color: #888;
+  margin-top: 16px;
+  text-align: center;
 `;
 
 const SupportContainer = styled.View`

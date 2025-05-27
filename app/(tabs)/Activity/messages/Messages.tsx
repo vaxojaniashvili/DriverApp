@@ -268,16 +268,6 @@ export function Messages() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress}>
-          <Ionicons name="chevron-back" size={24} color="#212529" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Messages</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
           <Ionicons
@@ -368,32 +358,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
-    paddingTop: 40,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
-    backgroundColor: "#FFFFFF",
-    paddingBottom: Platform.OS === "ios" ? 20 : 10,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000000",
   },
   placeholder: {
     width: 40,
   },
   searchContainer: {
-    paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    marginTop: -15,
   },
   searchBox: {
     flexDirection: "row",
@@ -418,7 +392,6 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F0F0F0",
   },
   tabsScrollView: {
-    paddingHorizontal: 16,
     paddingVertical: 12,
   },
   tabItem: {
@@ -448,7 +421,6 @@ const styles = StyleSheet.create({
   },
   messageItem: {
     flexDirection: "row",
-    paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",

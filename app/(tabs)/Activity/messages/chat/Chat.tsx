@@ -77,7 +77,7 @@ export function Chat({ route }) {
   };
 
   const handleBackPress = () => {
-    router.push("/(tabs)/Activity/messages/Messages");
+    router.push("/(tabs)/Activity/activity");
   };
   const params = useLocalSearchParams();
 

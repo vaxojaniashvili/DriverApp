@@ -287,14 +287,12 @@ const Activity = () => {
                 <SupportText>
                   Our support team is available 24/7 to assist you
                 </SupportText>
-                <SupportButton>
-                  <SupportButtonText
-                    onPress={() => {
-                      router.push("/(tabs)/settings/support");
-                    }}
-                  >
-                    Contact Support
-                  </SupportButtonText>
+                <SupportButton
+                  onPress={() => {
+                    router.push("/(tabs)/settings/support");
+                  }}
+                >
+                  <SupportButtonText>Contact Support</SupportButtonText>
                 </SupportButton>
               </SupportCard>
             </SupportContainer>
@@ -538,12 +536,9 @@ const SupportContainer = styled.View`
 `;
 
 const SupportCard = styled.View`
-  background-color: #ffffff;
   border-radius: 16px;
   padding: 32px;
   align-items: center;
-  border-width: 1px;
-  border-color: #f0f0f0;
   shadow-color: #000;
   shadow-offset: 0px 4px;
   shadow-opacity: 0.1;
@@ -551,6 +546,7 @@ const SupportCard = styled.View`
   elevation: 4;
   width: 100%;
   max-width: 300px;
+  margin-top: -90px;
 `;
 
 const SupportTitle = styled.Text`

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Platform, StatusBar, View, FlatList } from "react-native";
 import styled from "styled-components/native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Messages from "./messages/Messages";

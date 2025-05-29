@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Messages from "./messages/Messages";
+import ActivitySupport from "@/components/ActivitySupport";
 
 const Activity = () => {
   const insets = useSafeAreaInsets();
@@ -279,24 +280,7 @@ const Activity = () => {
 
           {activeTab === "messages" && <Messages />}
 
-          {activeTab === "support" && (
-            <SupportContainer>
-              <SupportCard>
-                <Ionicons name="headset-outline" size={48} color="#28c76f" />
-                <SupportTitle>Need Help?</SupportTitle>
-                <SupportText>
-                  Our support team is available 24/7 to assist you
-                </SupportText>
-                <SupportButton
-                  onPress={() => {
-                    router.push("/(tabs)/settings/support");
-                  }}
-                >
-                  <SupportButtonText>Contact Support</SupportButtonText>
-                </SupportButton>
-              </SupportCard>
-            </SupportContainer>
-          )}
+          {activeTab === "support" && <ActivitySupport />}
         </ContentArea>
       </ContentContainer>
     </Container>
@@ -527,52 +511,4 @@ const EmptyStateText = styled.Text`
   color: #888;
   margin-top: 16px;
   text-align: center;
-`;
-
-const SupportContainer = styled.View`
-  flex: 1;
-  justify-content: center;
-  align-items: center;
-`;
-
-const SupportCard = styled.View`
-  border-radius: 16px;
-  padding: 32px;
-  align-items: center;
-  shadow-color: #000;
-  shadow-offset: 0px 4px;
-  shadow-opacity: 0.1;
-  shadow-radius: 12px;
-  elevation: 4;
-  width: 100%;
-  max-width: 300px;
-  margin-top: -90px;
-`;
-
-const SupportTitle = styled.Text`
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-  margin-top: 16px;
-  margin-bottom: 8px;
-`;
-
-const SupportText = styled.Text`
-  font-size: 14px;
-  color: #666;
-  text-align: center;
-  line-height: 20px;
-  margin-bottom: 24px;
-`;
-
-const SupportButton = styled.TouchableOpacity`
-  background-color: #28c76f;
-  padding: 12px 24px;
-  border-radius: 8px;
-`;
-
-const SupportButtonText = styled.Text`
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 600;
 `;

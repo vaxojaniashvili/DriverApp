@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Messages from "./messages/Messages";
 import ActivitySupport from "@/components/ActivitySupport";
 
-const Activity = () => {
+const Activity = ({ route }) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState("notifications");
   const [activeFilter, setActiveFilter] = useState("all");

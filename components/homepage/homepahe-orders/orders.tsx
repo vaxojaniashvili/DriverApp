@@ -158,29 +158,31 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
                   <Label>Phone:</Label>
                   <Value>+995568930229</Value>
                 </JobDetail>
-                <CommunicationActionsContainer>
-                  <ActionButton onPress={() => handleChatPress(order)}>
-                    <ActionButtonIcon>
-                      <Ionicons
-                        name="chatbubble-outline"
-                        size={18}
-                        color="#007AFF"
-                      />
-                    </ActionButtonIcon>
-                    <ActionButtonText>Chat with Customer</ActionButtonText>
-                  </ActionButton>
+                {order.order_status !== "PENDING" && (
+                  <CommunicationActionsContainer>
+                    <ActionButton onPress={() => handleChatPress(order)}>
+                      <ActionButtonIcon>
+                        <Ionicons
+                          name="chatbubble-outline"
+                          size={18}
+                          color="#007AFF"
+                        />
+                      </ActionButtonIcon>
+                      <ActionButtonText>Chat with Customer</ActionButtonText>
+                    </ActionButton>
 
-                  <ActionButton onPress={() => handleSupportPress(order)}>
-                    <ActionButtonIcon>
-                      <Ionicons
-                        name="headset-outline"
-                        size={18}
-                        color="#FF6B35"
-                      />
-                    </ActionButtonIcon>
-                    <ActionButtonText>Contact Support</ActionButtonText>
-                  </ActionButton>
-                </CommunicationActionsContainer>
+                    <ActionButton onPress={() => handleSupportPress(order)}>
+                      <ActionButtonIcon>
+                        <Ionicons
+                          name="headset-outline"
+                          size={18}
+                          color="#FF6B35"
+                        />
+                      </ActionButtonIcon>
+                      <ActionButtonText>Contact Support</ActionButtonText>
+                    </ActionButton>
+                  </CommunicationActionsContainer>
+                )}
               </>
             )}
           </CustomerInfoSection>
@@ -257,13 +259,13 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
 
           {order.order_status === "PENDING" && (
             <ActionsContainer>
-              <ActionButton
+              <ActionButtonSecond
                 actionType="accept"
                 onPress={() => onAccept(order.id)}
               >
                 <ButtonText>Accept</ButtonText>
-              </ActionButton>
-              <ActionButton
+              </ActionButtonSecond>
+              <ActionButtonSecondRed
                 actionType="decline"
                 onPress={() => {
                   if (onDecline) {
@@ -274,7 +276,7 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
                 }}
               >
                 <ButtonText>Decline</ButtonText>
-              </ActionButton>
+              </ActionButtonSecondRed>
             </ActionsContainer>
           )}
         </>
@@ -456,6 +458,26 @@ const ActionButton = styled.TouchableOpacity`
   justify-content: center;
   padding: 10px;
   background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+`;
+const ActionButtonSecond = styled.TouchableOpacity`
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background-color: #4caf50;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+`;
+const ActionButtonSecondRed = styled.TouchableOpacity`
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background-color: #dd3737;
   border-radius: 8px;
   border: 1px solid #e9ecef;
 `;

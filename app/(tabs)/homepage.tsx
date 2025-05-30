@@ -930,13 +930,6 @@ const UserTextInfo = styled.View`
   flex: 1;
 `;
 
-const UserFullName = styled.Text`
-  font-size: 20px;
-  color: #1a1a1a;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-`;
-
 const UserDetailsSection = styled.View`
   margin-bottom: 20px;
 `;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, StatusBar, View, FlatList } from "react-native";
 import styled from "styled-components/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,12 +6,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Messages from "./messages/Messages";
 import ActivitySupport from "@/components/ActivitySupport";
+import { useLocalSearchParams } from "expo-router";
 
 const Activity = ({ route }) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState("notifications");
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const { orderId, customerEmail, customerPhone, type } =
+    useLocalSearchParams();
+  // console.log("orderId",orderId);
 
   const notifications = [
     {
@@ -115,7 +119,13 @@ const Activity = ({ route }) => {
       label: "Groups",
     },
   ];
-
+  useEffect(() => {
+    if (type === "messages") {
+      setActiveTab("messages");
+    } else if (type === "support") {
+      setActiveTab("support");
+    }
+  }, [type]);
   const getFilteredData = () => {
     let filteredData = notifications;
 

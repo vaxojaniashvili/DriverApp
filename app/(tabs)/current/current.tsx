@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { TouchableOpacity, Platform } from "react-native";
+import { Platform } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import styled from "styled-components/native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { supabase } from "@/infrastructure/db/supabase";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import OrderDetails from "@/components/OrderDetails";
 
 const OrderScreen = () => {
@@ -14,6 +14,7 @@ const OrderScreen = () => {
   const [apiToken, setApiToken] = useState(null);
   const [allDetailsVisible, setAllDetailsVisible] = useState(false);
   const [expandedItemIds, setExpandedItemIds] = useState([]);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchDriverUUID = async () => {
@@ -74,21 +75,28 @@ const OrderScreen = () => {
   ];
 
   const handleChatPress = (order: any) => {
-    // navigation.navigate('ChatScreen', {
-    //   orderId: order.id,
-    //   customerEmail: order.email,
-    //   customerPhone: '+995568930229'
-    // });
+    router.push({
+      pathname: "/(tabs)/Activity/activity",
+      params: {
+        orderId: order.id,
+        customerEmail: order.email,
+        customerPhone: "+995568930229",
+        type: "messages",
+      },
+    });
   };
 
   const handleSupportPress = (order: any) => {
-    // navigation.navigate('SupportScreen', {
-    //   orderId: order.id,
-    //   driverId: my_id,
-    //   issueType: 'delivery_support'
-    // });
+    router.push({
+      pathname: "/(tabs)/Activity/activity",
+      params: {
+        orderId: order.id,
+        driverId: my_id,
+        issueType: "delivery_support",
+        type: "support",
+      },
+    });
   };
-
   const getOrders = async () => {
     if (!my_id || !apiToken) return;
 

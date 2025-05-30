@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components/native";
 import { Alert, Platform, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Order } from "@/types/common";
+import { useRouter } from "expo-router";
+import { supabase } from "@/infrastructure/db/supabase";
 
 interface JobOfferProps {
   order: Order;
@@ -18,6 +20,8 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
+  const [my_id, setMy_id] = useState(0);
+  const router = useRouter();
 
   const handleCustomerDetailsShow = () =>
     setShowCustomerDetails(!showCustomerDetails);
@@ -38,20 +42,50 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
       }
     });
   };
+  useEffect(() => {
+    const fetchDriverUUID = async () => {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("Error fetching user:", userError);
+          return;
+        }
+
+        const driverUUID = user?.id;
+        setMy_id(driverUUID as any);
+      } catch (error) {
+        console.error("Unexpected error:", error);
+      }
+    };
+
+    fetchDriverUUID();
+  }, []);
   const handleChatPress = (order: any) => {
-    // navigation.navigate('ChatScreen', {
-    //   orderId: order.id,
-    //   customerEmail: order.email,
-    //   customerPhone: '+995568930229'
-    // });
+    router.push({
+      pathname: "/(tabs)/Activity/activity",
+      params: {
+        orderId: order.id,
+        customerEmail: order.email,
+        customerPhone: "+995568930229",
+        type: "messages",
+      },
+    });
   };
 
   const handleSupportPress = (order: any) => {
-    // navigation.navigate('SupportScreen', {
-    //   orderId: order.id,
-    //   driverId: my_id,
-    //   issueType: 'delivery_support'
-    // });
+    router.push({
+      pathname: "/(tabs)/Activity/activity",
+      params: {
+        orderId: order.id,
+        driverId: my_id,
+        issueType: "delivery_support",
+        type: "support",
+      },
+    });
   };
 
   return (

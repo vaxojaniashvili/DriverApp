@@ -438,21 +438,6 @@ const OrderItemTotalValue = styled.Text`
   color: #4caf50;
 `;
 
-const QuickActionsContainer = styled.View`
-  flex-direction: row;
-  gap: 8px;
-`;
-
-const QuickActionIcon = styled.View`
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  background-color: #f8f9fa;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid #e9ecef;
-`;
-
 const CommunicationActionsContainer = styled.View`
   flex-direction: row;
   margin-top: 15px;

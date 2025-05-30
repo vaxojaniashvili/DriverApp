@@ -38,6 +38,21 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
       }
     });
   };
+  const handleChatPress = (order: any) => {
+    // navigation.navigate('ChatScreen', {
+    //   orderId: order.id,
+    //   customerEmail: order.email,
+    //   customerPhone: '+995568930229'
+    // });
+  };
+
+  const handleSupportPress = (order: any) => {
+    // navigation.navigate('SupportScreen', {
+    //   orderId: order.id,
+    //   driverId: my_id,
+    //   issueType: 'delivery_support'
+    // });
+  };
 
   return (
     <JobOfferContainer>
@@ -109,6 +124,29 @@ const JobOfferComponent: React.FC<JobOfferProps> = ({
                   <Label>Phone:</Label>
                   <Value>+995568930229</Value>
                 </JobDetail>
+                <CommunicationActionsContainer>
+                  <ActionButton onPress={() => handleChatPress(order)}>
+                    <ActionButtonIcon>
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={18}
+                        color="#007AFF"
+                      />
+                    </ActionButtonIcon>
+                    <ActionButtonText>Chat with Customer</ActionButtonText>
+                  </ActionButton>
+
+                  <ActionButton onPress={() => handleSupportPress(order)}>
+                    <ActionButtonIcon>
+                      <Ionicons
+                        name="headset-outline"
+                        size={18}
+                        color="#FF6B35"
+                      />
+                    </ActionButtonIcon>
+                    <ActionButtonText>Contact Support</ActionButtonText>
+                  </ActionButton>
+                </CommunicationActionsContainer>
               </>
             )}
           </CustomerInfoSection>
@@ -268,18 +306,6 @@ const ActionsContainer = styled.View`
   margin-top: 15px;
 `;
 
-const ActionButton = styled(TouchableOpacity)<{
-  actionType: "accept" | "decline";
-}>`
-  flex: 1;
-  padding: 12px;
-  margin: 0 5px;
-  border-radius: 5px;
-  align-items: center;
-  background-color: ${({ actionType }) =>
-    actionType === "accept" ? "#4CAF50" : "#F44336"};
-`;
-
 const ExpandButton = styled(TouchableOpacity)`
   align-self: center;
   margin-top: 10px;
@@ -382,4 +408,30 @@ const CustomerInfoHeader = styled.Text`
   font-size: 16px;
   margin-bottom: 10px;
   color: #333;
+`;
+const CommunicationActionsContainer = styled.View`
+  flex-direction: row;
+  margin-top: 15px;
+  gap: 8px;
+`;
+
+const ActionButton = styled.TouchableOpacity`
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+`;
+
+const ActionButtonIcon = styled.View`
+  margin-right: 6px;
+`;
+
+const ActionButtonText = styled.Text`
+  font-size: 12px;
+  font-weight: 500;
+  color: #495057;
 `;

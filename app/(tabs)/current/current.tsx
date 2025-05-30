@@ -73,7 +73,7 @@ const OrderScreen = () => {
     { id: "COMPLETED", label: "Completed", icon: "checkmark-done-circle" },
   ];
 
-  const handleChatPress = (order) => {
+  const handleChatPress = (order: any) => {
     // navigation.navigate('ChatScreen', {
     //   orderId: order.id,
     //   customerEmail: order.email,
@@ -81,7 +81,7 @@ const OrderScreen = () => {
     // });
   };
 
-  const handleSupportPress = (order) => {
+  const handleSupportPress = (order: any) => {
     // navigation.navigate('SupportScreen', {
     //   orderId: order.id,
     //   driverId: my_id,

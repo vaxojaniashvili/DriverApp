@@ -157,7 +157,7 @@ const OrderDetails = ({
                           <ItemDetailRow>
                             <ItemDetailLabel>Price:</ItemDetailLabel>
                             <ItemDetailValue>
-                              €{item.price.toFixed(2)}
+                              €{item?.price?.toFixed(2)}
                             </ItemDetailValue>
                           </ItemDetailRow>
                         </ItemDropdown>

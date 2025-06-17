@@ -392,12 +392,6 @@ export function Messages() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {!isConnected && (
-        <View style={styles.connectionStatus}>
-          <Text style={styles.connectionText}>Connection lost</Text>
-        </View>
-      )}
-
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
           <Ionicons

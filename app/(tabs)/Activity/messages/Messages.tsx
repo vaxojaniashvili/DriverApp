@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import {
   Text,
@@ -13,86 +13,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ActionModal from "@/components/ActionModal";
-
-const initialMessagesData = [
-  {
-    id: "1",
-    name: "Vaxo Janiashvili",
-    lastMessage: "Hello, how are you?",
-    time: "14:30",
-    avatar: "https://avatars.githubusercontent.com/u/147712790?v=4",
-    unreadCount: 2,
-    isArchived: false,
-    isFavorite: true,
-    isGroup: false,
-  },
-  {
-    id: "2",
-    name: "Leri Ugulava",
-    lastMessage: "Do you have a meeting tomorrow?",
-    time: "12:15",
-    avatar: "https://avatars.githubusercontent.com/u/147712790?v=4",
-    unreadCount: 0,
-    isArchived: false,
-    isFavorite: false,
-    isGroup: false,
-  },
-  {
-    id: "3",
-    name: "Team Project Group",
-    lastMessage: "Send me the document",
-    time: "Yesterday",
-    avatar: "https://avatars.githubusercontent.com/u/147712790?v=4",
-    unreadCount: 1,
-    isArchived: false,
-    isFavorite: false,
-    isGroup: true,
-  },
-  {
-    id: "4",
-    name: "David Meskhi",
-    lastMessage: "Ok, thanks for information",
-    time: "Yesterday",
-    avatar: "https://avatars.githubusercontent.com/u/147712790?v=4",
-    unreadCount: 0,
-    isArchived: true,
-    isFavorite: true,
-    isGroup: false,
-  },
-  {
-    id: "5",
-    name: "Giorgi Bachidze",
-    lastMessage: "Did you download the photos?",
-    time: "Monday",
-    avatar: "https://avatars.githubusercontent.com/u/147712790?v=4",
-    unreadCount: 3,
-    isArchived: false,
-    isFavorite: false,
-    isGroup: false,
-  },
-  {
-    id: "6",
-    name: "Marketing Team",
-    lastMessage: "New campaign ideas ready for review",
-    time: "Monday",
-    avatar: "https://avatars.githubusercontent.com/u/147712790?v=4",
-    unreadCount: 5,
-    isArchived: false,
-    isFavorite: true,
-    isGroup: true,
-  },
-  {
-    id: "7",
-    name: "Archived Contact",
-    lastMessage: "This is an archived message",
-    time: "Last week",
-    avatar: "https://avatars.githubusercontent.com/u/147712790?v=4",
-    unreadCount: 0,
-    isArchived: true,
-    isFavorite: false,
-    isGroup: false,
-  },
-];
+import io from "socket.io-client";
+import { supabase } from "@/infrastructure/db/supabase";
 
 const tabs = [
   { id: "all", label: "All", icon: "chatbubbles" },
@@ -106,16 +28,213 @@ export function Messages() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [messagesData, setMessagesData] = useState(initialMessagesData);
+  const [messagesData, setMessagesData] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
+  const [socket, setSocket] = useState(null);
+  const [name, setName] = useState("");
+  const [my_id, setMy_id] = useState(null);
 
-  const handleMessagePress = (messageId, userName) => {
+  useEffect(() => {
+    const fetchDriverUUID = async () => {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("Error fetching user:", userError);
+          return;
+        }
+
+        const driverUUID = user?.id;
+        setMy_id(driverUUID as any);
+        setName(
+          user?.user_metadata?.first_name || user?.user_metadata?.full_name
+        );
+      } catch (error) {
+        console.error("Unexpected error:", error);
+      }
+    };
+
+    fetchDriverUUID();
+  }, []);
+
+  const currentDriver = {
+    id: my_id,
+    name: "testuser",
+  };
+
+  useEffect(() => {
+    initializeSocket();
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, []);
+
+  const initializeSocket = () => {
+    try {
+      const newSocket = io("https://api.thevanapp.com", {
+        transports: ["websocket", "polling"],
+        timeout: 10000,
+        query: {
+          driverId: currentDriver.id,
+          userType: "driver",
+        },
+      });
+
+      newSocket.on("connect", () => {
+        console.log("📱 Messages: Connected to server");
+        setIsConnected(true);
+        setIsLoading(false);
+
+        newSocket.emit("register_user", {
+          username: currentDriver.name,
+          role: "driver",
+          userInfo: { driverId: currentDriver.id },
+        });
+
+        loadDriverConversations();
+      });
+
+      newSocket.on("disconnect", () => {
+        console.log("❌ Messages: Disconnected from server");
+        setIsConnected(false);
+      });
+
+      newSocket.on("connect_error", (error) => {
+        console.log("🚨 Messages: Connection error:", error);
+        setIsConnected(false);
+        setIsLoading(false);
+      });
+
+      newSocket.on("receive_message", (data) => {
+        updateConversationWithNewMessage(data);
+      });
+
+      newSocket.on("conversation_list", (conversations) => {
+        setMessagesData(conversations);
+        setIsLoading(false);
+      });
+
+      setSocket(newSocket);
+    } catch (error) {
+      console.error("Socket initialization error:", error);
+      setIsLoading(false);
+    }
+  };
+
+  const loadDriverConversations = () => {
+    if (socket && isConnected) {
+      socket.emit("get_driver_conversations", {
+        driverId: currentDriver.id,
+      });
+    }
+  };
+
+  const updateConversationWithNewMessage = (messageData) => {
+    setMessagesData((prevData) => {
+      const updatedData = [...prevData];
+      const conversationIndex = updatedData.findIndex(
+        (conv) =>
+          conv.room === messageData.room || conv.orderId === messageData.orderId
+      );
+
+      if (conversationIndex >= 0) {
+        // Update existing conversation
+        updatedData[conversationIndex] = {
+          ...updatedData[conversationIndex],
+          lastMessage: messageData.message,
+          time: formatTime(messageData.timestamp),
+          unreadCount:
+            messageData.username !== currentDriver.name
+              ? (updatedData[conversationIndex].unreadCount || 0) + 1
+              : 0,
+        };
+
+        const updatedConv = updatedData.splice(conversationIndex, 1)[0];
+        updatedData.unshift(updatedConv);
+      } else {
+        const newConversation = {
+          id: messageData.room || Date.now().toString(),
+          name: messageData.customerName || messageData.username || "Customer",
+          lastMessage: messageData.message,
+          time: formatTime(messageData.timestamp),
+          avatar: "https://avatars.githubusercontent.com/u/147712790?v=4",
+          unreadCount: messageData.username !== currentDriver.name ? 1 : 0,
+          isArchived: false,
+          isFavorite: false,
+          isGroup: false,
+          orderId: messageData.orderId,
+          room: messageData.room,
+          customerInfo: messageData.customerInfo,
+        };
+        updatedData.unshift(newConversation);
+      }
+
+      return updatedData;
+    });
+  };
+
+  const formatTime = (timestamp) => {
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+
+      if (isToday) {
+        return date.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      } else {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === yesterday.toDateString()) {
+          return "Yesterday";
+        } else {
+          return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+        }
+      }
+    } catch (error) {
+      return "";
+    }
+  };
+
+  const handleMessagePress = (conversation) => {
+    if (conversation.unreadCount > 0) {
+      setMessagesData((prevData) =>
+        prevData.map((item) =>
+          item.id === conversation.id ? { ...item, unreadCount: 0 } : item
+        )
+      );
+    }
+
     router.push({
       pathname: "/(tabs)/Activity/messages/chat/Chat",
       params: {
-        messageId: messageId,
-        userName: userName,
+        messageId: conversation.id,
+        userName: conversation.name,
+        driverId: currentDriver.id,
+        driverInfo: {
+          name: currentDriver.name,
+          id: currentDriver.id,
+        },
+        customerInfo: conversation.customerInfo || {
+          name: conversation.name,
+        },
+        orderId: conversation.orderId,
+        room: conversation.room,
       },
     });
   };
@@ -162,6 +281,7 @@ export function Messages() {
       toggleArchive(selectedMessage.id);
     }
   };
+
   const getFilteredMessages = () => {
     let filtered = messagesData;
 
@@ -193,7 +313,7 @@ export function Messages() {
         styles.messageItem,
         item.isArchived && styles.archivedMessageItem,
       ]}
-      onPress={() => handleMessagePress(item.id, item.name)}
+      onPress={() => handleMessagePress(item)}
       onLongPress={() => handleLongPress(item.id, item.name)}
       delayLongPress={500}
     >
@@ -219,8 +339,9 @@ export function Messages() {
             >
               {item.name}
             </Text>
-            <View
+            <TouchableOpacity
               style={styles.favoriteButton}
+              onPress={() => toggleFavorite(item.id)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons
@@ -228,7 +349,7 @@ export function Messages() {
                 size={16}
                 color={item.isFavorite ? "#FF6B6B" : "#C7C7CC"}
               />
-            </View>
+            </TouchableOpacity>
           </View>
           <Text style={[styles.time, item.isArchived && styles.archivedText]}>
             {item.time}
@@ -248,6 +369,10 @@ export function Messages() {
             </View>
           )}
         </View>
+
+        {item.orderId && (
+          <Text style={styles.orderInfo}>Order #{item.orderId}</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -319,12 +444,19 @@ export function Messages() {
           keyExtractor={(item) => item.id}
           style={styles.messagesList}
           showsVerticalScrollIndicator={false}
+          refreshing={isLoading}
+          onRefresh={loadDriverConversations}
         />
       ) : (
         <View style={styles.emptyContainer}>
           <Ionicons name="chatbubbles-outline" size={64} color="#E0E0E0" />
           <Text style={styles.emptyText}>
             {searchQuery ? "No messages found" : `No ${activeTab} messages`}
+          </Text>
+          <Text style={styles.emptySubText}>
+            <Text style={styles.emptySubText}>
+              Messages will appear when customers contact you
+            </Text>
           </Text>
         </View>
       )}
@@ -519,6 +651,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#8E8E93",
     marginTop: 16,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: "#999",
+    marginTop: 8,
+    textAlign: "center",
+  },
+  orderInfo: {
+    fontSize: 11,
+    color: "#007AFF",
+    marginTop: 2,
+    fontWeight: "500",
   },
 });
 

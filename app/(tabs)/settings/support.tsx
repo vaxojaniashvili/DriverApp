@@ -665,7 +665,7 @@ const SupportChat: React.FC = () => {
         </Header>
 
         {/* Debug Panel */}
-        {showDebug && (
+        {!showDebug && (
           <DebugCard>
             <DebugText>🔧 DEBUG MODE</DebugText>
             <DebugText>User loaded: {isUserLoaded ? "✅" : "❌"}</DebugText>

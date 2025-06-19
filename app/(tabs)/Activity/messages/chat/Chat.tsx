@@ -29,7 +29,7 @@ export function Chat({ route }) {
   const [typingUsers, setTypingUsers] = useState([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const flatListRef = useRef(null);
-  const socketRef = useRef(null);
+  const socketRef = useRef<any>(null);
   const typingTimeoutRef = useRef(null);
 
   const {

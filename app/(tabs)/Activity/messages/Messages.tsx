@@ -10,8 +10,6 @@ import {
   SafeAreaView,
   TextInput,
   ScrollView,
-  Alert,
-  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ActionModal from "@/components/ActionModal";
@@ -381,15 +379,6 @@ export function Messages() {
 
   const filteredMessages = getFilteredMessages();
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading messages...</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.searchContainer}>
@@ -663,32 +652,11 @@ const styles = StyleSheet.create({
     color: "#8E8E93",
     marginTop: 16,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-  },
-  loadingText: {
-    marginTop: 15,
-    fontSize: 16,
-    color: "#666",
-  },
   emptySubText: {
     fontSize: 14,
     color: "#999",
     marginTop: 8,
     textAlign: "center",
-  },
-  connectionStatus: {
-    backgroundColor: "#FFE6E6",
-    paddingVertical: 8,
-    alignItems: "center",
-  },
-  connectionText: {
-    color: "#D32F2F",
-    fontSize: 14,
-    fontWeight: "600",
   },
   orderInfo: {
     fontSize: 11,

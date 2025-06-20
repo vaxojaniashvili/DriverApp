@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { Button } from "@rneui/themed";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 
 export const VerificationScreen = ({
   contactMethod,
@@ -97,6 +98,28 @@ export const VerificationScreen = ({
             }}
           >
             {canResend ? "Resend Code" : `Resend in ${timer}s`}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "center",
+          marginTop: 5,
+        }}
+      >
+        <Text>Back to </Text>
+        <TouchableOpacity
+          onPress={() => {
+            router.back();
+          }}
+        >
+          <Text
+            style={{
+              color: "#27ae60",
+            }}
+          >
+            register
           </Text>
         </TouchableOpacity>
       </View>

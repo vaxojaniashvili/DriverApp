@@ -55,7 +55,7 @@ export default function DriverVerificationScreen() {
   const [verificationError, setVerificationError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
-  const [firstEmail, setFirstEmail] = useState("");
+  const [user, setUser] = useState([]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -72,6 +72,24 @@ export default function DriverVerificationScreen() {
 
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+        setUser(user as any);
+        setName(user?.user_metadata.full_name);
+
+        console.log(user);
+      } catch (error) {
+        console.error("Unexpected error:", error);
+      }
+    };
+    fetchUserData();
+  }, [user]);
 
   useEffect(() => {
     if (timer > 0 && showVerificationScreen) {

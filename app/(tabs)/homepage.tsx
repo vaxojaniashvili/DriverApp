@@ -640,7 +640,7 @@ const HomeScreen: React.FC = () => {
                     onPress={() => router.push("/(tabs)/driverVerification")}
                   >
                     <VerifyButtonContent>
-                      <VerifyButtonText>Verify</VerifyButtonText>
+                      <VerifyButtonText>Continue</VerifyButtonText>
                       <MaterialIcons
                         name="arrow-forward"
                         size={20}

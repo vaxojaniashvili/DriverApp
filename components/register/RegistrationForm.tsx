@@ -116,6 +116,88 @@ export const RegistrationForm = ({
         />
       </NameSurnameRow>
 
+      <View style={{ marginBottom: 25, marginTop: -10, marginLeft: 11 }}>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "500",
+            marginBottom: 10,
+            color: "#2c3e50",
+          }}
+        >
+          Verification Method:
+        </Text>
+
+        <View style={{ flexDirection: "row" }}>
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginRight: 20,
+            }}
+            onPress={() => setContactMethod("email")}
+          >
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                borderWidth: 2,
+                borderColor: "#27ae60",
+                marginRight: 10,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {contactMethod === "email" && (
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: "#27ae60",
+                  }}
+                />
+              )}
+            </View>
+            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Email</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+            onPress={() => setContactMethod("phone")}
+          >
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                borderWidth: 2,
+                borderColor: "#27ae60",
+                marginRight: 10,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {contactMethod === "phone" && (
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: "#27ae60",
+                  }}
+                />
+              )}
+            </View>
+            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Phone</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {contactMethod === "email" && (
         <StyledInput
           label="Email"
@@ -479,88 +561,6 @@ export const RegistrationForm = ({
             {vanOptionError}
           </Text>
         ) : null}
-      </View>
-
-      <View style={{ marginBottom: 20 }}>
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: "500",
-            marginBottom: 10,
-            color: "#2c3e50",
-          }}
-        >
-          Verification Method:
-        </Text>
-
-        <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginRight: 20,
-            }}
-            onPress={() => setContactMethod("email")}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: "#27ae60",
-                marginRight: 10,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              {contactMethod === "email" && (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: "#27ae60",
-                  }}
-                />
-              )}
-            </View>
-            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Email</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-            onPress={() => setContactMethod("phone")}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: "#27ae60",
-                marginRight: 10,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              {contactMethod === "phone" && (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: "#27ae60",
-                  }}
-                />
-              )}
-            </View>
-            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Phone</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
       <StyledButton

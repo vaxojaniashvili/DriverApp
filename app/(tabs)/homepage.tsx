@@ -84,7 +84,7 @@ const HomeScreen: React.FC = () => {
       if (Array.isArray(data) && data.length > 0) {
         const driverInfo = data[0];
         setDriverDetails(driverInfo);
-        setUserIndicator(driverInfo.indicator);
+        setUserIndicator(driverInfo.indicator || data[0].indicator);
 
         if (driverInfo.email === userEmail) {
           setDriverData({

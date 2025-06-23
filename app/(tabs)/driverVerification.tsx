@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 import { Input } from "@rneui/themed";
 import { AntDesign } from "@expo/vector-icons";
+import { LicensePlateInput } from "@/components/DriverPlate";
 
 const MyToast = (message, duration = "short") => {
   if (Platform.OS === "android") {
@@ -57,6 +58,9 @@ export default function DriverVerificationScreen() {
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [user, setUser] = useState([]);
   const [verificationType, setVerificationType] = useState("email"); // "email" or "phone"
+  const [userData, setUserData] = useState([]);
+  const [plateLetters, setPlateLetters] = useState("");
+  const [plateNumbers, setPlateNumbers] = useState("");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -90,7 +94,20 @@ export default function DriverVerificationScreen() {
       }
     };
     fetchUserData();
-  }, [user]);
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(
+          `https://api.thevanapp.com/api/driver-details/${user?.id}`
+        );
+        const data = await res.json();
+        setUserData(data);
+      } catch (error) {}
+    };
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (timer > 0 && showVerificationScreen) {
@@ -102,7 +119,7 @@ export default function DriverVerificationScreen() {
   }, [timer, showVerificationScreen]);
 
   useEffect(() => {
-    const isNameValid = name.trim() !== "";
+    const isNameValid = name?.trim() !== "";
     const hasAtLeastOneContact = isEmailVerified || isMobileVerified;
     const isAddressValid =
       streetAddress1.trim() !== "" &&
@@ -110,8 +127,8 @@ export default function DriverVerificationScreen() {
       stateProvince.trim() !== "" &&
       zipCode.trim() !== "" &&
       country.trim() !== "";
-    const isLicensePlateValid = licensePlate.trim() !== "";
-
+    const isLicensePlateValid =
+      plateLetters.length === 3 && plateNumbers.length === 3;
     setIsValid(
       isNameValid &&
         hasAtLeastOneContact &&
@@ -128,6 +145,8 @@ export default function DriverVerificationScreen() {
     zipCode,
     country,
     licensePlate,
+    plateLetters,
+    plateNumbers,
   ]);
 
   const sendEmailVerification = async () => {
@@ -460,7 +479,7 @@ export default function DriverVerificationScreen() {
               Authorization: `Bearer ${apiToken}`,
             },
             body: JSON.stringify({
-              plate: licensePlate,
+              plate: `${plateLetters}${plateNumbers}`,
             }),
           }
         );
@@ -484,6 +503,8 @@ export default function DriverVerificationScreen() {
       setZipCode("");
       setCountry("");
       setLicensePlate("");
+      setPlateLetters("");
+      setPlateNumbers("");
 
       MyToast("Your verification request has been submitted successfully!");
     } catch (error) {
@@ -791,7 +812,7 @@ export default function DriverVerificationScreen() {
                     marginLeft: 10,
                   }}
                 >
-                  Verification Method:
+                  Verification:
                 </Text>
 
                 <View
@@ -916,100 +937,233 @@ export default function DriverVerificationScreen() {
 
             {/* Email Input - shown only when email is selected */}
             {verificationType === "email" && !isEmailVerified && (
-              <View style={{ marginBottom: 20 }}>
-                <Input
-                  label="Email"
-                  leftIcon={{
-                    type: "material-community",
-                    name: "email-outline",
-                    size: 22,
-                    color: "#27ae60",
-                  }}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="Enter your email"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  containerStyle={{ marginBottom: 0 }}
-                />
-
-                {email.trim() !== "" && (
-                  <TouchableOpacity
-                    onPress={sendEmailVerification}
-                    disabled={isVerificationLoading}
-                    style={{
-                      backgroundColor: "#10b981",
-                      borderRadius: 8,
-                      paddingVertical: 12,
-                      marginHorizontal: 10,
-                      marginTop: -5,
-                      alignItems: "center",
-                    }}
-                  >
-                    {isVerificationLoading && verifyingEmail ? (
-                      <ActivityIndicator color="white" size="small" />
-                    ) : (
-                      <Text
-                        style={{
-                          color: "white",
-                          fontWeight: "600",
-                          fontSize: 16,
-                        }}
-                      >
-                        Send Verification Code
+              <>
+                <View style={{ marginBottom: 5, marginTop: -10 }}>
+                  {userData[0]?.email === user?.email ? (
+                    <View
+                      style={{
+                        width: "100%",
+                        borderBottomWidth: 1,
+                        borderBottomColor: "#969dac",
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        marginBottom: 20,
+                      }}
+                    >
+                      <Text style={{ color: "green", fontSize: 16 }}>
+                        Phone number is verified
                       </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
+                    </View>
+                  ) : (
+                    <Input
+                      label="Phone number"
+                      leftIcon={{
+                        type: "phone",
+                        name: "phone",
+                        size: 22,
+                        color: "#27ae60",
+                      }}
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      placeholder="Enter your phone number"
+                      keyboardType="phone-pad"
+                      containerStyle={{ marginBottom: 0 }}
+                    />
+                  )}
+
+                  {phoneNumber.trim() !== "" && (
+                    <TouchableOpacity
+                      onPress={sendMobileVerification}
+                      disabled={isVerificationLoading}
+                      style={{
+                        backgroundColor: "#10b981",
+                        borderRadius: 8,
+                        paddingVertical: 12,
+                        marginHorizontal: 10,
+                        marginTop: 5,
+                        alignItems: "center",
+                      }}
+                    >
+                      {isVerificationLoading && verifyingMobile ? (
+                        <ActivityIndicator color="white" size="small" />
+                      ) : (
+                        <Text
+                          style={{
+                            color: "white",
+                            fontWeight: "600",
+                            fontSize: 16,
+                          }}
+                        >
+                          Send Verification Code
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={{ marginBottom: 5, marginTop: -5 }}>
+                  <Input
+                    label="Email address"
+                    leftIcon={{
+                      type: "email",
+                      name: "email",
+                      size: 22,
+                      color: "#27ae60",
+                    }}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Please verify your email address"
+                    placeholderTextColor="red"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    containerStyle={{ marginBottom: 0 }}
+                  />
+
+                  {email.trim() !== "" && (
+                    <TouchableOpacity
+                      onPress={sendEmailVerification}
+                      disabled={isVerificationLoading}
+                      style={{
+                        backgroundColor: "#10b981",
+                        borderRadius: 8,
+                        paddingVertical: 12,
+                        marginHorizontal: 10,
+                        marginTop: -5,
+                        alignItems: "center",
+                      }}
+                    >
+                      {isVerificationLoading && verifyingEmail ? (
+                        <ActivityIndicator color="white" size="small" />
+                      ) : (
+                        <Text
+                          style={{
+                            color: "white",
+                            fontWeight: "600",
+                            fontSize: 16,
+                          }}
+                        >
+                          Send Verification Code
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
             )}
 
             {verificationType === "phone" && !isMobileVerified && (
-              <View style={{ marginBottom: 20 }}>
-                <Input
-                  label="Phone Number"
-                  leftIcon={{
-                    type: "material-community",
-                    name: "phone-outline",
-                    size: 22,
-                    color: "#27ae60",
-                  }}
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  placeholder="Enter your phone number"
-                  keyboardType="phone-pad"
-                  containerStyle={{ marginBottom: 0 }}
-                />
-
-                {phoneNumber.trim() !== "" && (
-                  <TouchableOpacity
-                    onPress={sendMobileVerification}
-                    disabled={isVerificationLoading}
-                    style={{
-                      backgroundColor: "#10b981",
-                      borderRadius: 8,
-                      paddingVertical: 12,
-                      marginHorizontal: 10,
-                      marginTop: 5,
-                      alignItems: "center",
-                    }}
-                  >
-                    {isVerificationLoading && verifyingMobile ? (
-                      <ActivityIndicator color="white" size="small" />
-                    ) : (
-                      <Text
-                        style={{
-                          color: "white",
-                          fontWeight: "600",
-                          fontSize: 16,
-                        }}
-                      >
-                        Send Verification Code
+              <>
+                <View style={{ marginBottom: 20 }}>
+                  {userData[0]?.phone === user?.user_metadata?.phone ? (
+                    <View
+                      style={{
+                        width: "100%",
+                        borderBottomWidth: 1,
+                        borderBottomColor: "#969dac",
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        marginBottom: 20,
+                        marginTop: -10,
+                      }}
+                    >
+                      <Text style={{ color: "green", fontSize: 16 }}>
+                        Phone number is verified
                       </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
+                    </View>
+                  ) : (
+                    <Input
+                      label="Phone Number"
+                      leftIcon={{
+                        type: "material-community",
+                        name: "phone-outline",
+                        size: 22,
+                        color: "#27ae60",
+                      }}
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      placeholder="Enter your phone number"
+                      keyboardType="phone-pad"
+                      containerStyle={{ marginBottom: 0 }}
+                    />
+                  )}
+
+                  {phoneNumber.trim() !== "" && (
+                    <TouchableOpacity
+                      onPress={sendMobileVerification}
+                      disabled={isVerificationLoading}
+                      style={{
+                        backgroundColor: "#10b981",
+                        borderRadius: 8,
+                        paddingVertical: 12,
+                        marginHorizontal: 10,
+                        marginTop: 5,
+                        alignItems: "center",
+                      }}
+                    >
+                      {isVerificationLoading && verifyingMobile ? (
+                        <ActivityIndicator color="white" size="small" />
+                      ) : (
+                        <Text
+                          style={{
+                            color: "white",
+                            fontWeight: "600",
+                            fontSize: 16,
+                          }}
+                        >
+                          Send Verification Code
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={{ marginBottom: 10, marginTop: -20 }}>
+                  <Input
+                    label="Email address"
+                    leftIcon={{
+                      type: "email",
+                      name: "email",
+                      size: 22,
+                      color: "#27ae60",
+                    }}
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    placeholder="Please verify your email address"
+                    placeholderTextColor="red"
+                    keyboardType="phone-pad"
+                    containerStyle={{ marginBottom: 0 }}
+                  />
+
+                  {phoneNumber.trim() !== "" && (
+                    <TouchableOpacity
+                      onPress={sendMobileVerification}
+                      disabled={isVerificationLoading}
+                      style={{
+                        backgroundColor: "#10b981",
+                        borderRadius: 8,
+                        paddingVertical: 12,
+                        marginHorizontal: 10,
+                        marginTop: 5,
+                        alignItems: "center",
+                      }}
+                    >
+                      {isVerificationLoading && verifyingMobile ? (
+                        <ActivityIndicator color="white" size="small" />
+                      ) : (
+                        <Text
+                          style={{
+                            color: "white",
+                            fontWeight: "600",
+                            fontSize: 16,
+                          }}
+                        >
+                          Send Verification Code
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
             )}
 
             {/* Show verified status */}
@@ -1061,21 +1215,12 @@ export default function DriverVerificationScreen() {
               </View>
             )}
 
-            <Input
-              label="Vehicle License Plate"
-              leftIcon={{
-                type: "material-community",
-                name: "car",
-                size: 22,
-                color: "#27ae60",
-              }}
-              value={licensePlate}
-              onChangeText={setLicensePlate}
-              placeholder="Enter your vehicle license plate"
-              autoCapitalize="characters"
-              containerStyle={{ marginBottom: 5 }}
+            <LicensePlateInput
+              plateLetters={plateLetters}
+              setPlateLetters={setPlateLetters}
+              plateNumbers={plateNumbers}
+              setPlateNumbers={setPlateNumbers}
             />
-
             {/* Address fields */}
             <Input
               label="Street Address Line 1"

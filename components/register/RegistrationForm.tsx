@@ -116,6 +116,165 @@ export const RegistrationForm = ({
         />
       </NameSurnameRow>
 
+      <Modal
+        visible={showCountryPicker}
+        animationType="none"
+        transparent={true}
+        onRequestClose={() => setShowCountryPicker(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "flex-end",
+          }}
+          onPress={() => setShowCountryPicker(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              maxHeight: "80%",
+              minHeight: "80%",
+              paddingTop: 20,
+            }}
+            onPress={() => {}}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingHorizontal: 20,
+                marginBottom: 15,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+                Select Country
+              </Text>
+              <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                <Text style={{ fontSize: 16, color: "#27ae60" }}>Done</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#ddd",
+                  borderRadius: 10,
+                  padding: 10,
+                  fontSize: 16,
+                }}
+                placeholder="Search country..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+            <ScrollView style={{ padding: 10 }}>
+              {filteredCountries.map((country) => (
+                <TouchableOpacity
+                  key={country.code}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    padding: 15,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#eee",
+                    backgroundColor:
+                      selectedCountry.code === country.code
+                        ? "#f0f9f4"
+                        : "#fff",
+                  }}
+                  onPress={() => {
+                    setSelectedCountry(country);
+                    setShowCountryPicker(false);
+                    setSearchQuery("");
+                  }}
+                >
+                  <Text style={{ fontSize: 24, marginRight: 15 }}>
+                    {country.flag}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "500" }}>
+                      {country.name}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: "#7f8c8d" }}>
+                      {country.dialCode}
+                    </Text>
+                  </View>
+                  {selectedCountry.code === country.code && (
+                    <Text style={{ fontSize: 20, color: "#27ae60" }}>✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <StyledInput
+        label="Password"
+        leftIcon={{
+          type: "material-community",
+          name: "lock-outline",
+          size: 22,
+          color: "#27ae60",
+        }}
+        rightIcon={{
+          type: "material-community",
+          name: showPassword ? "eye-off-outline" : "eye-outline",
+          size: 22,
+          color: "#95a5a6",
+          onPress: () => setShowPassword(!showPassword),
+        }}
+        inputStyle={{ paddingTop: 5 }}
+        onChangeText={(text) => {
+          setPassword(text);
+          if (passwordError) validatePassword(text);
+          if (confirmPassword && confirmPasswordError)
+            validateConfirmPassword(confirmPassword);
+        }}
+        value={password}
+        secureTextEntry={!showPassword}
+        placeholder="Create a password"
+        autoCapitalize="none"
+        errorMessage={passwordError}
+        onBlur={() => validatePassword(password)}
+      />
+
+      <StyledInput
+        label="Confirm Password"
+        leftIcon={{
+          type: "material-community",
+          name: "lock-outline",
+          size: 22,
+          color: "#27ae60",
+        }}
+        rightIcon={{
+          type: "material-community",
+          name: showConfirmPassword ? "eye-off-outline" : "eye-outline",
+          size: 22,
+          color: "#95a5a6",
+          onPress: () => setShowConfirmPassword(!showConfirmPassword),
+        }}
+        inputStyle={{ paddingTop: 5 }}
+        onChangeText={(text) => {
+          setConfirmPassword(text);
+          if (confirmPasswordError) validateConfirmPassword(text);
+        }}
+        value={confirmPassword}
+        secureTextEntry={!showConfirmPassword}
+        placeholder="Confirm your password"
+        autoCapitalize="none"
+        errorMessage={confirmPasswordError}
+        onBlur={() => validateConfirmPassword(confirmPassword)}
+      />
+
       <View style={{ marginBottom: 25, marginTop: -10, marginLeft: 11 }}>
         <Text
           style={{
@@ -282,6 +441,16 @@ export const RegistrationForm = ({
               keyboardType="phone-pad"
               onBlur={() => validatePhoneNumber(phoneNumber)}
             />
+            <TouchableOpacity
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 10,
+                backgroundColor: "green",
+                borderRadius: 10,
+              }}
+            >
+              <Text style={{ color: "white" }}>Verify</Text>
+            </TouchableOpacity>
           </View>
           {phoneNumberError ? (
             <Text
@@ -298,165 +467,6 @@ export const RegistrationForm = ({
         </View>
       )}
 
-      <Modal
-        visible={showCountryPicker}
-        animationType="none"
-        transparent={true}
-        onRequestClose={() => setShowCountryPicker(false)}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          style={{
-            flex: 1,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "flex-end",
-          }}
-          onPress={() => setShowCountryPicker(false)}
-        >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={{
-              backgroundColor: "#fff",
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              maxHeight: "80%",
-              minHeight: "80%",
-              paddingTop: 20,
-            }}
-            onPress={() => {}}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingHorizontal: 20,
-                marginBottom: 15,
-              }}
-            >
-              <Text style={{ fontSize: 18, fontWeight: "bold" }}>
-                Select Country
-              </Text>
-              <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
-                <Text style={{ fontSize: 16, color: "#27ae60" }}>Done</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-              <TextInput
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#ddd",
-                  borderRadius: 10,
-                  padding: 10,
-                  fontSize: 16,
-                }}
-                placeholder="Search country..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-
-            <ScrollView style={{ padding: 10 }}>
-              {filteredCountries.map((country) => (
-                <TouchableOpacity
-                  key={country.code}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    padding: 15,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#eee",
-                    backgroundColor:
-                      selectedCountry.code === country.code
-                        ? "#f0f9f4"
-                        : "#fff",
-                  }}
-                  onPress={() => {
-                    setSelectedCountry(country);
-                    setShowCountryPicker(false);
-                    setSearchQuery("");
-                  }}
-                >
-                  <Text style={{ fontSize: 24, marginRight: 15 }}>
-                    {country.flag}
-                  </Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: "500" }}>
-                      {country.name}
-                    </Text>
-                    <Text style={{ fontSize: 14, color: "#7f8c8d" }}>
-                      {country.dialCode}
-                    </Text>
-                  </View>
-                  {selectedCountry.code === country.code && (
-                    <Text style={{ fontSize: 20, color: "#27ae60" }}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      <StyledInput
-        label="Password"
-        leftIcon={{
-          type: "material-community",
-          name: "lock-outline",
-          size: 22,
-          color: "#27ae60",
-        }}
-        rightIcon={{
-          type: "material-community",
-          name: showPassword ? "eye-off-outline" : "eye-outline",
-          size: 22,
-          color: "#95a5a6",
-          onPress: () => setShowPassword(!showPassword),
-        }}
-        inputStyle={{ paddingTop: 5 }}
-        onChangeText={(text) => {
-          setPassword(text);
-          if (passwordError) validatePassword(text);
-          if (confirmPassword && confirmPasswordError)
-            validateConfirmPassword(confirmPassword);
-        }}
-        value={password}
-        secureTextEntry={!showPassword}
-        placeholder="Create a password"
-        autoCapitalize="none"
-        errorMessage={passwordError}
-        onBlur={() => validatePassword(password)}
-      />
-
-      <StyledInput
-        label="Confirm Password"
-        leftIcon={{
-          type: "material-community",
-          name: "lock-outline",
-          size: 22,
-          color: "#27ae60",
-        }}
-        rightIcon={{
-          type: "material-community",
-          name: showConfirmPassword ? "eye-off-outline" : "eye-outline",
-          size: 22,
-          color: "#95a5a6",
-          onPress: () => setShowConfirmPassword(!showConfirmPassword),
-        }}
-        inputStyle={{ paddingTop: 5 }}
-        onChangeText={(text) => {
-          setConfirmPassword(text);
-          if (confirmPasswordError) validateConfirmPassword(text);
-        }}
-        value={confirmPassword}
-        secureTextEntry={!showConfirmPassword}
-        placeholder="Confirm your password"
-        autoCapitalize="none"
-        errorMessage={confirmPasswordError}
-        onBlur={() => validateConfirmPassword(confirmPassword)}
-      />
-
       <View style={{ marginBottom: 20 }}>
         <Text
           style={{
@@ -464,6 +474,7 @@ export const RegistrationForm = ({
             fontWeight: "500",
             marginBottom: 10,
             color: "#2c3e50",
+            marginLeft: 8,
           }}
         >
           Select an option:

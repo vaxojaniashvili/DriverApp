@@ -11,8 +11,8 @@ import styled from "styled-components/native";
 import { RegistrationForm } from "@/components/register/RegistrationForm";
 import { DocumentsScreen } from "@/components/register/DocumentsScreen";
 import { ConfirmationScreen } from "@/components/register/ConfirmationScreen";
-import { VerificationScreen } from "@/components/register/ VerificationScreen";
 import { COUNTRIES } from "@/components/Countries";
+import { VerificationScreen } from "@/components/register/ VerificationScreen";
 
 export default function DriverSignUp() {
   const [email, setEmail] = useState("");
@@ -32,6 +32,7 @@ export default function DriverSignUp() {
   // Verification state
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [isContactVerified, setIsContactVerified] = useState(false); // ახალი state
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const otpInputRefs = useRef([]);
   const [timer, setTimer] = useState(60);
@@ -48,7 +49,6 @@ export default function DriverSignUp() {
   const [surnameError, setSurnameError] = useState("");
   const [phoneNumberError, setPhoneNumberError] = useState("");
   const [vanOptionError, setVanOptionError] = useState("");
-  const [apiToken, setApiToken] = useState<string | null>(null);
 
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[12]);
 
@@ -178,26 +178,17 @@ export default function DriverSignUp() {
     }
   };
 
+  // ვერიფიკაციის კოდის გაგზავნა (მხოლოდ OTP-ს ავგზავნით)
   const sendVerificationCode = async () => {
     console.log("=== STARTING sendVerificationCode ===");
-    const isEmailValid = validateEmail(email);
-    const isPhoneValid = validatePhoneNumber(phoneNumber);
-    const isNameValid = validateName(name);
-    const isSurnameValid = validateSurname(surname);
-    const isPasswordValid = validatePassword(password);
-    const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
-    const isVanOptionValid = validateVanOption(vanOption);
 
-    if (
-      !isEmailValid ||
-      !isPhoneValid ||
-      !isNameValid ||
-      !isSurnameValid ||
-      !isPasswordValid ||
-      !isConfirmPasswordValid ||
-      !isVanOptionValid
-    ) {
-      return;
+    // ვალიდაცია მხოლოდ კონტაქტის მეთოდისთვის
+    if (contactMethod === "email") {
+      const isEmailValid = validateEmail(email);
+      if (!isEmailValid) return;
+    } else {
+      const isPhoneValid = validatePhoneNumber(phoneNumber);
+      if (!isPhoneValid) return;
     }
 
     setLoading(true);
@@ -247,6 +238,8 @@ export default function DriverSignUp() {
       setLoading(false);
     }
   };
+
+  // OTP-ს ვერიფიკაცია (უკან ბრუნდება რეგისტრაციის ფორმზე)
   const verifyOtp = async () => {
     const otpValue = otpDigits.join("");
 
@@ -275,37 +268,15 @@ export default function DriverSignUp() {
         if (error) throw error;
 
         if (session) {
-          console.log("Phone OTP verified successfully, updating user data");
-
-          // ნაცვლად signUp-ისა ვიყენებთ updateUser
-          const { data: userData, error: updateError } =
-            await supabase.auth.updateUser({
-              data: {
-                first_name: name,
-                last_name: surname,
-                full_name: `${name} ${surname}`,
-                phone: phoneNumber,
-                van_option: vanOption,
-                user_type: "driver",
-                status: "incomplete",
-              },
-            });
-
-          if (updateError) throw updateError;
-
-          console.log(
-            "User data updated successfully:",
-            userData?.user?.user_metadata
-          );
-
+          console.log("Phone OTP verified successfully");
+          setIsContactVerified(true);
           setIsVerifying(false);
-          setCurrentStep(2);
           setOtpDigits(["", "", "", "", "", ""]);
+          Alert.alert("Success", "Phone number verified successfully!");
         } else {
           Alert.alert("Error", "Verification failed. Please try again.");
         }
       } else {
-        // ემაილისთვისაც იგივე ლოგიკა
         console.log("Verifying email OTP:", otpValue);
         const {
           data: { session },
@@ -319,31 +290,11 @@ export default function DriverSignUp() {
         if (error) throw error;
 
         if (session) {
-          console.log("Email OTP verified successfully, updating user data");
-
-          const { data: userData, error: updateError } =
-            await supabase.auth.updateUser({
-              data: {
-                first_name: name,
-                last_name: surname,
-                full_name: `${name} ${surname}`,
-                phone: phoneNumber,
-                van_option: vanOption,
-                user_type: "driver",
-                status: "incomplete",
-              },
-            });
-
-          if (updateError) throw updateError;
-
-          console.log(
-            "User data updated successfully:",
-            userData?.user?.user_metadata
-          );
-
+          console.log("Email OTP verified successfully");
+          setIsContactVerified(true);
           setIsVerifying(false);
-          setCurrentStep(2);
           setOtpDigits(["", "", "", "", "", ""]);
+          Alert.alert("Success", "Email verified successfully!");
         } else {
           Alert.alert("Error", "Verification failed. Please try again.");
         }
@@ -374,7 +325,6 @@ export default function DriverSignUp() {
 
         if (error) throw error;
       } else {
-        // ემაილზე OTP-ის ხელახლა გაგზავნა - ვითხოვთ ციფრულ კოდს
         console.log("Resending OTP to email:", email);
         const { data, error } = await supabase.auth.signInWithOtp({
           email: email.trim().toLowerCase(),
@@ -406,8 +356,38 @@ export default function DriverSignUp() {
     }
   };
 
+  // მთავარი რეგისტრაცია (ყველა ფილდის ვალიდაციის შემდეგ)
   const completeRegistration = async () => {
     console.log("=== STARTING completeRegistration ===");
+
+    // ყველა ფილდის ვალიდაცია
+    const isEmailValid = validateEmail(email);
+    const isPhoneValid = validatePhoneNumber(phoneNumber);
+    const isNameValid = validateName(name);
+    const isSurnameValid = validateSurname(surname);
+    const isPasswordValid = validatePassword(password);
+    const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
+    const isVanOptionValid = validateVanOption(vanOption);
+
+    if (
+      !isEmailValid ||
+      !isPhoneValid ||
+      !isNameValid ||
+      !isSurnameValid ||
+      !isPasswordValid ||
+      !isConfirmPasswordValid ||
+      !isVanOptionValid
+    ) {
+      Alert.alert("Error", "Please fill all required fields correctly.");
+      return;
+    }
+
+    // კონტაქტის ვერიფიკაციის შემოწმება
+    if (!isContactVerified) {
+      Alert.alert("Error", `Please verify your ${contactMethod} first.`);
+      return;
+    }
+
     setLoading(true);
     try {
       const {
@@ -421,22 +401,14 @@ export default function DriverSignUp() {
         );
       }
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        throw new Error("Failed to get user data");
-      }
-
+      // მომხმარებლის მონაცემების განახლება
       const { error: updateError } = await supabase.auth.updateUser({
-        email: email.trim().toLowerCase(),
         data: {
           first_name: name,
           last_name: surname,
           full_name: `${name} ${surname}`,
           phone: phoneNumber,
+          email: email.trim().toLowerCase(),
           van_option: vanOption,
           user_type: "driver",
           status: "incomplete",
@@ -446,6 +418,10 @@ export default function DriverSignUp() {
       if (updateError) throw updateError;
 
       console.log("Registration completed successfully");
+      Alert.alert("Success", "Registration completed successfully!");
+
+      // გადასვლა შემდეგ ნაბიჯზე
+      setCurrentStep(2);
     } catch (error) {
       console.error("Registration error:", error);
       Alert.alert(
@@ -456,6 +432,15 @@ export default function DriverSignUp() {
       setLoading(false);
     }
   };
+
+  // კონტაქტის მეთოდის შეცვლისას ვერიფიკაციის გაუქმება
+  const handleContactMethodChange = (method) => {
+    setContactMethod(method);
+    setIsContactVerified(false);
+    setIsVerifying(false);
+    setOtpDigits(["", "", "", "", "", ""]);
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -516,6 +501,7 @@ export default function DriverSignUp() {
                 passwordError={passwordError}
                 confirmPasswordError={confirmPasswordError}
                 vanOptionError={vanOptionError}
+                isContactVerified={isContactVerified}
                 setName={setName}
                 setSurname={setSurname}
                 setEmail={setEmail}
@@ -525,7 +511,7 @@ export default function DriverSignUp() {
                 setShowPassword={setShowPassword}
                 setShowConfirmPassword={setShowConfirmPassword}
                 setVanOption={setVanOption}
-                setContactMethod={setContactMethod}
+                setContactMethod={handleContactMethodChange}
                 validateName={validateName}
                 validateSurname={validateSurname}
                 validateEmail={validateEmail}
@@ -534,6 +520,7 @@ export default function DriverSignUp() {
                 validateConfirmPassword={validateConfirmPassword}
                 validateVanOption={validateVanOption}
                 sendVerificationCode={sendVerificationCode}
+                completeRegistration={completeRegistration}
                 Title={Title}
                 NameSurnameRow={NameSurnameRow}
                 NameInput={NameInput}

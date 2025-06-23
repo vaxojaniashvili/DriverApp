@@ -29,6 +29,7 @@ export const RegistrationForm = ({
   passwordError,
   confirmPasswordError,
   vanOptionError,
+  isContactVerified, // ახალი prop
   setName,
   setSurname,
   setEmail,
@@ -46,7 +47,8 @@ export const RegistrationForm = ({
   validatePassword,
   validateConfirmPassword,
   validateVanOption,
-  sendVerificationCode,
+  sendVerificationCode, // ვერიფიკაციის კოდის გაგზავნა
+  completeRegistration, // მთავარი რეგისტრაცია
   Title,
   NameSurnameRow,
   NameInput,
@@ -65,6 +67,32 @@ export const RegistrationForm = ({
       country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       country.dialCode.includes(searchQuery)
   );
+
+  // ვერიფიკაციის ღილაკის ტექსტი
+  const getVerifyButtonText = () => {
+    if (isContactVerified) {
+      return "✓ Verified";
+    }
+    return "Verify";
+  };
+
+  // ვერიფიკაციის ღილაკის ფერი
+  const getVerifyButtonStyle = () => {
+    if (isContactVerified) {
+      return {
+        paddingHorizontal: 10,
+        paddingVertical: 10,
+        backgroundColor: "#27ae60",
+        borderRadius: 10,
+      };
+    }
+    return {
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      backgroundColor: "#3498db",
+      borderRadius: 10,
+    };
+  };
 
   return (
     <View style={{ width: "100%" }}>
@@ -358,26 +386,69 @@ export const RegistrationForm = ({
       </View>
 
       {contactMethod === "email" && (
-        <StyledInput
-          label="Email"
-          leftIcon={{
-            type: "material-community",
-            name: "email-outline",
-            size: 22,
-            color: "#27ae60",
-          }}
-          onChangeText={(text) => {
-            setEmail(text);
-            if (emailError) validateEmail(text);
-          }}
-          inputStyle={{ paddingTop: 5 }}
-          value={email}
-          placeholder="Enter your email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          errorMessage={emailError}
-          onBlur={() => validateEmail(email)}
-        />
+        <View style={{ marginBottom: 10 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: "#86939e",
+              fontWeight: "bold",
+              marginBottom: 10,
+              marginLeft: 10,
+            }}
+          >
+            Email
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              borderBottomWidth: 1,
+              borderBottomColor: "#86939e",
+              paddingBottom: 8,
+              marginHorizontal: 10,
+            }}
+          >
+            <TextInput
+              style={{
+                flex: 1,
+                fontSize: 16,
+                paddingVertical: 5,
+                color: "#2c3e50",
+                marginRight: 10,
+              }}
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (emailError) validateEmail(text);
+              }}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              onBlur={() => validateEmail(email)}
+            />
+            <TouchableOpacity
+              style={getVerifyButtonStyle()}
+              onPress={isContactVerified ? null : sendVerificationCode}
+              disabled={isContactVerified || loading}
+            >
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                {getVerifyButtonText()}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {emailError ? (
+            <Text
+              style={{
+                color: "#e74c3c",
+                fontSize: 12,
+                marginTop: 5,
+                marginLeft: 10,
+              }}
+            >
+              {emailError}
+            </Text>
+          ) : null}
+        </View>
       )}
 
       {contactMethod === "phone" && (
@@ -431,6 +502,7 @@ export const RegistrationForm = ({
                 fontSize: 16,
                 paddingVertical: 5,
                 color: "#2c3e50",
+                marginRight: 10,
               }}
               value={phoneNumber}
               onChangeText={(text) => {
@@ -442,14 +514,13 @@ export const RegistrationForm = ({
               onBlur={() => validatePhoneNumber(phoneNumber)}
             />
             <TouchableOpacity
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 10,
-                backgroundColor: "green",
-                borderRadius: 10,
-              }}
+              style={getVerifyButtonStyle()}
+              onPress={isContactVerified ? null : sendVerificationCode}
+              disabled={isContactVerified || loading}
             >
-              <Text style={{ color: "white" }}>Verify</Text>
+              <Text style={{ color: "white", fontWeight: "bold" }}>
+                {getVerifyButtonText()}
+              </Text>
             </TouchableOpacity>
           </View>
           {phoneNumberError ? (
@@ -574,16 +645,19 @@ export const RegistrationForm = ({
         ) : null}
       </View>
 
+      {/* მთავარი რეგისტრაციის ღილაკი */}
       <StyledButton
         ViewComponent={LinearGradient}
         linearGradientProps={{
-          colors: ["#27ae60", "#2ecc71"],
+          colors: isContactVerified
+            ? ["#27ae60", "#2ecc71"]
+            : ["#95a5a6", "#7f8c8d"],
           start: { x: 0, y: 0 },
           end: { x: 1, y: 0 },
         }}
         title="Create account"
-        disabled={loading}
-        onPress={sendVerificationCode}
+        disabled={loading || !isContactVerified}
+        onPress={completeRegistration}
         loading={loading}
         buttonStyle={{
           borderRadius: 10,
@@ -594,6 +668,19 @@ export const RegistrationForm = ({
           fontSize: 16,
         }}
       />
+
+      {!isContactVerified && (
+        <Text
+          style={{
+            textAlign: "center",
+            color: "#e74c3c",
+            fontSize: 12,
+            marginTop: 5,
+          }}
+        >
+          Please verify your {contactMethod} to continue
+        </Text>
+      )}
 
       <View style={{ marginTop: 10, alignItems: "center" }}>
         <View style={{ flexDirection: "row", gap: 5 }}>

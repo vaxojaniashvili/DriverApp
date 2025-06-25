@@ -13,13 +13,14 @@ import { router } from "expo-router";
 import styled from "styled-components/native";
 import { KeyboardAvoidingView, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Session } from "@supabase/supabase-js";
 
 export default function Auth() {
   const [identifier, setIdentifier] = useState(""); // Email ან Phone
   const [password, setPassword] = useState(""); // პაროლი იმეილისთვის
   const [otpCode, setOtpCode] = useState(""); // OTP კოდი ტელეფონისთვის
   const [loading, setLoading] = useState(false);
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [otpSent, setOtpSent] = useState(false); // OTP გაგზავნილია თუ არა
 
   const [identifierError, setIdentifierError] = useState("");
@@ -29,7 +30,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
 
   // იდენტიფიკატორის ვალიდაცია
-  const validateIdentifier = (text) => {
+  const validateIdentifier = (text: string) => {
     if (!text) {
       setIdentifierError("Email or phone number is required");
       setIdentifierType("");
@@ -57,7 +58,7 @@ export default function Auth() {
   };
 
   // პაროლის ვალიდაცია იმეილისთვის
-  const validatePassword = (password) => {
+  const validatePassword = (password: string) => {
     if (!password) {
       setPasswordError("Password is required");
       return false;
@@ -70,7 +71,7 @@ export default function Auth() {
   };
 
   // OTP კოდის ვალიდაცია ტელეფონისთვის
-  const validateOtp = (otp) => {
+  const validateOtp = (otp: string) => {
     if (!otp) {
       setOtpError("OTP code is required");
       return false;
@@ -239,10 +240,27 @@ export default function Auth() {
         }
 
         if (data.session) {
+          console.log("Active session found:", data.session.user?.id);
           setSession(data.session);
-          router.push("/homepage");
+
+          // Fetch user and check status
+          const { data: userData } = await supabase.auth.getUser();
+          const status = userData?.user?.user_metadata?.status;
+          console.log("User status:", status);
+
+          // Only redirect if user status is active or complete
+          // This prevents redirects during registration process
+          if (status === "active" || status === "complete") {
+            console.log("Redirecting to homepage - user is active/complete");
+            router.push("/homepage");
+          } else if (status === "incomplete" || !status) {
+            console.log(
+              "Redirecting to signUp - user is incomplete or no status"
+            );
+            router.push("/signUp");
+          }
         } else {
-          console.log("No active session");
+          console.log("No active session found");
         }
       } catch (e) {
         console.error("Exception checking session:", e);
@@ -255,12 +273,29 @@ export default function Auth() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth state changed:", event);
-      setSession(session);
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.id);
 
       if (session) {
-        router.push("/homepage");
+        console.log("Session detected in auth state change");
+        setSession(session);
+
+        // Fetch user and check status
+        const { data: userData } = await supabase.auth.getUser();
+        const status = userData?.user?.user_metadata?.status;
+        console.log("User status in auth state change:", status);
+
+        // Only redirect if user status is active or complete
+        // This prevents redirects during registration process
+        if (status === "active" || status === "complete") {
+          console.log("Redirecting to homepage from auth state change");
+          router.push("/homepage");
+        } else if (status === "incomplete" || !status) {
+          console.log("Redirecting to signUp from auth state change");
+          router.push("/signUp");
+        }
+      } else {
+        console.log("No session in auth state change");
       }
     });
 
@@ -379,10 +414,9 @@ export default function Auth() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : null}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={{ flex: 1 }}
       keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-      enabled={Platform.OS === "ios"}
     >
       <ScrollView
         contentContainerStyle={{ flexGrow: 1 }}

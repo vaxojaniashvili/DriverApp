@@ -2,7 +2,6 @@ import React from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { Button } from "@rneui/themed";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
 
 export const VerificationScreen = ({
   contactMethod,
@@ -17,6 +16,7 @@ export const VerificationScreen = ({
   handleOtpKeyPress,
   verifyOtp,
   resendVerificationCode,
+  goBackToRegistration,
 }: any) => {
   return (
     <View style={{ flex: 1, padding: 20 }}>
@@ -36,7 +36,7 @@ export const VerificationScreen = ({
           marginBottom: 20,
         }}
       >
-        {otpDigits.map((digit, index) => (
+        {otpDigits.map((digit: string, index: number) => (
           <TextInput
             key={index}
             ref={(ref) => (otpInputRefs.current[index] = ref)}
@@ -109,11 +109,7 @@ export const VerificationScreen = ({
         }}
       >
         <Text>Back to </Text>
-        <TouchableOpacity
-          onPress={() => {
-            router.back();
-          }}
-        >
+        <TouchableOpacity onPress={goBackToRegistration}>
           <Text
             style={{
               color: "#27ae60",

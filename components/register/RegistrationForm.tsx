@@ -116,106 +116,6 @@ export const RegistrationForm = ({
         />
       </NameSurnameRow>
 
-      {contactMethod === "email" && (
-        <StyledInput
-          label="Email"
-          leftIcon={{
-            type: "material-community",
-            name: "email-outline",
-            size: 22,
-            color: "#27ae60",
-          }}
-          onChangeText={(text) => {
-            setEmail(text);
-            if (emailError) validateEmail(text);
-          }}
-          inputStyle={{ paddingTop: 5 }}
-          value={email}
-          placeholder="Enter your email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          errorMessage={emailError}
-          onBlur={() => validateEmail(email)}
-        />
-      )}
-
-      {contactMethod === "phone" && (
-        <View style={{ marginBottom: 10 }}>
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#86939e",
-              fontWeight: "bold",
-              marginBottom: 10,
-              marginLeft: 10,
-            }}
-          >
-            Phone Number
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              borderBottomWidth: 1,
-              borderBottomColor: "#86939e",
-              paddingBottom: 8,
-              marginHorizontal: 10,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => setShowCountryPicker(true)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                padding: 5,
-                marginRight: 10,
-                backgroundColor: "#f5f5f5",
-                borderRadius: 5,
-              }}
-            >
-              <Text style={{ fontSize: 20, marginRight: 5 }}>
-                {selectedCountry.flag}
-              </Text>
-              <Text style={{ fontSize: 16, color: "#2c3e50" }}>
-                {selectedCountry.dialCode}
-              </Text>
-              <Text style={{ fontSize: 12, marginLeft: 5, color: "#7f8c8d" }}>
-                ▼
-              </Text>
-            </TouchableOpacity>
-
-            <TextInput
-              style={{
-                flex: 1,
-                fontSize: 16,
-                paddingVertical: 5,
-                color: "#2c3e50",
-              }}
-              value={phoneNumber}
-              onChangeText={(text) => {
-                setPhoneNumber(text);
-                if (phoneNumberError) validatePhoneNumber(text);
-              }}
-              placeholder="Enter phone number"
-              keyboardType="phone-pad"
-              onBlur={() => validatePhoneNumber(phoneNumber)}
-            />
-          </View>
-          {phoneNumberError ? (
-            <Text
-              style={{
-                color: "#e74c3c",
-                fontSize: 12,
-                marginTop: 5,
-                marginLeft: 10,
-              }}
-            >
-              {phoneNumberError}
-            </Text>
-          ) : null}
-        </View>
-      )}
-
       <Modal
         visible={showCountryPicker}
         animationType="none"
@@ -317,35 +217,37 @@ export const RegistrationForm = ({
         </TouchableOpacity>
       </Modal>
 
-      <StyledInput
-        label="Password"
-        leftIcon={{
-          type: "material-community",
-          name: "lock-outline",
-          size: 22,
-          color: "#27ae60",
-        }}
-        rightIcon={{
-          type: "material-community",
-          name: showPassword ? "eye-off-outline" : "eye-outline",
-          size: 22,
-          color: "#95a5a6",
-          onPress: () => setShowPassword(!showPassword),
-        }}
-        inputStyle={{ paddingTop: 5 }}
-        onChangeText={(text) => {
-          setPassword(text);
-          if (passwordError) validatePassword(text);
-          if (confirmPassword && confirmPasswordError)
-            validateConfirmPassword(confirmPassword);
-        }}
-        value={password}
-        secureTextEntry={!showPassword}
-        placeholder="Create a password"
-        autoCapitalize="none"
-        errorMessage={passwordError}
-        onBlur={() => validatePassword(password)}
-      />
+      <View style={{ marginTop: -10 }}>
+        <StyledInput
+          label="Password"
+          leftIcon={{
+            type: "material-community",
+            name: "lock-outline",
+            size: 22,
+            color: "#27ae60",
+          }}
+          rightIcon={{
+            type: "material-community",
+            name: showPassword ? "eye-off-outline" : "eye-outline",
+            size: 22,
+            color: "#95a5a6",
+            onPress: () => setShowPassword(!showPassword),
+          }}
+          inputStyle={{ paddingTop: 5 }}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (passwordError) validatePassword(text);
+            if (confirmPassword && confirmPasswordError)
+              validateConfirmPassword(confirmPassword);
+          }}
+          value={password}
+          secureTextEntry={!showPassword}
+          placeholder="Create a password"
+          autoCapitalize="none"
+          errorMessage={passwordError}
+          onBlur={() => validatePassword(password)}
+        />
+      </View>
 
       <StyledInput
         label="Confirm Password"
@@ -374,6 +276,188 @@ export const RegistrationForm = ({
         errorMessage={confirmPasswordError}
         onBlur={() => validateConfirmPassword(confirmPassword)}
       />
+
+      <View style={{ marginBottom: 20, marginLeft: 10 }}>
+        <Text
+          style={{
+            fontSize: 16,
+            fontWeight: "500",
+            marginBottom: 10,
+            color: "#2c3e50",
+          }}
+        >
+          Verification Method:
+        </Text>
+
+        <View style={{ flexDirection: "row" }}>
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginRight: 20,
+            }}
+            onPress={() => setContactMethod("email")}
+          >
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                borderWidth: 2,
+                borderColor: "#27ae60",
+                marginRight: 10,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {contactMethod === "email" && (
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: "#27ae60",
+                  }}
+                />
+              )}
+            </View>
+            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Email</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+            onPress={() => setContactMethod("phone")}
+          >
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                borderWidth: 2,
+                borderColor: "#27ae60",
+                marginRight: 10,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              {contactMethod === "phone" && (
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: "#27ae60",
+                  }}
+                />
+              )}
+            </View>
+            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Phone</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {contactMethod === "email" && (
+        <StyledInput
+          label="Email"
+          leftIcon={{
+            type: "material-community",
+            name: "email-outline",
+            size: 22,
+            color: "#27ae60",
+          }}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (emailError) validateEmail(text);
+          }}
+          inputStyle={{ paddingTop: 5 }}
+          value={email}
+          placeholder="Enter your email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          errorMessage={emailError}
+          onBlur={() => validateEmail(email)}
+        />
+      )}
+
+      {contactMethod === "phone" && (
+        <View style={{ marginBottom: 10 }}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: "#86939e",
+              fontWeight: "bold",
+              marginBottom: 10,
+              marginLeft: 10,
+            }}
+          >
+            Phone Number
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              borderBottomWidth: 1,
+              borderBottomColor: "#86939e",
+              paddingBottom: 8,
+              marginHorizontal: 10,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => setShowCountryPicker(true)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                padding: 5,
+                marginRight: 10,
+                backgroundColor: "#f5f5f5",
+                borderRadius: 5,
+              }}
+            >
+              <Text style={{ fontSize: 20, marginRight: 5 }}>
+                {selectedCountry.flag}
+              </Text>
+              <Text style={{ fontSize: 16, color: "#2c3e50" }}>
+                {selectedCountry.dialCode}
+              </Text>
+              <Text style={{ fontSize: 12, marginLeft: 5, color: "#7f8c8d" }}>
+                ▼
+              </Text>
+            </TouchableOpacity>
+
+            <TextInput
+              style={{
+                flex: 1,
+                fontSize: 16,
+                paddingVertical: 5,
+                color: "#2c3e50",
+              }}
+              value={phoneNumber}
+              onChangeText={(text) => {
+                setPhoneNumber(text);
+                if (phoneNumberError) validatePhoneNumber(text);
+              }}
+              placeholder="Enter phone number"
+              keyboardType="phone-pad"
+              onBlur={() => validatePhoneNumber(phoneNumber)}
+            />
+          </View>
+          {phoneNumberError ? (
+            <Text
+              style={{
+                color: "#e74c3c",
+                fontSize: 12,
+                marginTop: 5,
+                marginLeft: 10,
+              }}
+            >
+              {phoneNumberError}
+            </Text>
+          ) : null}
+        </View>
+      )}
 
       <View style={{ marginBottom: 20 }}>
         <Text
@@ -479,88 +563,6 @@ export const RegistrationForm = ({
             {vanOptionError}
           </Text>
         ) : null}
-      </View>
-
-      <View style={{ marginBottom: 20 }}>
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: "500",
-            marginBottom: 10,
-            color: "#2c3e50",
-          }}
-        >
-          Verification Method:
-        </Text>
-
-        <View style={{ flexDirection: "row" }}>
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginRight: 20,
-            }}
-            onPress={() => setContactMethod("email")}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: "#27ae60",
-                marginRight: 10,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              {contactMethod === "email" && (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: "#27ae60",
-                  }}
-                />
-              )}
-            </View>
-            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Email</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-            onPress={() => setContactMethod("phone")}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: "#27ae60",
-                marginRight: 10,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              {contactMethod === "phone" && (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: "#27ae60",
-                  }}
-                />
-              )}
-            </View>
-            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Phone</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
       <StyledButton

@@ -138,8 +138,8 @@ const HomeScreen: React.FC = () => {
                 unique_id: user.id,
                 name: user.user_metadata.first_name,
                 last_name: user.user_metadata.last_name,
-                email: user.email,
-                phone: user.user_metadata.phone,
+                email: user.email || "test@gm.cs",
+                phone: user.user_metadata.phone || "3212",
               }),
             }
           );

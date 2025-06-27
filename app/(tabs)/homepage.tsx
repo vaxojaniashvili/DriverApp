@@ -147,7 +147,7 @@ const HomeScreen: React.FC = () => {
 
           if (res.ok) {
             Alert.alert(
-              driverDetails?.phone === user?.user_metadata?.phone
+              user?.user_metadata?.phone_verified
                 ? "verified with phone"
                 : "verified with email"
             );

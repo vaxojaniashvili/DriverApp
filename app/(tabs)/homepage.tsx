@@ -83,6 +83,7 @@ const HomeScreen: React.FC = () => {
 
       if (Array.isArray(data) && data.length > 0) {
         const driverInfo = data[0];
+
         setDriverDetails(driverInfo);
         setUserIndicator(driverInfo.indicator || data[0].indicator);
 
@@ -138,13 +139,18 @@ const HomeScreen: React.FC = () => {
                 unique_id: user.id,
                 name: user.user_metadata.first_name,
                 last_name: user.user_metadata.last_name,
-                email: user.email || "test@gm.cs",
-                phone: user.user_metadata.phone || "3212",
+                email: user.email || "test",
+                phone: user.user_metadata.phone || "11",
               }),
             }
           );
+
           if (res.ok) {
-            Alert.alert("okeyaa");
+            Alert.alert(
+              driverDetails?.phone === user?.user_metadata?.phone
+                ? "verified with phone"
+                : "verified with email"
+            );
           }
 
           if (res.ok || res.status === 409) {

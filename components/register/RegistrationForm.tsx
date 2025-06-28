@@ -59,6 +59,13 @@ export const RegistrationForm = ({
   setSelectedCountry,
   COUNTRIES,
 }: any) => {
+  console.log("RegistrationForm rendered with props:", {
+    isContactVerified,
+    loading,
+    contactMethod,
+    vanOption,
+  });
+
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -646,6 +653,14 @@ export const RegistrationForm = ({
       </View>
 
       {/* მთავარი რეგისტრაციის ღილაკი */}
+      {(() => {
+        console.log("Rendering Continue button with:", {
+          isContactVerified,
+          loading,
+          disabled: loading || !isContactVerified,
+        });
+        return null;
+      })()}
       <StyledButton
         ViewComponent={LinearGradient}
         linearGradientProps={{
@@ -655,7 +670,12 @@ export const RegistrationForm = ({
         }}
         title="Continue"
         disabled={loading || !isContactVerified}
-        onPress={completeRegistration}
+        onPress={() => {
+          console.log("RegistrationForm: Continue button pressed");
+          console.log("isContactVerified:", isContactVerified);
+          console.log("loading:", loading);
+          completeRegistration();
+        }}
         loading={loading}
         buttonStyle={{
           borderRadius: 10,

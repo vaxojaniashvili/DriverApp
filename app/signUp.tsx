@@ -118,6 +118,9 @@ export default function DriverSignUp() {
     }
 
     console.log("Auth listener active");
+    console.log("Current state - isContactVerified:", isContactVerified);
+    console.log("Current state - isVerifying:", isVerifying);
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -145,7 +148,7 @@ export default function DriverSignUp() {
       // ✅ USER_UPDATED event-ის დამატება რეგისტრაციის დასრულებისთვის
       if (session && (isRegistrationComplete || event === "USER_UPDATED")) {
         console.log(
-          "Registration complete or user updated, navigating to homepage"
+          "Registration complete or user updated, but navigation handled in completeRegistration"
         );
         console.log(
           "Event:",
@@ -153,14 +156,15 @@ export default function DriverSignUp() {
           "isRegistrationComplete:",
           isRegistrationComplete
         );
-        router.replace("/homepage");
+        // ✅ Navigation მოხდება completeRegistration-ში params-ით
+        // router.replace("/homepage");
       }
     });
 
     return () => {
       subscription?.unsubscribe();
     };
-  }, [isRegistrationComplete, isVerifying]);
+  }, [isRegistrationComplete, isVerifying, isContactVerified]);
 
   const validateEmail = (email: string) => {
     if (contactMethod === "phone") {
@@ -424,8 +428,11 @@ export default function DriverSignUp() {
       }
 
       console.log("REAL VERIFICATION SUCCESS, SETTING STATES");
+      console.log("Setting isContactVerified to true");
       setIsContactVerified(true);
+      console.log("Setting isVerifying to false");
       setIsVerifying(false);
+      console.log("Clearing OTP digits");
       setOtpDigits(["", "", "", "", "", ""]);
 
       // ✅ Session-ის შენახვა Zustand store-ში OTP verification-ის შემდეგ
@@ -446,6 +453,7 @@ export default function DriverSignUp() {
 
       // ✅ აღარ ვაკეთებთ signOut - იუზერი რჩება ავტორიზებული
       console.log("User verified successfully, staying logged in");
+      console.log("isContactVerified should now be true");
 
       console.log("SHOWING ALERT");
       Alert.alert(
@@ -553,6 +561,8 @@ export default function DriverSignUp() {
   const completeRegistration = async () => {
     console.log("=== STARTING completeRegistration (New Simple Version) ===");
     console.log("isContactVerified:", isContactVerified);
+    console.log("Current step:", currentStep);
+    console.log("Loading state:", loading);
 
     // ყველა ფილდის ვალიდაცია
     const isEmailValid = validateEmail(email);
@@ -563,6 +573,16 @@ export default function DriverSignUp() {
     const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
     const isVanOptionValid = validateVanOption(vanOption);
 
+    console.log("Validation results:", {
+      isEmailValid,
+      isPhoneValid,
+      isNameValid,
+      isSurnameValid,
+      isPasswordValid,
+      isConfirmPasswordValid,
+      isVanOptionValid,
+    });
+
     if (
       !isEmailValid ||
       !isPhoneValid ||
@@ -572,12 +592,14 @@ export default function DriverSignUp() {
       !isConfirmPasswordValid ||
       !isVanOptionValid
     ) {
+      console.log("Validation failed, showing alert");
       Alert.alert("Error", "Please fill all required fields correctly.");
       return;
     }
 
     // კონტაქტის ვერიფიკაციის შემოწმება
     if (!isContactVerified) {
+      console.log("Contact not verified, showing alert");
       Alert.alert("Error", `Please verify your ${contactMethod} first.`);
       return;
     }
@@ -660,6 +682,9 @@ export default function DriverSignUp() {
           hasUser: !!testStore.user,
           userId: testStore.user?.id,
         });
+
+        // ✅ ველოდებით რომ session შენახული იყოს
+        await new Promise((resolve) => setTimeout(resolve, 200));
       } else {
         console.log(
           "❌ afterUpdateSession is null or undefined - cannot store in Zustand"
@@ -670,48 +695,53 @@ export default function DriverSignUp() {
       console.log("Setting isRegistrationComplete to true");
       setIsRegistrationComplete(true);
 
-      console.log(
-        "Registration completed, waiting 5 seconds before navigation..."
-      );
+      console.log("Registration completed, navigating immediately...");
 
-      // ✅ 5 წამიანი დაყოვნება რომ session სწორად განახლდეს
-      setTimeout(async () => {
+      // ✅ დაუყოვნებელი navigation session refresh-ის შემდეგ
+      try {
         console.log("Refreshing session before navigation...");
-        try {
-          // ✅ მრავალი session refresh ცდა
-          for (let i = 0; i < 3; i++) {
-            console.log(`Session refresh attempt ${i + 1}/3`);
-            await supabase.auth.refreshSession();
-            await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 წამიანი დაყოვნება
-          }
-          console.log("Session refreshed before navigation");
-        } catch (error) {
-          console.error("Error refreshing session before navigation:", error);
-        }
+        await supabase.auth.refreshSession();
+        console.log("Session refreshed before navigation");
+      } catch (error) {
+        console.error("Error refreshing session before navigation:", error);
+      }
 
-        console.log("Navigating to homepage after delay");
+      console.log("Getting final session for navigation");
 
-        // ✅ ბოლო ცდა session-ის შენახვისა navigation-ის წინ
-        const finalSession = await supabase.auth.getSession();
-        console.log("Final session structure:", {
-          hasSession: !!finalSession.data.session,
-          sessionType: typeof finalSession.data.session,
-          sessionKeys: finalSession.data.session
-            ? Object.keys(finalSession.data.session)
-            : [],
-        });
+      // ✅ ბოლო ცდა session-ის შენახვისა navigation-ის წინ
+      const finalSession = await supabase.auth.getSession();
+      if (finalSession.data.session) {
+        console.log("Final session storage before navigation");
+        setSession(finalSession.data.session);
+        setUser(finalSession.data.session.user);
+        console.log("Final session stored in Zustand store");
 
-        if (finalSession.data.session) {
-          console.log("Final session storage before navigation");
-          setSession(finalSession.data.session);
-          if (finalSession.data.session.user) {
-            setUser(finalSession.data.session.user);
-          }
-          console.log("Final session stored in Zustand store");
-        }
+        // ✅ ველოდებით რომ session შენახული იყოს
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
 
-        router.replace("/homepage");
-      }, 5000);
+      // ✅ Session-ის გადაცემა navigation params-ით
+      console.log("Navigating to homepage with session data");
+      console.log("Final session data:", {
+        hasSession: !!finalSession.data.session,
+        hasUser: !!finalSession.data.session?.user,
+        userId: finalSession.data.session?.user?.id,
+        sessionDataLength: JSON.stringify(finalSession.data.session).length,
+        userDataLength: JSON.stringify(finalSession.data.session?.user).length,
+      });
+
+      console.log("About to call router.replace with params");
+      const navigationParams = {
+        pathname: "/homepage" as any,
+        params: {
+          sessionData: JSON.stringify(finalSession.data.session),
+          userData: JSON.stringify(finalSession.data.session?.user),
+        },
+      };
+      console.log("Navigation params object:", navigationParams);
+
+      router.replace(navigationParams);
+      console.log("router.replace called successfully");
     } catch (error) {
       console.error("Registration error:", error);
       const errorMessage = (error as Error)?.message || "";
@@ -797,57 +827,63 @@ export default function DriverSignUp() {
                 goBackToRegistration={goBackToRegistration}
               />
             ) : currentStep === 1 ? (
-              <>
-                <RegistrationForm
-                  name={name}
-                  surname={surname}
-                  email={email}
-                  phoneNumber={phoneNumber}
-                  COUNTRIES={COUNTRIES}
-                  selectedCountry={selectedCountry}
-                  setSelectedCountry={setSelectedCountry}
-                  password={password}
-                  confirmPassword={confirmPassword}
-                  vanOption={vanOption}
-                  contactMethod={contactMethod}
-                  loading={loading}
-                  showPassword={showPassword}
-                  showConfirmPassword={showConfirmPassword}
-                  nameError={nameError}
-                  surnameError={surnameError}
-                  emailError={emailError}
-                  phoneNumberError={phoneNumberError}
-                  passwordError={passwordError}
-                  confirmPasswordError={confirmPasswordError}
-                  vanOptionError={vanOptionError}
-                  isContactVerified={isContactVerified}
-                  setName={setName}
-                  setSurname={setSurname}
-                  setEmail={setEmail}
-                  setPhoneNumber={setPhoneNumber}
-                  setPassword={setPassword}
-                  setConfirmPassword={setConfirmPassword}
-                  setShowPassword={setShowPassword}
-                  setShowConfirmPassword={setShowConfirmPassword}
-                  setVanOption={setVanOption}
-                  setContactMethod={handleContactMethodChange}
-                  validateName={validateName}
-                  validateSurname={validateSurname}
-                  validateEmail={validateEmail}
-                  validatePhoneNumber={validatePhoneNumber}
-                  validatePassword={validatePassword}
-                  validateConfirmPassword={validateConfirmPassword}
-                  validateVanOption={validateVanOption}
-                  sendVerificationCode={sendVerificationCode}
-                  completeRegistration={completeRegistration}
-                  Title={Title}
-                  NameSurnameRow={NameSurnameRow}
-                  NameInput={NameInput}
-                  SurnameInput={SurnameInput}
-                  StyledInput={StyledInput}
-                  StyledButton={StyledButton}
-                />
-              </>
+              (() => {
+                console.log(
+                  "Rendering RegistrationForm with isContactVerified:",
+                  isContactVerified
+                );
+                return (
+                  <RegistrationForm
+                    name={name}
+                    surname={surname}
+                    email={email}
+                    phoneNumber={phoneNumber}
+                    COUNTRIES={COUNTRIES}
+                    selectedCountry={selectedCountry}
+                    setSelectedCountry={setSelectedCountry}
+                    password={password}
+                    confirmPassword={confirmPassword}
+                    vanOption={vanOption}
+                    contactMethod={contactMethod}
+                    loading={loading}
+                    showPassword={showPassword}
+                    showConfirmPassword={showConfirmPassword}
+                    nameError={nameError}
+                    surnameError={surnameError}
+                    emailError={emailError}
+                    phoneNumberError={phoneNumberError}
+                    passwordError={passwordError}
+                    confirmPasswordError={confirmPasswordError}
+                    vanOptionError={vanOptionError}
+                    isContactVerified={isContactVerified}
+                    setName={setName}
+                    setSurname={setSurname}
+                    setEmail={setEmail}
+                    setPhoneNumber={setPhoneNumber}
+                    setPassword={setPassword}
+                    setConfirmPassword={setConfirmPassword}
+                    setShowPassword={setShowPassword}
+                    setShowConfirmPassword={setShowConfirmPassword}
+                    setVanOption={setVanOption}
+                    setContactMethod={handleContactMethodChange}
+                    validateName={validateName}
+                    validateSurname={validateSurname}
+                    validateEmail={validateEmail}
+                    validatePhoneNumber={validatePhoneNumber}
+                    validatePassword={validatePassword}
+                    validateConfirmPassword={validateConfirmPassword}
+                    validateVanOption={validateVanOption}
+                    sendVerificationCode={sendVerificationCode}
+                    completeRegistration={completeRegistration}
+                    Title={Title}
+                    NameSurnameRow={NameSurnameRow}
+                    NameInput={NameInput}
+                    SurnameInput={SurnameInput}
+                    StyledInput={StyledInput}
+                    StyledButton={StyledButton}
+                  />
+                );
+              })()
             ) : currentStep === 2 ? (
               <DocumentsScreen
                 vanOption={vanOption}

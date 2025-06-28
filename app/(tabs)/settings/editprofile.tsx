@@ -141,8 +141,6 @@ const EditProfile = () => {
     }, [apiToken])
   );
 
-  console.log("dataa", userId);
-
   return (
     <Container>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />

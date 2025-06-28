@@ -60,7 +60,11 @@ export const ConfirmationScreen = ({
           end: { x: 1, y: 0 },
         }}
         title="Start Using the App"
-        onPress={completeRegistration}
+        onPress={() => {
+          console.log("ConfirmationScreen: Start Using the App button pressed");
+          console.log("loading:", loading);
+          completeRegistration();
+        }}
         loading={loading}
         disabled={loading}
         buttonStyle={{

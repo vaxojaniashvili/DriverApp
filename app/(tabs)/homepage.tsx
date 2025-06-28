@@ -25,7 +25,7 @@ import {
   StatusProps,
   ThemeProps,
 } from "@/types/common";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import JobSelectionComponent from "@/components/homepage/jobs-selection/JobSelection";
 import PickupRadiusSelector from "@/components/homepage/pickup-radius/PickupRadiusSelector";
 
@@ -47,6 +47,7 @@ const HomeScreen: React.FC = () => {
 
   const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
   const router = useRouter();
+  const params = useLocalSearchParams();
 
   const { setMode, mode, setmyID, isAutomatic } =
     useAuthStore() as unknown as AuthStoreState;
@@ -79,9 +80,37 @@ const HomeScreen: React.FC = () => {
     loadSessionFromStorage();
   }, []);
 
+  // ✅ ცალკე useEffect navigation params-ისთვის
   useEffect(() => {
-    fetchUserData();
-  }, []);
+    console.log("Navigation params changed:", params);
+    console.log("Params keys:", Object.keys(params));
+    console.log("Params sessionData exists:", !!params.sessionData);
+    console.log("Params userData exists:", !!params.userData);
+
+    if (params.sessionData && params.userData) {
+      console.log("Session data found in navigation params");
+      console.log(
+        "Params sessionData length:",
+        (params.sessionData as string).length
+      );
+      console.log(
+        "Params userData length:",
+        (params.userData as string).length
+      );
+      console.log("Session data in params detected, calling fetchUserData");
+      fetchUserData();
+    } else {
+      console.log("No session data in params, params are empty or missing");
+    }
+  }, [params]);
+
+  // ✅ useFocusEffect რომ navigation-ის დროს გამოიძახოს
+  useFocusEffect(
+    useCallback(() => {
+      console.log("Homepage focused, checking for session data");
+      fetchUserData();
+    }, [])
+  );
 
   // Reset status update flag when user changes
   useEffect(() => {
@@ -126,6 +155,60 @@ const HomeScreen: React.FC = () => {
     console.log("=== fetchUserData called ===");
 
     try {
+      // ✅ ჯერ ვიტვირთავთ session-ს AsyncStorage-იდან
+      await loadSessionFromStorage();
+
+      // ✅ ვცდილობთ navigation params-იდან session-ის მიღებას დაუყოვნებლივ
+      if (params.sessionData && params.userData) {
+        console.log("Session data found in navigation params");
+        console.log(
+          "Params sessionData length:",
+          (params.sessionData as string).length
+        );
+        console.log(
+          "Params userData length:",
+          (params.userData as string).length
+        );
+
+        try {
+          const sessionFromParams = JSON.parse(params.sessionData as string);
+          const userFromParams = JSON.parse(params.userData as string);
+
+          console.log("Setting session from navigation params immediately");
+          setStoreSession(sessionFromParams);
+          setStoreUser(userFromParams);
+          console.log("Session set from navigation params successfully");
+
+          // ✅ დაუყოვნებლივ ვიყენებთ session-ს params-იდან
+          const session = sessionFromParams;
+          const user = userFromParams;
+
+          if (session && user) {
+            console.log("Using session from navigation params");
+            console.log("Session from params:", {
+              hasSession: !!session,
+              hasUser: !!user,
+              userId: user?.id,
+              accessToken: session?.access_token?.substring(0, 20) + "...",
+            });
+            setSession(session);
+            setApiToken(session.access_token);
+            setUserId(user?.id as any);
+            setUserEmail(user.email || user.user_metadata.email || "");
+            setPhoneNumber(user.phone || user.user_metadata.phone || "");
+            setFullname(user.user_metadata.full_name || "");
+
+            // ✅ ვაგრძელებთ status update-ის ლოგიკას
+            console.log("Continuing with status update logic from params");
+          }
+        } catch (parseError) {
+          console.error("Error parsing session data from params:", parseError);
+        }
+      } else {
+        console.log("No session data in navigation params");
+        console.log("Available params:", Object.keys(params));
+      }
+
       console.log("Checking Zustand store for session...");
       console.log("storeSession exists:", !!storeSession);
       console.log("storeUser exists:", !!storeUser);
@@ -149,6 +232,17 @@ const HomeScreen: React.FC = () => {
           userId: user?.id,
           accessToken: session?.access_token?.substring(0, 20) + "...",
         });
+
+        // ✅ დაუყოვნებლივ ვიყენებთ session-ს store-იდან
+        setSession(session);
+        setApiToken(session.access_token);
+        setUserId(user?.id as any);
+        setUserEmail(user.email || user.user_metadata.email || "");
+        setPhoneNumber(user.phone || user.user_metadata.phone || "");
+        setFullname(user.user_metadata.full_name || "");
+
+        // ✅ ვაგრძელებთ status update-ის ლოგიკას
+        console.log("Continuing with status update logic from store");
       } else {
         console.log("No session in Zustand store, trying Supabase...");
 
@@ -222,81 +316,108 @@ const HomeScreen: React.FC = () => {
       console.log("User:", user);
       console.log("User metadata:", user?.user_metadata);
       console.log("User status:", user?.user_metadata?.status);
+      console.log("Status update completed flag:", statusUpdateCompleted);
 
-      // console.log("userrr", user);
-
-      if (user?.user_metadata.status === "incomplete") {
+      // ✅ თუ status უკვე complete არის, არ ვაკეთებთ status update
+      if (user?.user_metadata?.status === "complete") {
+        console.log("User status is already complete, skipping status update");
+        setStatusUpdateCompleted(true);
+      } else if (user?.user_metadata?.status === "incomplete") {
         console.log("User status is incomplete. Sending API request...");
 
         // Check if status update is already completed
         if (statusUpdateCompleted) {
           console.log("Status update already completed, skipping API request");
-          return;
-        }
-
-        try {
-          const res = await fetch(
-            "https://api.thevanapp.com/api/driver-details",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
-                unique_id: user.id,
-                name: user.user_metadata.first_name,
-                last_name: user.user_metadata.last_name,
-                email: user.email || "test",
-                phone: user.user_metadata.phone || "11",
-              }),
-            }
-          );
-
-          if (res.ok) {
-            Alert.alert(
-              user?.user_metadata?.phone_verified
-                ? "verified with phone"
-                : "verified with email"
-            );
-          }
-
-          if (res.ok || res.status === 409) {
-            console.log(
-              "API request successful or data already exists. Updating status to complete..."
-            );
-
-            const { error: updateError } = await supabase.auth.updateUser({
-              data: {
-                status: "complete",
-              },
-            });
-
-            if (updateError) {
-              console.error("Failed to update user status:", updateError);
-            } else {
-              console.log("User status updated to complete");
-
-              // Refresh session to get updated user metadata
-              const {
-                data: { session: updatedSession },
-              } = await supabase.auth.getSession();
-              if (updatedSession) {
-                console.log("Refreshing session after status update");
-                await setStoreSession(updatedSession);
-                await setStoreUser(updatedSession.user);
-                console.log("Session refreshed with updated user metadata");
-
-                // Set flag to prevent repeated status updates
-                setStatusUpdateCompleted(true);
+        } else {
+          console.log("Starting API request for status update...");
+          try {
+            const res = await fetch(
+              "https://api.thevanapp.com/api/driver-details",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({
+                  unique_id: user.id,
+                  name: user.user_metadata.first_name,
+                  last_name: user.user_metadata.last_name,
+                  email: user.email || "test",
+                  phone: user.user_metadata.phone || "11",
+                }),
               }
+            );
+
+            console.log("API response status:", res.status);
+
+            if (res.ok) {
+              Alert.alert(
+                user?.user_metadata?.phone_verified
+                  ? "verified with phone"
+                  : "verified with email"
+              );
             }
-          } else {
-            console.error("API request failed with status:", res.status);
+
+            if (res.ok || res.status === 409) {
+              console.log(
+                "API request successful or data already exists. Updating status to complete..."
+              );
+
+              const { error: updateError } = await supabase.auth.updateUser({
+                data: {
+                  status: "complete",
+                },
+              });
+
+              if (updateError) {
+                console.error("Failed to update user status:", updateError);
+              } else {
+                console.log("User status updated to complete");
+
+                // Force session refresh to get updated user metadata
+                console.log("Forcing session refresh...");
+                const { data: refreshData, error: refreshError } =
+                  await supabase.auth.refreshSession();
+
+                if (refreshError) {
+                  console.error("Session refresh error:", refreshError);
+                } else if (refreshData.session) {
+                  console.log("Session refreshed successfully");
+                  await setStoreSession(refreshData.session);
+                  await setStoreUser(refreshData.session.user);
+                  console.log("Updated session stored in Zustand store");
+
+                  // Verify the status was actually updated
+                  console.log(
+                    "Updated user metadata:",
+                    refreshData.session.user.user_metadata
+                  );
+                  console.log(
+                    "Updated status:",
+                    refreshData.session.user.user_metadata?.status
+                  );
+
+                  // Set flag to prevent repeated status updates
+                  setStatusUpdateCompleted(true);
+
+                  // Fetch driver details after status update
+                  console.log("Fetching driver details after status update...");
+                  await fetchDriverDetails();
+                }
+              }
+            } else {
+              console.error("API request failed with status:", res.status);
+            }
+          } catch (apiError) {
+            console.error("Error sending API request:", apiError);
           }
-        } catch (apiError) {
-          console.error("Error sending API request:", apiError);
         }
+      } else {
+        console.log(
+          "User status is neither complete nor incomplete:",
+          user?.user_metadata?.status
+        );
       }
 
       setUserId(user?.id as any);
@@ -318,6 +439,9 @@ const HomeScreen: React.FC = () => {
       setUserEmail(user.email || user.user_metadata.email || "");
       setPhoneNumber(user.phone || user.user_metadata.phone || "");
       setFullname(user.user_metadata.full_name || "");
+
+      // ✅ ვიწყებთ driver details-ის fetch-ს ყველა შემთხვევაში
+      console.log("Starting driver details fetch...");
       await fetchDriverDetails();
     } catch (error) {
       console.error("Error in fetchUserData:", error);
@@ -644,18 +768,6 @@ const HomeScreen: React.FC = () => {
     setOngoingOrders(ongoing);
     setOrders(pendingOrders);
   };
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchDriverDetails().then(() => {
-        if (apiToken && userIndicator === "active") {
-          onRefresh();
-        }
-      });
-
-      return () => {};
-    }, [onRefresh, apiToken, userIndicator])
-  );
 
   const handleAccept = async (orderId: string) => {
     if (!driverData?.id || !apiToken || userIndicator !== "active") {

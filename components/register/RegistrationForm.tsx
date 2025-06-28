@@ -649,13 +649,11 @@ export const RegistrationForm = ({
       <StyledButton
         ViewComponent={LinearGradient}
         linearGradientProps={{
-          colors: isContactVerified
-            ? ["#27ae60", "#2ecc71"]
-            : ["#95a5a6", "#7f8c8d"],
+          colors: ["#27ae60", "#2ecc71"],
           start: { x: 0, y: 0 },
           end: { x: 1, y: 0 },
         }}
-        title="Create account"
+        title="Continue"
         disabled={loading || !isContactVerified}
         onPress={completeRegistration}
         loading={loading}

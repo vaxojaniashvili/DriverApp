@@ -60,7 +60,6 @@ const EditProfile = () => {
       }
 
       const metadata = user.user_metadata;
-      // console.log(metadata);
 
       setUserId(user.id);
       setEmail(user.email || "");
@@ -141,6 +140,8 @@ const EditProfile = () => {
       fetchUserData();
     }, [apiToken])
   );
+
+  console.log("dataa", userId);
 
   return (
     <Container>

@@ -17,6 +17,7 @@ import { COUNTRIES } from "@/components/Countries";
 import { VerificationScreen } from "@/components/register/ VerificationScreen";
 import { Session } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
+import { useAuthStore } from "@/infrastructure/store/store";
 
 export default function DriverSignUp() {
   const [email, setEmail] = useState("");
@@ -38,12 +39,11 @@ export default function DriverSignUp() {
   const [verificationSent, setVerificationSent] = useState(false);
   const [isContactVerified, setIsContactVerified] = useState(false);
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
-  const otpInputRefs = useRef<React.RefObject<any>[]>([]);
+  const otpInputRefs = useRef<(React.RefObject<any> | null)[]>([]);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  // Session management
-  const [tempSession, setTempSession] = useState<Session | null>(null);
+  // Session management - ამოღებული tempSession logic
   const [isRegistrationComplete, setIsRegistrationComplete] = useState(false);
 
   // Current registration step
@@ -62,6 +62,34 @@ export default function DriverSignUp() {
 
   const router = useRouter();
 
+  // Zustand store for session management
+  const { setSession, setUser, loadSessionFromStorage } = useAuthStore();
+
+  useEffect(() => {
+    // Load session from AsyncStorage on component mount
+    loadSessionFromStorage();
+  }, []);
+
+  // Check if user is already authenticated and redirect to homepage
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      await loadSessionFromStorage();
+      const currentState = useAuthStore.getState();
+
+      if (currentState.session && currentState.user) {
+        console.log("User already authenticated, redirecting to homepage");
+        console.log("Existing session found:", {
+          hasSession: !!currentState.session,
+          hasUser: !!currentState.user,
+          userId: currentState.user?.id,
+        });
+        router.replace("/homepage");
+      }
+    };
+
+    checkExistingSession();
+  }, []);
+
   useEffect(() => {
     if (otpInputRefs.current.length < 6) {
       otpInputRefs.current = Array(6)
@@ -79,27 +107,60 @@ export default function DriverSignUp() {
     }
   }, [timer, isVerifying]);
 
-  // Session listener to prevent automatic navigation
+  // Session listener - სრულიად გამორთული ვერიფიკაციის დროს
   useEffect(() => {
+    // ✅ ვერიფიკაციის დროს Auth Listener სრულიად გამორთული
+    if (isVerifying) {
+      console.log(
+        "Auth listener completely disabled - verification in progress"
+      );
+      return;
+    }
+
+    console.log("Auth listener active");
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session?.user?.id);
+      console.log("isRegistrationComplete:", isRegistrationComplete);
 
-      // თუ ვერიფიკაცია მიმდინარეობს და რეგისტრაცია არ არის დასრულებული
-      if (session && !isRegistrationComplete) {
-        console.log("Storing temporary session during verification");
-        setTempSession(session);
+      // ✅ Session-ის შენახვა Zustand store-ში USER_UPDATED event-ის დროს
+      if (session && event === "USER_UPDATED") {
+        console.log(
+          "USER_UPDATED event detected, storing session in Zustand store"
+        );
+        setSession(session);
+        setUser(session.user);
+        console.log("Session stored in Zustand store from auth state change");
 
-        // გავაუქმოთ სესია რომ არ გადავიდეს homepage-ზე
-        await supabase.auth.signOut();
+        // ✅ ტესტი რომ დავრწმუნდეთ რომ session შენახულია
+        const testStore = useAuthStore.getState();
+        console.log("Zustand store test from auth state change:", {
+          hasSession: !!testStore.session,
+          hasUser: !!testStore.user,
+          userId: testStore.user?.id,
+        });
+      }
+
+      // ✅ USER_UPDATED event-ის დამატება რეგისტრაციის დასრულებისთვის
+      if (session && (isRegistrationComplete || event === "USER_UPDATED")) {
+        console.log(
+          "Registration complete or user updated, navigating to homepage"
+        );
+        console.log(
+          "Event:",
+          event,
+          "isRegistrationComplete:",
+          isRegistrationComplete
+        );
+        router.replace("/homepage");
       }
     });
 
     return () => {
       subscription?.unsubscribe();
     };
-  }, [isRegistrationComplete]);
+  }, [isRegistrationComplete, isVerifying]);
 
   const validateEmail = (email: string) => {
     if (contactMethod === "phone") {
@@ -195,7 +256,10 @@ export default function DriverSignUp() {
       setOtpDigits(newOtpDigits);
 
       if (text && index < 5) {
-        otpInputRefs.current[index + 1]?.focus(); // .current-ის გარეშე
+        const nextRef = otpInputRefs.current[index + 1];
+        if (nextRef?.current) {
+          nextRef.current.focus();
+        }
       }
     }
   };
@@ -206,7 +270,10 @@ export default function DriverSignUp() {
       !otpDigits[index] &&
       index > 0
     ) {
-      otpInputRefs.current[index - 1]?.focus(); // .current-ის გარეშე
+      const prevRef = otpInputRefs.current[index - 1];
+      if (prevRef?.current) {
+        prevRef.current.focus();
+      }
     }
   };
 
@@ -216,9 +283,8 @@ export default function DriverSignUp() {
     console.log("Contact method:", contactMethod);
     console.log("Email:", email);
     console.log("Phone:", phoneNumber);
-    console.log("Selected country:", selectedCountry);
 
-    // ვალიდაცია მხოლოდ კონტაქტის მეთოდისთვის
+    // ვალიდაცია
     if (contactMethod === "email") {
       const isEmailValid = validateEmail(email);
       if (!isEmailValid) {
@@ -246,9 +312,7 @@ export default function DriverSignUp() {
           phone: formattedPhone,
         });
 
-        console.log("Phone OTP response data:", data);
-        console.log("Phone OTP response error:", error);
-
+        console.log("Phone OTP response:", { data, error });
         if (error) throw error;
       } else {
         console.log("Sending OTP to email:", email);
@@ -256,13 +320,11 @@ export default function DriverSignUp() {
         const { data, error } = await supabase.auth.signInWithOtp({
           email: email.trim().toLowerCase(),
           options: {
-            shouldCreateUser: true, // ნება ვაძლოთ ახალი მომხმარებლების რეგისტრაციას
+            shouldCreateUser: true,
           },
         });
 
-        console.log("Email OTP response data:", data);
-        console.log("Email OTP response error:", error);
-
+        console.log("Email OTP response:", { data, error });
         if (error) throw error;
       }
 
@@ -279,13 +341,6 @@ export default function DriverSignUp() {
       );
     } catch (error) {
       console.error("OTP send error:", error);
-      console.error("Error details:", {
-        message: (error as Error)?.message,
-        name: (error as Error)?.name,
-        stack: (error as Error)?.stack,
-      });
-
-      // კონკრეტული შეცდომების შემოწმება
       const errorMessage = (error as Error)?.message || "";
 
       if (errorMessage.includes("Email provider not enabled")) {
@@ -303,10 +358,6 @@ export default function DriverSignUp() {
           "Configuration Error",
           "OTP signups are not enabled in Supabase. Please contact support to enable this feature."
         );
-      } else if (errorMessage.includes("Invalid email")) {
-        Alert.alert("Invalid Email", "Please enter a valid email address.");
-      } else if (errorMessage.includes("Invalid phone")) {
-        Alert.alert("Invalid Phone", "Please enter a valid phone number.");
       } else if (
         errorMessage.includes("rate limit") ||
         errorMessage.includes("too many requests")
@@ -315,16 +366,6 @@ export default function DriverSignUp() {
           "Rate Limit Exceeded",
           "Too many attempts. Please wait a few minutes before trying again."
         );
-      } else if (
-        errorMessage.includes("network") ||
-        errorMessage.includes("fetch")
-      ) {
-        Alert.alert(
-          "Network Error",
-          "Please check your internet connection and try again."
-        );
-      } else if (errorMessage.includes("timeout")) {
-        Alert.alert("Timeout Error", "Request timed out. Please try again.");
       } else {
         Alert.alert(
           "Error",
@@ -336,17 +377,23 @@ export default function DriverSignUp() {
     }
   };
 
-  // OTP-ს ვერიფიკაცია
+  // OTP-ს ვერიფიკაცია - სრული ლოგიკით
   const verifyOtp = async () => {
+    console.log("VERIFYOTP START");
     const otpValue = otpDigits.join("");
+    console.log("OTP VALUE:", otpValue);
 
     if (otpValue.length !== 6) {
+      console.log("OTP LENGTH INVALID");
       Alert.alert("Error", "Please enter the complete 6-digit code");
       return;
     }
 
+    console.log("SETTING LOADING TRUE");
     setLoading(true);
+
     try {
+      console.log("IN TRY BLOCK - STARTING REAL VERIFICATION");
       let verificationResult;
 
       if (contactMethod === "phone") {
@@ -369,26 +416,38 @@ export default function DriverSignUp() {
         });
       }
 
-      if (verificationResult.error) throw verificationResult.error;
+      console.log("Verification result:", verificationResult);
 
-      // ვერიფიკაცია წარმატებულია
-      console.log("OTP verified successfully");
+      if (verificationResult.error) {
+        console.error("OTP verification failed:", verificationResult.error);
+        throw verificationResult.error;
+      }
+
+      console.log("REAL VERIFICATION SUCCESS, SETTING STATES");
       setIsContactVerified(true);
       setIsVerifying(false);
       setOtpDigits(["", "", "", "", "", ""]);
 
-      // დავარეგისტრიროთ session თუ არსებობს
-      if (verificationResult.data?.session) {
-        console.log(
-          "Session received from OTP verification:",
-          verificationResult.data.session
-        );
-        setTempSession(verificationResult.data.session);
-        await supabase.auth.signOut();
-      } else {
-        console.log("No session received from OTP verification");
+      // ✅ Session-ის შენახვა Zustand store-ში OTP verification-ის შემდეგ
+      if (verificationResult.data.session) {
+        console.log("Storing session in Zustand store after OTP verification");
+        setSession(verificationResult.data.session);
+        setUser(verificationResult.data.user);
+        console.log("Session stored in Zustand store after OTP verification");
+
+        // ✅ ტესტი რომ დავრწმუნდეთ რომ session შენახულია
+        const testStore = useAuthStore.getState();
+        console.log("Zustand store test after OTP verification:", {
+          hasSession: !!testStore.session,
+          hasUser: !!testStore.user,
+          userId: testStore.user?.id,
+        });
       }
 
+      // ✅ აღარ ვაკეთებთ signOut - იუზერი რჩება ავტორიზებული
+      console.log("User verified successfully, staying logged in");
+
+      console.log("SHOWING ALERT");
       Alert.alert(
         "Success",
         `${
@@ -396,13 +455,7 @@ export default function DriverSignUp() {
         } verified successfully! Now you can complete your registration.`
       );
     } catch (error) {
-      console.error("OTP verification error:", error);
-      console.error("Verification error details:", {
-        message: (error as Error)?.message,
-        name: (error as Error)?.name,
-        stack: (error as Error)?.stack,
-      });
-
+      console.log("IN CATCH BLOCK:", error);
       const errorMessage = (error as Error)?.message || "";
 
       if (
@@ -418,18 +471,11 @@ export default function DriverSignUp() {
           "Code Expired",
           "The verification code has expired. Please request a new one."
         );
-      } else if (
-        errorMessage.includes("network") ||
-        errorMessage.includes("fetch")
-      ) {
-        Alert.alert(
-          "Network Error",
-          "Please check your internet connection and try again."
-        );
       } else {
         Alert.alert("Error", `Failed to verify code: ${errorMessage}`);
       }
     } finally {
+      console.log("IN FINALLY - SETTING LOADING FALSE");
       setLoading(false);
     }
   };
@@ -456,7 +502,7 @@ export default function DriverSignUp() {
         const { data, error } = await supabase.auth.signInWithOtp({
           email: email.trim().toLowerCase(),
           options: {
-            shouldCreateUser: true, // ნება ვაძლოთ ახალი მომხმარებლების რეგისტრაციას
+            shouldCreateUser: true,
           },
         });
 
@@ -473,12 +519,6 @@ export default function DriverSignUp() {
       );
     } catch (error) {
       console.error("OTP resend error:", error);
-      console.error("Resend error details:", {
-        message: (error as Error)?.message,
-        name: (error as Error)?.name,
-        stack: (error as Error)?.stack,
-      });
-
       const errorMessage = (error as Error)?.message || "";
 
       if (
@@ -488,14 +528,6 @@ export default function DriverSignUp() {
         Alert.alert(
           "Rate Limit Exceeded",
           "Too many resend attempts. Please wait a few minutes."
-        );
-      } else if (
-        errorMessage.includes("network") ||
-        errorMessage.includes("fetch")
-      ) {
-        Alert.alert(
-          "Network Error",
-          "Please check your internet connection and try again."
         );
       } else {
         Alert.alert(
@@ -510,16 +542,17 @@ export default function DriverSignUp() {
 
   // ვერიფიკაციის გვერდიდან დაბრუნება
   const goBackToRegistration = () => {
+    console.log("Going back to registration");
     setIsVerifying(false);
     setOtpDigits(["", "", "", "", "", ""]);
     setTimer(60);
     setCanResend(false);
   };
 
-  // მთავარი რეგისტრაცია
+  // ✅ ახალი მარტივი რეგისტრაცია - Auth Listener სრულიად გამორთული
   const completeRegistration = async () => {
-    console.log("=== STARTING completeRegistration ===");
-    console.log("tempSession at start:", tempSession);
+    console.log("=== STARTING completeRegistration (New Simple Version) ===");
+    console.log("isContactVerified:", isContactVerified);
 
     // ყველა ფილდის ვალიდაცია
     const isEmailValid = validateEmail(email);
@@ -549,167 +582,181 @@ export default function DriverSignUp() {
       return;
     }
 
+    console.log("COMPLETE REGISTRATION - SETTING LOADING TRUE");
     setLoading(true);
+
     try {
-      // Check for session, restore from tempSession if needed
-      let session = (await supabase.auth.getSession()).data.session;
-      console.log("Session from getSession before restore:", session);
-      if (!session && tempSession) {
-        console.log("Restoring session from tempSession:", tempSession);
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: tempSession.access_token,
-          refresh_token: tempSession.refresh_token,
+      // ✅ იუზერი უკვე ავტორიზებულია OTP verification-ის შემდეგ
+      console.log("User is already authenticated, updating user data...");
+
+      // ✅ User მონაცემების განახლება
+      console.log("Starting user data update...");
+
+      const userDataToUpdate = {
+        email: email.trim().toLowerCase(),
+        email_verified: contactMethod === "email" ? true : false,
+        phone_verified: contactMethod === "phone" ? true : false,
+        first_name: name,
+        last_name: surname,
+        full_name: `${name} ${surname}`,
+        phone: phoneNumber,
+        van_option: vanOption,
+        user_type: "driver",
+        status: "incomplete",
+        sub: "", // ეს ველს Supabase ავტომატურად აყენებს
+      };
+
+      console.log("Sending user data to updateUser:", userDataToUpdate);
+
+      // ✅ ჯერ ვნახოთ მიმდინარე session
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+      console.log("Current session before updateUser:", {
+        session: !!currentSession,
+        userId: currentSession?.user?.id,
+        sessionId: currentSession?.access_token?.substring(0, 20) + "...",
+      });
+
+      const { data: updateData, error: updateError } =
+        await supabase.auth.updateUser({
+          data: userDataToUpdate,
         });
-        if (sessionError) throw sessionError;
-        session = (await supabase.auth.getSession()).data.session;
-        console.log("Session after setSession:", session);
+
+      console.log("UpdateUser response:", { updateData, updateError });
+
+      if (updateError) {
+        console.error("User update error:", updateError);
+        throw updateError;
       }
-      if (!session) {
-        console.log("No session available after restore attempt");
+
+      console.log("User data updated successfully!", updateData);
+
+      // ✅ ვნახოთ session updateUser-ის შემდეგ
+      const {
+        data: { session: afterUpdateSession },
+      } = await supabase.auth.getSession();
+      console.log("Session after updateUser:", {
+        session: !!afterUpdateSession,
+        userId: afterUpdateSession?.user?.id,
+        sessionId: afterUpdateSession?.access_token?.substring(0, 20) + "...",
+      });
+
+      // ✅ Session-ის შენახვა Zustand store-ში
+      console.log("About to store session in Zustand store...");
+      console.log("afterUpdateSession exists:", !!afterUpdateSession);
+      console.log("afterUpdateSession type:", typeof afterUpdateSession);
+
+      if (afterUpdateSession) {
+        console.log("Storing session in Zustand store");
+        setSession(afterUpdateSession);
+        setUser(afterUpdateSession.user);
+        console.log("Session stored in Zustand store successfully");
+
+        // ✅ ტესტი რომ დავრწმუნდეთ რომ session შენახულია
+        const testStore = useAuthStore.getState();
+        console.log("Zustand store test - session stored:", {
+          hasSession: !!testStore.session,
+          hasUser: !!testStore.user,
+          userId: testStore.user?.id,
+        });
+      } else {
+        console.log(
+          "❌ afterUpdateSession is null or undefined - cannot store in Zustand"
+        );
+      }
+
+      // ✅ რეგისტრაცია დასრულებულია
+      console.log("Setting isRegistrationComplete to true");
+      setIsRegistrationComplete(true);
+
+      console.log(
+        "Registration completed, waiting 5 seconds before navigation..."
+      );
+
+      // ✅ 5 წამიანი დაყოვნება რომ session სწორად განახლდეს
+      setTimeout(async () => {
+        console.log("Refreshing session before navigation...");
+        try {
+          // ✅ მრავალი session refresh ცდა
+          for (let i = 0; i < 3; i++) {
+            console.log(`Session refresh attempt ${i + 1}/3`);
+            await supabase.auth.refreshSession();
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 წამიანი დაყოვნება
+          }
+          console.log("Session refreshed before navigation");
+        } catch (error) {
+          console.error("Error refreshing session before navigation:", error);
+        }
+
+        console.log("Navigating to homepage after delay");
+
+        // ✅ ბოლო ცდა session-ის შენახვისა navigation-ის წინ
+        const finalSession = await supabase.auth.getSession();
+        console.log("Final session structure:", {
+          hasSession: !!finalSession.data.session,
+          sessionType: typeof finalSession.data.session,
+          sessionKeys: finalSession.data.session
+            ? Object.keys(finalSession.data.session)
+            : [],
+        });
+
+        if (finalSession.data.session) {
+          console.log("Final session storage before navigation");
+          setSession(finalSession.data.session);
+          if (finalSession.data.session.user) {
+            setUser(finalSession.data.session.user);
+          }
+          console.log("Final session stored in Zustand store");
+        }
+
+        router.replace("/homepage");
+      }, 5000);
+    } catch (error) {
+      console.error("Registration error:", error);
+      const errorMessage = (error as Error)?.message || "";
+
+      if (
+        errorMessage.includes("JWT expired") ||
+        errorMessage.includes("Invalid JWT")
+      ) {
         Alert.alert(
-          "Session Error",
-          "Session expired or missing. Please verify your contact again."
+          "Session Expired",
+          "Your verification session has expired. Please verify your contact method again."
         );
         setIsContactVerified(false);
         setIsVerifying(true);
-        setTempSession(null);
-        return;
+      } else {
+        Alert.alert(
+          "Registration Error",
+          errorMessage || "Failed to complete registration. Please try again."
+        );
       }
-
-      // განაახლე იუზერის მონაცემები
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password, // პაროლის დაყენება
-        data: {
-          first_name: name,
-          last_name: surname,
-          full_name: `${name} ${surname}`,
-          phone: phoneNumber,
-          van_option: vanOption,
-          user_type: "driver",
-          status: "incomplete",
-        },
-      });
-
-      if (updateError) throw updateError;
-
-      setIsRegistrationComplete(true);
-      setTempSession(null);
-      router.replace("/homepage");
-    } catch (error) {
-      console.error("Registration error:", error);
-      Alert.alert(
-        "Error",
-        (error as Error)?.message ||
-          "Failed to complete registration. Please try again."
-      );
     } finally {
+      console.log("COMPLETE REGISTRATION - SETTING LOADING FALSE");
       setLoading(false);
     }
   };
 
   // კონტაქტის მეთოდის შეცვლისას ვერიფიკაციის გაუქმება
   const handleContactMethodChange = (method: string) => {
+    console.log("Contact method changing from", contactMethod, "to", method);
+    console.log("Clearing verification state");
+
     setContactMethod(method);
     setIsContactVerified(false);
     setIsVerifying(false);
     setOtpDigits(["", "", "", "", "", ""]);
-    setTempSession(null); // temp session-ის გასუფთავება
-  };
+    setTimer(60);
+    setCanResend(false);
 
-  // Supabase კონფიგურაციის შემოწმება
-  const testSupabaseConnection = async () => {
-    try {
-      console.log("Testing Supabase connection...");
-      const { data, error } = await supabase.auth.getSession();
-      console.log("Session test result:", { data, error });
-
-      if (error) {
-        console.error("Supabase connection error:", error);
-      } else {
-        console.log("Supabase connection successful");
-      }
-    } catch (error) {
-      console.error("Supabase test failed:", error);
+    // შესაბამისი ველების გასუფთავება
+    if (method === "email") {
+      setPhoneNumberError("");
+    } else {
+      setEmailError("");
     }
   };
-
-  // შევამოწმოთ რომ ემაილი/ტელეფონი უკვე არსებობული
-  const checkIfUserExists = async () => {
-    try {
-      if (contactMethod === "email" && email) {
-        console.log("Checking if email exists:", email);
-        const { data, error } = await supabase.auth.signInWithOtp({
-          email: email.trim().toLowerCase(),
-          options: {
-            shouldCreateUser: true, // ნება ვაძლოთ ახალი მომხმარებლების რეგისტრაციას
-          },
-        });
-        console.log("Email check result:", { data, error });
-        return { exists: !error, data, error };
-      } else if (contactMethod === "phone" && phoneNumber) {
-        const formattedPhone = phoneNumber.startsWith("+")
-          ? phoneNumber
-          : `${selectedCountry.dialCode}${phoneNumber}`;
-        console.log("Checking if phone exists:", formattedPhone);
-        const { data, error } = await supabase.auth.signInWithOtp({
-          phone: formattedPhone,
-        });
-        console.log("Phone check result:", { data, error });
-        return { exists: !error, data, error };
-      }
-    } catch (error) {
-      console.error("User existence check failed:", error);
-      return { exists: false, error };
-    }
-    return { exists: false };
-  };
-
-  // ტესტური OTP გაგზავნა (მხოლოდ development-ში)
-  const testOtpSend = async () => {
-    try {
-      console.log("=== TESTING OTP SEND ===");
-      const testEmail = "test@example.com";
-
-      console.log("Sending test OTP to:", testEmail);
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email: testEmail,
-        options: {
-          shouldCreateUser: true, // ნება ვაძლოთ ახალი მომხმარებლების რეგისტრაციას
-        },
-      });
-
-      console.log("Test OTP result:", { data, error });
-
-      if (error) {
-        console.error("Test OTP failed:", error);
-        Alert.alert("Test Failed", `Error: ${error.message}`);
-      } else {
-        console.log("Test OTP successful");
-        Alert.alert("Test Success", "OTP sent successfully to test email");
-      }
-    } catch (error) {
-      console.error("Test OTP error:", error);
-      Alert.alert(
-        "Test Error",
-        `Unexpected error: ${(error as Error)?.message}`
-      );
-    }
-  };
-
-  // კომპონენტის მონტაჟისას შევამოწმოთ კონფიგურაცია
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        console.log("=== INITIALIZING APP ===");
-        await testSupabaseConnection();
-        console.log("App initialization completed");
-      } catch (error) {
-        console.error("App initialization failed:", error);
-      }
-    };
-
-    initializeApp();
-  }, []);
 
   return (
     <KeyboardAvoidingView
@@ -800,66 +847,6 @@ export default function DriverSignUp() {
                   StyledInput={StyledInput}
                   StyledButton={StyledButton}
                 />
-
-                {/* Debug ღილაკი - მხოლოდ development-ში */}
-                {__DEV__ && (
-                  <>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: "#ff6b6b",
-                        padding: 10,
-                        borderRadius: 5,
-                        marginTop: 10,
-                        alignItems: "center",
-                      }}
-                      onPress={async () => {
-                        console.log("=== DEBUG INFO ===");
-                        console.log("Email:", email);
-                        console.log("Phone:", phoneNumber);
-                        console.log("Contact method:", contactMethod);
-                        console.log("Selected country:", selectedCountry);
-
-                        // კონფიგურაციის შემოწმება
-                        await testSupabaseConnection();
-
-                        // მომხმარებლის არსებობის შემოწმება
-                        if (email || phoneNumber) {
-                          console.log("Checking if user exists...");
-                          const userCheck = await checkIfUserExists();
-                          console.log("User existence check:", userCheck);
-                        }
-
-                        // ვალიდაციის შემოწმება
-                        if (contactMethod === "email") {
-                          const isEmailValid = validateEmail(email);
-                          console.log("Email validation result:", isEmailValid);
-                        } else {
-                          const isPhoneValid = validatePhoneNumber(phoneNumber);
-                          console.log("Phone validation result:", isPhoneValid);
-                        }
-                      }}
-                    >
-                      <Text style={{ color: "white", fontWeight: "bold" }}>
-                        Debug Info
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: "#4ecdc4",
-                        padding: 10,
-                        borderRadius: 5,
-                        marginTop: 5,
-                        alignItems: "center",
-                      }}
-                      onPress={testOtpSend}
-                    >
-                      <Text style={{ color: "white", fontWeight: "bold" }}>
-                        Test OTP Send
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                )}
               </>
             ) : currentStep === 2 ? (
               <DocumentsScreen

@@ -52,6 +52,15 @@ const HomeScreen: React.FC = () => {
     useAuthStore() as unknown as AuthStoreState;
   const modeRef = useRef<"active" | "off" | "break">(mode);
 
+  // Get session from Zustand store
+  const {
+    session: storeSession,
+    user: storeUser,
+    loadSessionFromStorage,
+    setSession: setStoreSession,
+    setUser: setStoreUser,
+  } = useAuthStore();
+
   const [location, setLocation] = useState<LocationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -59,14 +68,27 @@ const HomeScreen: React.FC = () => {
     null
   );
   const [lastSentTime, setLastSentTime] = useState<number>(0);
+  const [statusUpdateCompleted, setStatusUpdateCompleted] = useState(false);
 
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
 
   useEffect(() => {
+    // Load session from AsyncStorage on component mount
+    loadSessionFromStorage();
+  }, []);
+
+  useEffect(() => {
     fetchUserData();
   }, []);
+
+  // Reset status update flag when user changes
+  useEffect(() => {
+    if (storeUser?.id) {
+      setStatusUpdateCompleted(false);
+    }
+  }, [storeUser?.id]);
 
   const fetchDriverDetails = async () => {
     try {
@@ -101,30 +123,116 @@ const HomeScreen: React.FC = () => {
   };
 
   const fetchUserData = async () => {
-    try {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-      setSession(session);
+    console.log("=== fetchUserData called ===");
 
-      if (sessionError || !session) {
-        console.error("No active session found");
+    try {
+      console.log("Checking Zustand store for session...");
+      console.log("storeSession exists:", !!storeSession);
+      console.log("storeUser exists:", !!storeUser);
+      console.log("storeSession type:", typeof storeSession);
+      console.log("storeUser type:", typeof storeUser);
+
+      // ✅ პირველად ვცდილობთ Zustand store-იდან session-ის მიღებას
+      let session = storeSession;
+      let user = storeUser;
+
+      if (session && user) {
+        console.log("Session found in Zustand store:", {
+          session: !!session,
+          userId: session?.user?.id,
+        });
+
+        // ✅ ტესტი რომ დავრწმუნდეთ რომ session მიღებულია store-იდან
+        console.log("Zustand store test - session retrieved:", {
+          hasSession: !!session,
+          hasUser: !!user,
+          userId: user?.id,
+          accessToken: session?.access_token?.substring(0, 20) + "...",
+        });
+      } else {
+        console.log("No session in Zustand store, trying Supabase...");
+
+        // ✅ მარტივი session მიღება timeout-ით
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Session timeout")), 5000)
+        );
+
+        try {
+          const result = (await Promise.race([
+            sessionPromise,
+            timeoutPromise,
+          ])) as any;
+          session = result.data.session;
+          console.log("Session retrieved from Supabase successfully:", {
+            session: !!session,
+            userId: session?.user?.id,
+          });
+        } catch (sessionError) {
+          console.log("Session retrieval from Supabase failed:", sessionError);
+          session = null;
+        }
+
+        if (!session) {
+          console.log("No session, trying to get user directly...");
+          try {
+            const {
+              data: { user: supabaseUser },
+              error: userError,
+            } = await supabase.auth.getUser();
+            console.log("User retrieval result:", {
+              user: !!supabaseUser,
+              error: userError,
+              userId: supabaseUser?.id,
+            });
+
+            if (supabaseUser && !userError) {
+              console.log(
+                "User found, but no session. This might be a session storage issue."
+              );
+              // ✅ თუ user არის მაგრამ session არა, ვცდილობთ session-ის ხელახლა შექმნას
+              const {
+                data: { session: newSession },
+              } = await supabase.auth.getSession();
+              if (newSession) {
+                session = newSession;
+                user = supabaseUser;
+                console.log("New session created from user");
+              }
+            }
+          } catch (userError) {
+            console.error("User retrieval failed:", userError);
+          }
+        } else {
+          user = session.user;
+        }
+      }
+
+      if (!session) {
+        console.error("No session or user found");
         router.replace("/authentication" as any);
         return;
       }
 
+      setSession(session);
+      console.log("Setting API token...");
       setApiToken(session.access_token);
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      console.log("=== User data in fetchUserData ===");
+      console.log("User:", user);
+      console.log("User metadata:", user?.user_metadata);
+      console.log("User status:", user?.user_metadata?.status);
 
       // console.log("userrr", user);
 
       if (user?.user_metadata.status === "incomplete") {
         console.log("User status is incomplete. Sending API request...");
+
+        // Check if status update is already completed
+        if (statusUpdateCompleted) {
+          console.log("Status update already completed, skipping API request");
+          return;
+        }
 
         try {
           const res = await fetch(
@@ -168,6 +276,20 @@ const HomeScreen: React.FC = () => {
               console.error("Failed to update user status:", updateError);
             } else {
               console.log("User status updated to complete");
+
+              // Refresh session to get updated user metadata
+              const {
+                data: { session: updatedSession },
+              } = await supabase.auth.getSession();
+              if (updatedSession) {
+                console.log("Refreshing session after status update");
+                await setStoreSession(updatedSession);
+                await setStoreUser(updatedSession.user);
+                console.log("Session refreshed with updated user metadata");
+
+                // Set flag to prevent repeated status updates
+                setStatusUpdateCompleted(true);
+              }
             }
           } else {
             console.error("API request failed with status:", res.status);
@@ -179,10 +301,19 @@ const HomeScreen: React.FC = () => {
 
       setUserId(user?.id as any);
 
-      if (userError || !user) {
-        console.error("Error fetching user:", userError);
+      if (!user) {
+        console.error("No user found");
         return;
       }
+
+      console.log("User data in homepage:", {
+        email: user.email,
+        phone: user.phone,
+        user_metadata: user.user_metadata,
+        full_name: user.user_metadata?.full_name,
+      });
+
+      // console.log("dataa", user);
 
       setUserEmail(user.email || user.user_metadata.email || "");
       setPhoneNumber(user.phone || user.user_metadata.phone || "");

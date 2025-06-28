@@ -14,6 +14,7 @@ import styled from "styled-components/native";
 import { KeyboardAvoidingView, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Session } from "@supabase/supabase-js";
+import { useAuthStore } from "@/infrastructure/store/store";
 
 export default function Auth() {
   const [identifier, setIdentifier] = useState(""); // Email ან Phone
@@ -28,6 +29,33 @@ export default function Auth() {
   const [otpError, setOtpError] = useState("");
   const [identifierType, setIdentifierType] = useState(""); // "email" ან "phone"
   const [showPassword, setShowPassword] = useState(false);
+
+  // Zustand store for session management
+  const {
+    loadSessionFromStorage,
+    setSession: setStoreSession,
+    setUser: setStoreUser,
+  } = useAuthStore();
+
+  // Check for existing session on component mount
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      await loadSessionFromStorage();
+      const currentState = useAuthStore.getState();
+
+      if (currentState.session && currentState.user) {
+        console.log("User already authenticated, redirecting to homepage");
+        console.log("Existing session found:", {
+          hasSession: !!currentState.session,
+          hasUser: !!currentState.user,
+          userId: currentState.user?.id,
+        });
+        router.replace("/homepage");
+      }
+    };
+
+    checkExistingSession();
+  }, []);
 
   // იდენტიფიკატორის ვალიდაცია
   const validateIdentifier = (text: string) => {
@@ -167,6 +195,15 @@ export default function Auth() {
         Alert.alert("error", `error: ${error.message}`);
       } else if (data?.user) {
         console.log("success", data.user.id);
+
+        // Store session in Zustand store and AsyncStorage
+        if (data.session) {
+          console.log("Storing session after OTP verification");
+          await setStoreSession(data.session);
+          await setStoreUser(data.user);
+          console.log("Session stored successfully after OTP verification");
+        }
+
         router.push("/homepage");
       } else {
         Alert.alert("error", "error");
@@ -205,6 +242,15 @@ export default function Auth() {
         Alert.alert("error", `Authentication failed: ${error.message}`);
       } else if (data?.user) {
         console.log("success", data.user.id);
+
+        // Store session in Zustand store and AsyncStorage
+        if (data.session) {
+          console.log("Storing session after email sign in");
+          await setStoreSession(data.session);
+          await setStoreUser(data.user);
+          console.log("Session stored successfully after email sign in");
+        }
+
         router.push("/homepage");
       } else {
         Alert.alert("error", "error");

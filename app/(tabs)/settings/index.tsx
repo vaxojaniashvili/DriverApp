@@ -6,16 +6,29 @@ import { supabase } from "@/infrastructure/db/supabase";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuthStore } from "@/infrastructure/store/store";
 
 const Settings = () => {
   const insets = useSafeAreaInsets();
+  const { logout } = useAuthStore();
 
   async function handleLogout() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert("Logout Error", error.message);
-    } else {
-      router.replace("/");
+    try {
+      // Logout from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        Alert.alert("Logout Error", error.message);
+        return;
+      }
+
+      // Clear session from Zustand store and AsyncStorage
+      await logout();
+
+      // Navigate to signup page
+      router.replace("/signUp");
+    } catch (error) {
+      console.error("Logout error:", error);
+      Alert.alert("Logout Error", "Failed to logout. Please try again.");
     }
   }
 

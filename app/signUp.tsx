@@ -166,6 +166,11 @@ export default function DriverSignUp() {
     };
   }, [isRegistrationComplete, isVerifying, isContactVerified]);
 
+  // ✅ Track isContactVerified state changes
+  useEffect(() => {
+    console.log("isContactVerified state changed to:", isContactVerified);
+  }, [isContactVerified]);
+
   const validateEmail = (email: string) => {
     if (contactMethod === "phone") {
       setEmailError("");
@@ -563,6 +568,17 @@ export default function DriverSignUp() {
     console.log("isContactVerified:", isContactVerified);
     console.log("Current step:", currentStep);
     console.log("Loading state:", loading);
+    console.log("Button should be enabled:", isContactVerified && !loading);
+    console.log("All form fields:", {
+      email,
+      phoneNumber,
+      name,
+      surname,
+      password: password ? "***" : "",
+      confirmPassword: confirmPassword ? "***" : "",
+      vanOption,
+      contactMethod,
+    });
 
     // ყველა ფილდის ვალიდაცია
     const isEmailValid = validateEmail(email);
@@ -828,10 +844,6 @@ export default function DriverSignUp() {
               />
             ) : currentStep === 1 ? (
               (() => {
-                console.log(
-                  "Rendering RegistrationForm with isContactVerified:",
-                  isContactVerified
-                );
                 return (
                   <RegistrationForm
                     name={name}

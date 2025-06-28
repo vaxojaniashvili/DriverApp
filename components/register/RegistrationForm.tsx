@@ -59,13 +59,6 @@ export const RegistrationForm = ({
   setSelectedCountry,
   COUNTRIES,
 }: any) => {
-  console.log("RegistrationForm rendered with props:", {
-    isContactVerified,
-    loading,
-    contactMethod,
-    vanOption,
-  });
-
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -654,11 +647,6 @@ export const RegistrationForm = ({
 
       {/* მთავარი რეგისტრაციის ღილაკი */}
       {(() => {
-        console.log("Rendering Continue button with:", {
-          isContactVerified,
-          loading,
-          disabled: loading || !isContactVerified,
-        });
         return null;
       })()}
       <StyledButton
@@ -674,6 +662,8 @@ export const RegistrationForm = ({
           console.log("RegistrationForm: Continue button pressed");
           console.log("isContactVerified:", isContactVerified);
           console.log("loading:", loading);
+          console.log("Button was disabled:", loading || !isContactVerified);
+          console.log("Calling completeRegistration function");
           completeRegistration();
         }}
         loading={loading}

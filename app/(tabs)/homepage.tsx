@@ -70,46 +70,48 @@ const HomeScreen: React.FC = () => {
   );
   const [lastSentTime, setLastSentTime] = useState<number>(0);
   const [statusUpdateCompleted, setStatusUpdateCompleted] = useState(false);
+  const [paramsProcessed, setParamsProcessed] = useState(false);
+  const [fetchUserDataInProgress, setFetchUserDataInProgress] = useState(false);
 
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
 
   useEffect(() => {
-    // Load session from AsyncStorage on component mount
     loadSessionFromStorage();
   }, []);
 
-  // ✅ ცალკე useEffect navigation params-ისთვის
   useEffect(() => {
-    console.log("Navigation params changed:", params);
-    console.log("Params keys:", Object.keys(params));
-    console.log("Params sessionData exists:", !!params.sessionData);
-    console.log("Params userData exists:", !!params.userData);
-
-    if (params.sessionData && params.userData) {
-      console.log("Session data found in navigation params");
-      console.log(
-        "Params sessionData length:",
-        (params.sessionData as string).length
-      );
-      console.log(
-        "Params userData length:",
-        (params.userData as string).length
-      );
-      console.log("Session data in params detected, calling fetchUserData");
+    if (
+      params.sessionData &&
+      params.userData &&
+      !paramsProcessed &&
+      !fetchUserDataInProgress
+    ) {
+      setParamsProcessed(true);
+      setFetchUserDataInProgress(true);
       fetchUserData();
+    } else if (!params.sessionData || !params.userData) {
     } else {
-      console.log("No session data in params, params are empty or missing");
     }
-  }, [params]);
+  }, [params, paramsProcessed, fetchUserDataInProgress]);
 
-  // ✅ useFocusEffect რომ navigation-ის დროს გამოიძახოს
   useFocusEffect(
     useCallback(() => {
-      console.log("Homepage focused, checking for session data");
-      fetchUserData();
-    }, [])
+      if (
+        (!params.sessionData || !params.userData || !paramsProcessed) &&
+        !fetchUserDataInProgress
+      ) {
+        setFetchUserDataInProgress(true);
+        fetchUserData();
+      } else {
+      }
+    }, [
+      params.sessionData,
+      params.userData,
+      paramsProcessed,
+      fetchUserDataInProgress,
+    ])
   );
 
   // Reset status update flag when user changes
@@ -152,101 +154,46 @@ const HomeScreen: React.FC = () => {
   };
 
   const fetchUserData = async () => {
-    console.log("=== fetchUserData called ===");
-
     try {
       // ✅ ჯერ ვიტვირთავთ session-ს AsyncStorage-იდან
       await loadSessionFromStorage();
 
       // ✅ ვცდილობთ navigation params-იდან session-ის მიღებას დაუყოვნებლივ
       if (params.sessionData && params.userData) {
-        console.log("Session data found in navigation params");
-        console.log(
-          "Params sessionData length:",
-          (params.sessionData as string).length
-        );
-        console.log(
-          "Params userData length:",
-          (params.userData as string).length
-        );
-
         try {
           const sessionFromParams = JSON.parse(params.sessionData as string);
           const userFromParams = JSON.parse(params.userData as string);
 
-          console.log("Setting session from navigation params immediately");
           setStoreSession(sessionFromParams);
           setStoreUser(userFromParams);
-          console.log("Session set from navigation params successfully");
-
-          // ✅ დაუყოვნებლივ ვიყენებთ session-ს params-იდან
           const session = sessionFromParams;
           const user = userFromParams;
 
           if (session && user) {
-            console.log("Using session from navigation params");
-            console.log("Session from params:", {
-              hasSession: !!session,
-              hasUser: !!user,
-              userId: user?.id,
-              accessToken: session?.access_token?.substring(0, 20) + "...",
-            });
             setSession(session);
             setApiToken(session.access_token);
             setUserId(user?.id as any);
             setUserEmail(user.email || user.user_metadata.email || "");
             setPhoneNumber(user.phone || user.user_metadata.phone || "");
             setFullname(user.user_metadata.full_name || "");
-
-            // ✅ ვაგრძელებთ status update-ის ლოგიკას
-            console.log("Continuing with status update logic from params");
           }
         } catch (parseError) {
           console.error("Error parsing session data from params:", parseError);
         }
       } else {
-        console.log("No session data in navigation params");
-        console.log("Available params:", Object.keys(params));
       }
 
-      console.log("Checking Zustand store for session...");
-      console.log("storeSession exists:", !!storeSession);
-      console.log("storeUser exists:", !!storeUser);
-      console.log("storeSession type:", typeof storeSession);
-      console.log("storeUser type:", typeof storeUser);
-
-      // ✅ პირველად ვცდილობთ Zustand store-იდან session-ის მიღებას
       let session = storeSession;
       let user = storeUser;
 
       if (session && user) {
-        console.log("Session found in Zustand store:", {
-          session: !!session,
-          userId: session?.user?.id,
-        });
-
-        // ✅ ტესტი რომ დავრწმუნდეთ რომ session მიღებულია store-იდან
-        console.log("Zustand store test - session retrieved:", {
-          hasSession: !!session,
-          hasUser: !!user,
-          userId: user?.id,
-          accessToken: session?.access_token?.substring(0, 20) + "...",
-        });
-
-        // ✅ დაუყოვნებლივ ვიყენებთ session-ს store-იდან
         setSession(session);
         setApiToken(session.access_token);
         setUserId(user?.id as any);
         setUserEmail(user.email || user.user_metadata.email || "");
         setPhoneNumber(user.phone || user.user_metadata.phone || "");
-        setFullname(user.user_metadata.full_name || "");
-
-        // ✅ ვაგრძელებთ status update-ის ლოგიკას
-        console.log("Continuing with status update logic from store");
+        // setFullname(user.user_metadata.full_name || "");
       } else {
-        console.log("No session in Zustand store, trying Supabase...");
-
-        // ✅ მარტივი session მიღება timeout-ით
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error("Session timeout")), 5000)
@@ -258,40 +205,24 @@ const HomeScreen: React.FC = () => {
             timeoutPromise,
           ])) as any;
           session = result.data.session;
-          console.log("Session retrieved from Supabase successfully:", {
-            session: !!session,
-            userId: session?.user?.id,
-          });
         } catch (sessionError) {
-          console.log("Session retrieval from Supabase failed:", sessionError);
           session = null;
         }
 
         if (!session) {
-          console.log("No session, trying to get user directly...");
           try {
             const {
               data: { user: supabaseUser },
               error: userError,
             } = await supabase.auth.getUser();
-            console.log("User retrieval result:", {
-              user: !!supabaseUser,
-              error: userError,
-              userId: supabaseUser?.id,
-            });
 
             if (supabaseUser && !userError) {
-              console.log(
-                "User found, but no session. This might be a session storage issue."
-              );
-              // ✅ თუ user არის მაგრამ session არა, ვცდილობთ session-ის ხელახლა შექმნას
               const {
                 data: { session: newSession },
               } = await supabase.auth.getSession();
               if (newSession) {
                 session = newSession;
                 user = supabaseUser;
-                console.log("New session created from user");
               }
             }
           } catch (userError) {
@@ -309,27 +240,12 @@ const HomeScreen: React.FC = () => {
       }
 
       setSession(session);
-      console.log("Setting API token...");
       setApiToken(session.access_token);
-
-      console.log("=== User data in fetchUserData ===");
-      console.log("User:", user);
-      console.log("User metadata:", user?.user_metadata);
-      console.log("User status:", user?.user_metadata?.status);
-      console.log("Status update completed flag:", statusUpdateCompleted);
-
-      // ✅ თუ status უკვე complete არის, არ ვაკეთებთ status update
       if (user?.user_metadata?.status === "complete") {
-        console.log("User status is already complete, skipping status update");
         setStatusUpdateCompleted(true);
       } else if (user?.user_metadata?.status === "incomplete") {
-        console.log("User status is incomplete. Sending API request...");
-
-        // Check if status update is already completed
         if (statusUpdateCompleted) {
-          console.log("Status update already completed, skipping API request");
         } else {
-          console.log("Starting API request for status update...");
           try {
             const res = await fetch(
               "https://api.thevanapp.com/api/driver-details",
@@ -349,8 +265,6 @@ const HomeScreen: React.FC = () => {
               }
             );
 
-            console.log("API response status:", res.status);
-
             if (res.ok) {
               Alert.alert(
                 user?.user_metadata?.phone_verified
@@ -360,10 +274,6 @@ const HomeScreen: React.FC = () => {
             }
 
             if (res.ok || res.status === 409) {
-              console.log(
-                "API request successful or data already exists. Updating status to complete..."
-              );
-
               const { error: updateError } = await supabase.auth.updateUser({
                 data: {
                   status: "complete",
@@ -375,8 +285,6 @@ const HomeScreen: React.FC = () => {
               } else {
                 console.log("User status updated to complete");
 
-                // Force session refresh to get updated user metadata
-                console.log("Forcing session refresh...");
                 const { data: refreshData, error: refreshError } =
                   await supabase.auth.refreshSession();
 
@@ -386,23 +294,7 @@ const HomeScreen: React.FC = () => {
                   console.log("Session refreshed successfully");
                   await setStoreSession(refreshData.session);
                   await setStoreUser(refreshData.session.user);
-                  console.log("Updated session stored in Zustand store");
-
-                  // Verify the status was actually updated
-                  console.log(
-                    "Updated user metadata:",
-                    refreshData.session.user.user_metadata
-                  );
-                  console.log(
-                    "Updated status:",
-                    refreshData.session.user.user_metadata?.status
-                  );
-
-                  // Set flag to prevent repeated status updates
                   setStatusUpdateCompleted(true);
-
-                  // Fetch driver details after status update
-                  console.log("Fetching driver details after status update...");
                   await fetchDriverDetails();
                 }
               }
@@ -414,10 +306,6 @@ const HomeScreen: React.FC = () => {
           }
         }
       } else {
-        console.log(
-          "User status is neither complete nor incomplete:",
-          user?.user_metadata?.status
-        );
       }
 
       setUserId(user?.id as any);
@@ -427,24 +315,16 @@ const HomeScreen: React.FC = () => {
         return;
       }
 
-      console.log("User data in homepage:", {
-        email: user.email,
-        phone: user.phone,
-        user_metadata: user.user_metadata,
-        full_name: user.user_metadata?.full_name,
-      });
-
       // console.log("dataa", user);
 
       setUserEmail(user.email || user.user_metadata.email || "");
       setPhoneNumber(user.phone || user.user_metadata.phone || "");
-      setFullname(user.user_metadata.full_name || "");
 
-      // ✅ ვიწყებთ driver details-ის fetch-ს ყველა შემთხვევაში
-      console.log("Starting driver details fetch...");
       await fetchDriverDetails();
     } catch (error) {
       console.error("Error in fetchUserData:", error);
+    } finally {
+      setFetchUserDataInProgress(false);
     }
   };
 
@@ -573,10 +453,6 @@ const HomeScreen: React.FC = () => {
         },
         body: JSON.stringify(payload),
       });
-
-      // if (response.ok) {
-      //   console.log("sending to api");
-      // }
 
       if (!response.ok) {
         throw new Error(`API response error: ${response.status}`);

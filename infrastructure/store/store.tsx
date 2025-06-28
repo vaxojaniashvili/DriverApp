@@ -69,11 +69,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const session = JSON.parse(sessionData);
         const user = JSON.parse(userData);
         set({ session, user });
-        console.log("Session loaded from AsyncStorage:", {
-          hasSession: !!session,
-          hasUser: !!user,
-          userId: user?.id,
-        });
       } else {
         console.log("No session found in AsyncStorage");
       }
@@ -82,7 +77,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // Clear session from AsyncStorage
   clearSessionFromStorage: async () => {
     try {
       await AsyncStorage.removeItem("user_session");

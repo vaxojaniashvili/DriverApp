@@ -62,8 +62,8 @@ export const ConfirmationScreen = ({
         title="Start Using the App"
         onPress={() => {
           console.log("ConfirmationScreen: Start Using the App button pressed");
-          console.log("loading:", loading);
-          completeRegistration();
+          console.log("Navigating to driverVerification");
+          router.replace("/(tabs)/driverVerification");
         }}
         loading={loading}
         disabled={loading}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,13 @@ import {
   Alert,
   ToastAndroid,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 import { Input } from "@rneui/themed";
 import { AntDesign } from "@expo/vector-icons";
 import { LicensePlateInput } from "@/components/DriverPlate";
 
-const MyToast = (message, duration = "short") => {
+const MyToast = (message: string, duration = "short") => {
   if (Platform.OS === "android") {
     ToastAndroid.show(
       message,
@@ -56,9 +56,9 @@ export default function DriverVerificationScreen() {
   const [verificationError, setVerificationError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [apiToken, setApiToken] = useState<string | null>(null);
-  const [user, setUser] = useState([]);
+  const [user, setUser] = useState<any>(null);
   const [verificationType, setVerificationType] = useState("email"); // "email" or "phone"
-  const [userData, setUserData] = useState([]);
+  const [userData, setUserData] = useState<any[]>([]);
   const [plateLetters, setPlateLetters] = useState("");
   const [plateNumbers, setPlateNumbers] = useState("");
 
@@ -71,12 +71,60 @@ export default function DriverVerificationScreen() {
       setApiToken(session?.access_token as any);
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        router.replace("/authentication");
+        router.replace("/signUp");
       }
     };
 
     checkAuth();
   }, []);
+
+  // Add focus effect to refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("DriverVerification screen focused, refreshing data...");
+      // Refresh user data when screen comes into focus
+      const refreshData = async () => {
+        try {
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser();
+          if (!userError && user) {
+            setUser(user as any);
+            setName(user?.user_metadata?.full_name || "");
+
+            // Check verification status
+            if (user?.user_metadata?.email_verified) {
+              setIsEmailVerified(true);
+              setEmail(user.email || user.user_metadata?.email || "");
+            }
+
+            if (user?.user_metadata?.phone_verified) {
+              setIsMobileVerified(true);
+              setPhoneNumber(user.user_metadata?.phone || "");
+            }
+
+            // Set default verification type
+            if (
+              user?.user_metadata?.email_verified &&
+              !user?.user_metadata?.phone_verified
+            ) {
+              setVerificationType("phone");
+            } else if (
+              user?.user_metadata?.phone_verified &&
+              !user?.user_metadata?.email_verified
+            ) {
+              setVerificationType("email");
+            }
+          }
+        } catch (error) {
+          console.error("Error refreshing data:", error);
+        }
+      };
+
+      refreshData();
+    }, [])
+  );
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -89,6 +137,42 @@ export default function DriverVerificationScreen() {
         setName(user?.user_metadata.full_name);
 
         console.log(user);
+
+        // Check if user registered with email and it's verified
+        if (user?.email && user?.email_confirmed_at) {
+          setIsEmailVerified(true);
+          setEmail(user.email);
+        }
+
+        // Check if user registered with phone and it's verified
+        if (user?.phone && user?.phone_confirmed_at) {
+          setIsMobileVerified(true);
+          setPhoneNumber(user.phone);
+        }
+
+        // Check from user metadata for signup method
+        if (user?.user_metadata?.email_verified) {
+          setIsEmailVerified(true);
+          setEmail(user.email || user.user_metadata.email || "");
+        }
+
+        if (user?.user_metadata?.phone_verified) {
+          setIsMobileVerified(true);
+          setPhoneNumber(user.user_metadata.phone || "");
+        }
+
+        // Set default verification type based on what's already verified
+        if (
+          user?.user_metadata?.email_verified &&
+          !user?.user_metadata?.phone_verified
+        ) {
+          setVerificationType("phone"); // If email is verified, default to phone
+        } else if (
+          user?.user_metadata?.phone_verified &&
+          !user?.user_metadata?.email_verified
+        ) {
+          setVerificationType("email"); // If phone is verified, default to email
+        }
       } catch (error) {
         console.error("Unexpected error:", error);
       }
@@ -147,8 +231,10 @@ export default function DriverVerificationScreen() {
 
   useEffect(() => {
     const isNameValid = name?.trim() !== "";
-    // Both email and phone should be provided and at least one should be verified
-    const hasEmailAndPhone = email.trim() !== "" && phoneNumber.trim() !== "";
+    // At least one contact method should be provided and verified
+    const hasEmail = email.trim() !== "";
+    const hasPhone = phoneNumber.trim() !== "";
+    const hasAtLeastOneContact = hasEmail || hasPhone;
     const hasAtLeastOneVerified = isEmailVerified || isMobileVerified;
     const isAddressValid =
       streetAddress1.trim() !== "" &&
@@ -161,7 +247,7 @@ export default function DriverVerificationScreen() {
 
     setIsValid(
       isNameValid &&
-        hasEmailAndPhone &&
+        hasAtLeastOneContact &&
         hasAtLeastOneVerified &&
         isAddressValid &&
         isLicensePlateValid
@@ -201,10 +287,6 @@ export default function DriverVerificationScreen() {
       console.log("Sending OTP to email:", email);
       const { data, error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
-        options: {
-          channel: "email",
-          type: "otp",
-        },
       });
 
       if (error) {
@@ -420,10 +502,6 @@ export default function DriverVerificationScreen() {
         console.log("Resending OTP to email:", email);
         const { data, error } = await supabase.auth.signInWithOtp({
           email: email.trim().toLowerCase(),
-          options: {
-            channel: "email",
-            type: "otp",
-          },
         });
 
         if (error) {
@@ -464,21 +542,31 @@ export default function DriverVerificationScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!isValid) return;
+    if (!isValid) {
+      console.log("Form is not valid, cannot submit");
+      return;
+    }
 
+    console.log("Starting submission process...");
     setIsLoading(true);
+
     try {
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
+
       if (userError || !user) {
+        console.error("Failed to get user information:", userError);
         throw new Error("Failed to get user information");
       }
 
       const userId = user.id;
+      console.log("User ID:", userId);
 
-      const { error } = await supabase.auth.updateUser({
+      // Update all user data in metadata
+      console.log("Updating user metadata...");
+      const { error: updateError } = await supabase.auth.updateUser({
         data: {
           full_name: name,
           phone: phoneNumber,
@@ -489,12 +577,22 @@ export default function DriverVerificationScreen() {
           state: stateProvince,
           postal_code: zipCode,
           country: country,
+          plate_letters: plateLetters,
+          plate_numbers: plateNumbers,
+          plate: `${plateLetters}${plateNumbers}`,
           status: "complete",
         },
       });
 
-      if (error) throw error;
+      if (updateError) {
+        console.error("Error updating user metadata:", updateError);
+        throw updateError;
+      }
 
+      console.log("User metadata updated successfully");
+
+      // Send PUT request to verify endpoint with empty body
+      console.log("Sending verification request to API...");
       try {
         const response = await fetch(
           `https://api.thevanapp.com/api/driver-details/verify/${userId}`,
@@ -504,21 +602,32 @@ export default function DriverVerificationScreen() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${apiToken}`,
             },
-            body: JSON.stringify({
-              plate: `${plateLetters}${plateNumbers}`,
-            }),
+            body: JSON.stringify({}), // Empty body
           }
         );
 
+        console.log("API response status:", response.status);
+
         if (!response.ok) {
-          console.error("Failed to update driver details:", response.status);
-          throw new Error("Failed to update driver details");
+          const errorText = await response.text();
+          console.error(
+            "Failed to verify driver details:",
+            response.status,
+            errorText
+          );
+          throw new Error(
+            `Failed to verify driver details: ${response.status}`
+          );
         }
+
+        console.log("API verification successful");
       } catch (putError) {
         console.error("Error sending PUT request:", putError);
-        throw putError;
+        // Don't throw here, continue with navigation
+        MyToast("Warning: API verification failed, but continuing...");
       }
 
+      // Clear form data
       setName("");
       setEmail("");
       setPhoneNumber("");
@@ -533,9 +642,19 @@ export default function DriverVerificationScreen() {
       setPlateNumbers("");
 
       MyToast("Your verification request has been submitted successfully!");
+
+      // Navigate to homepage after successful verification
+      console.log(
+        "Verification completed successfully, navigating to homepage"
+      );
+
+      // Use setTimeout to ensure state updates are processed
+      setTimeout(() => {
+        router.replace("/homepage");
+      }, 100);
     } catch (error) {
       console.error("Verification error:", error);
-      MyToast("Error submitting verification");
+      MyToast("Error submitting verification: " + (error as Error).message);
     } finally {
       setIsLoading(false);
     }
@@ -798,7 +917,7 @@ export default function DriverVerificationScreen() {
                 color: "#2c3e50",
               }}
             >
-              Account Verification
+              Complete Profile
             </Text>
 
             <Text
@@ -905,7 +1024,7 @@ export default function DriverVerificationScreen() {
                       fontWeight: "500",
                     }}
                   >
-                    Email
+                    Email {isEmailVerified ? "✓" : ""}
                   </Text>
                 </TouchableOpacity>
 
@@ -966,14 +1085,16 @@ export default function DriverVerificationScreen() {
               </View>
             </View>
 
-            {/* Show verified status only for selected verification type */}
-            {verificationType === "email" && isEmailVerified && (
+            {/* Show verified status for both email and phone */}
+            {isEmailVerified && (
               <View
                 style={{
                   paddingHorizontal: 10,
                   paddingVertical: 15,
                   marginBottom: 20,
                   marginTop: -10,
+                  backgroundColor: "#dcfce7",
+                  borderRadius: 8,
                 }}
               >
                 <Text
@@ -987,13 +1108,15 @@ export default function DriverVerificationScreen() {
               </View>
             )}
 
-            {verificationType === "phone" && isMobileVerified && (
+            {isMobileVerified && (
               <View
                 style={{
                   paddingHorizontal: 10,
                   paddingVertical: 15,
                   marginBottom: 20,
                   marginTop: -10,
+                  backgroundColor: "#dcfce7",
+                  borderRadius: 8,
                 }}
               >
                 <Text
@@ -1007,7 +1130,7 @@ export default function DriverVerificationScreen() {
               </View>
             )}
 
-            {/* Email/Phone Field - Based on verification type selection */}
+            {/* Email/Phone Field - Only show if not verified */}
             <View style={{ marginBottom: 20, marginTop: -10 }}>
               {verificationType === "email" && !isEmailVerified && (
                 <>
@@ -1102,6 +1225,30 @@ export default function DriverVerificationScreen() {
                     </TouchableOpacity>
                   )}
                 </>
+              )}
+
+              {/* Show message if both are verified */}
+              {isEmailVerified && isMobileVerified && (
+                <View
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 15,
+                    marginBottom: 20,
+                    backgroundColor: "#dcfce7",
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontWeight: "600",
+                      color: "#15803d",
+                      textAlign: "center",
+                    }}
+                  >
+                    Both email and phone are verified ✓
+                  </Text>
+                </View>
               )}
             </View>
 
@@ -1220,7 +1367,7 @@ export default function DriverVerificationScreen() {
                 <Text
                   style={{ color: "white", fontWeight: "bold", fontSize: 16 }}
                 >
-                  Submit Verification
+                  Submit Profile Complete
                 </Text>
               )}
             </TouchableOpacity>

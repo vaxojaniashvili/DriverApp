@@ -72,6 +72,7 @@ const HomeScreen: React.FC = () => {
   const [statusUpdateCompleted, setStatusUpdateCompleted] = useState(false);
   const [paramsProcessed, setParamsProcessed] = useState(false);
   const [fetchUserDataInProgress, setFetchUserDataInProgress] = useState(false);
+  const [locationApi404Detected, setLocationApi404Detected] = useState(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -210,110 +211,26 @@ const HomeScreen: React.FC = () => {
         }
 
         if (!session) {
-          try {
-            const {
-              data: { user: supabaseUser },
-              error: userError,
-            } = await supabase.auth.getUser();
-
-            if (supabaseUser && !userError) {
-              const {
-                data: { session: newSession },
-              } = await supabase.auth.getSession();
-              if (newSession) {
-                session = newSession;
-                user = supabaseUser;
-              }
-            }
-          } catch (userError) {
-            console.error("User retrieval failed:", userError);
-          }
-        } else {
-          user = session.user;
+          console.error("No session or user found");
+          router.replace("/signUp" as any);
+          return;
         }
-      }
 
-      if (!session) {
-        console.error("No session or user found");
-        router.replace("/authentication" as any);
-        return;
-      }
-
-      setSession(session);
-      setApiToken(session.access_token);
-      if (user?.user_metadata?.status === "complete") {
-        setStatusUpdateCompleted(true);
-      } else if (user?.user_metadata?.status === "incomplete") {
-        if (statusUpdateCompleted) {
-        } else {
-          try {
-            const res = await fetch(
-              "https://api.thevanapp.com/api/driver-details",
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({
-                  unique_id: user.id,
-                  name: user.user_metadata.first_name,
-                  last_name: user.user_metadata.last_name,
-                  email: user.email || "test",
-                  phone: user.user_metadata.phone || "11",
-                }),
-              }
-            );
-
-            if (res.ok) {
-              Alert.alert(
-                user?.user_metadata?.phone_verified
-                  ? "verified with phone"
-                  : "verified with email"
-              );
-            }
-
-            if (res.ok || res.status === 409) {
-              const { error: updateError } = await supabase.auth.updateUser({
-                data: {
-                  status: "complete",
-                },
-              });
-
-              if (updateError) {
-                console.error("Failed to update user status:", updateError);
-              } else {
-                console.log("User status updated to complete");
-
-                const { data: refreshData, error: refreshError } =
-                  await supabase.auth.refreshSession();
-
-                if (refreshError) {
-                  console.error("Session refresh error:", refreshError);
-                } else if (refreshData.session) {
-                  console.log("Session refreshed successfully");
-                  await setStoreSession(refreshData.session);
-                  await setStoreUser(refreshData.session.user);
-                  setStatusUpdateCompleted(true);
-                  await fetchDriverDetails();
-                }
-              }
-            } else {
-              console.error("API request failed with status:", res.status);
-            }
-          } catch (apiError) {
-            console.error("Error sending API request:", apiError);
-          }
+        setSession(session);
+        setApiToken(session.access_token);
+        setUserId(user?.id as any);
+        if (!user) {
+          console.error("No user found");
+          return;
         }
-      } else {
+
+        setUserEmail(user.email || user.user_metadata.email || "");
+        setPhoneNumber(user.phone || user.user_metadata.phone || "");
+
+        await fetchDriverDetails();
       }
 
       setUserId(user?.id as any);
-
-      if (!user) {
-        console.error("No user found");
-        return;
-      }
 
       // console.log("dataa", user);
 
@@ -384,7 +301,22 @@ const HomeScreen: React.FC = () => {
 
       try {
         const response = await fetch(
-          `https://api.thevanapp.com/api/driver-loc`
+          "https://api.thevanapp.com/api/driver-loc",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiToken}`,
+            },
+            body: JSON.stringify({
+              email: userEmail,
+              location: {
+                lat: location?.latitude,
+                lng: location?.longitude,
+              },
+              status: modeRef.current,
+            }),
+          }
         );
 
         if (!response.ok) {
@@ -426,9 +358,20 @@ const HomeScreen: React.FC = () => {
   }, [userEmail, apiToken, userIndicator]);
 
   const sendLocationToApi = async () => {
+    // Skip if we've already detected that the location API doesn't exist
+    if (locationApi404Detected) {
+      return;
+    }
+
     if (!userEmail || !location || !apiToken || userIndicator !== "active") {
       console.log(
-        "Missing data or indicator not active, skipping location update"
+        "Missing data or indicator not active, skipping location update:",
+        {
+          hasUserEmail: !!userEmail,
+          hasLocation: !!location,
+          hasApiToken: !!apiToken,
+          userIndicator,
+        }
       );
       return;
     }
@@ -445,6 +388,13 @@ const HomeScreen: React.FC = () => {
         status: modeRef.current,
       };
 
+      console.log("Sending location to API with payload:", {
+        email: payload.email,
+        location: payload.location,
+        status: payload.status,
+        apiTokenLength: apiToken?.length || 0,
+      });
+
       const response = await fetch("https://api.thevanapp.com/api/driver-loc", {
         method: "POST",
         headers: {
@@ -454,14 +404,65 @@ const HomeScreen: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
+      console.log("API response received:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
+
       if (!response.ok) {
-        throw new Error(`API response error: ${response.status}`);
+        const errorText = await response.text();
+        console.error("API error response:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        });
+
+        if (response.status === 404) {
+          // Check if it's a driver not found error or endpoint not found
+          if (
+            errorText.includes("No driver found") ||
+            errorText.includes("driver")
+          ) {
+            console.error("404 Error: Driver not found in database");
+            console.error(
+              "Driver with email",
+              userEmail,
+              "not found in driver-details table"
+            );
+            setLocationApi404Detected(true); // Mark as detected to prevent future attempts
+            return; // Don't throw error, just return
+          } else {
+            console.error(
+              "404 Error: API endpoint not found. Possible issues:"
+            );
+            console.error("1. API endpoint /api/driver-loc does not exist");
+            console.error("2. Server is not running");
+            console.error("3. Wrong API base URL");
+            setLocationApi404Detected(true); // Mark as detected to prevent future attempts
+            return; // Don't throw error, just return
+          }
+        }
+
+        throw new Error(
+          `API response error: ${response.status} - ${errorText}`
+        );
       }
 
+      const responseData = await response.json();
+      console.log("Location sent successfully:", responseData);
       setLastSentTime(Date.now());
     } catch (error) {
       console.error("Error sending location to API:", error);
-      setLocationSendError("Failed to send location data");
+
+      // Don't show error to user for 404, just log it
+      if (error instanceof Error && error.message.includes("404")) {
+        console.log("404 error detected - API endpoint may not exist");
+        setLocationApi404Detected(true); // Mark as detected
+        setLocationSendError(null); // Don't show error to user
+      } else {
+        setLocationSendError("Failed to send location data");
+      }
     }
   };
 

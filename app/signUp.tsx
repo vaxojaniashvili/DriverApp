@@ -70,20 +70,22 @@ export default function DriverSignUp() {
     loadSessionFromStorage();
   }, []);
 
-  // Check if user is already authenticated and redirect to homepage
+  // Check if user is already authenticated and redirect to driverVerification
   useEffect(() => {
     const checkExistingSession = async () => {
       await loadSessionFromStorage();
       const currentState = useAuthStore.getState();
 
       if (currentState.session && currentState.user) {
-        console.log("User already authenticated, redirecting to homepage");
+        console.log(
+          "User already authenticated, redirecting to driverVerification"
+        );
         console.log("Existing session found:", {
           hasSession: !!currentState.session,
           hasUser: !!currentState.user,
           userId: currentState.user?.id,
         });
-        router.replace("/homepage");
+        router.replace("/(tabs)/driverVerification");
       }
     };
 
@@ -467,6 +469,38 @@ export default function DriverSignUp() {
           contactMethod === "phone" ? "Phone number" : "Email"
         } verified successfully! Now you can complete your registration.`
       );
+
+      try {
+        const res = await fetch(
+          "https://api.thevanapp.com/api/driver-details",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${verificationResult.data.session?.access_token}`,
+            },
+            body: JSON.stringify({
+              unique_id: verificationResult.data.session?.user?.id,
+              name: name,
+              last_name: surname,
+              email: email.trim().toLowerCase(),
+              phone: phoneNumber || "123",
+              plate: "test",
+            }),
+          }
+        );
+        if (!res.ok && res.status !== 409) {
+          throw new Error(`driver-details API error: ${res.status}`);
+        }
+        if (res.ok) {
+          console.log("driver-details API registration successful");
+        } else if (res.status === 409) {
+          console.log("driver-details API: user already exists (409)");
+        }
+      } catch (apiError) {
+        console.error("driver-details API registration error:", apiError);
+      }
+      // === END POST ===
     } catch (error) {
       console.log("IN CATCH BLOCK:", error);
       const errorMessage = (error as Error)?.message || "";
@@ -562,23 +596,14 @@ export default function DriverSignUp() {
     setCanResend(false);
   };
 
-  // ✅ ახალი მარტივი რეგისტრაცია - Auth Listener სრულიად გამორთული
+  // ✅ ახალი მარტივი რეგისტრაცია - ნავიგაცია პირველად
   const completeRegistration = async () => {
-    console.log("=== STARTING completeRegistration (New Simple Version) ===");
+    console.log(
+      "=== STARTING completeRegistration (Navigate First Version) ==="
+    );
     console.log("isContactVerified:", isContactVerified);
     console.log("Current step:", currentStep);
     console.log("Loading state:", loading);
-    console.log("Button should be enabled:", isContactVerified && !loading);
-    console.log("All form fields:", {
-      email,
-      phoneNumber,
-      name,
-      surname,
-      password: password ? "***" : "",
-      confirmPassword: confirmPassword ? "***" : "",
-      vanOption,
-      contactMethod,
-    });
 
     // ყველა ფილდის ვალიდაცია
     const isEmailValid = validateEmail(email);
@@ -588,16 +613,6 @@ export default function DriverSignUp() {
     const isPasswordValid = validatePassword(password);
     const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
     const isVanOptionValid = validateVanOption(vanOption);
-
-    console.log("Validation results:", {
-      isEmailValid,
-      isPhoneValid,
-      isNameValid,
-      isSurnameValid,
-      isPasswordValid,
-      isConfirmPasswordValid,
-      isVanOptionValid,
-    });
 
     if (
       !isEmailValid ||
@@ -624,11 +639,26 @@ export default function DriverSignUp() {
     setLoading(true);
 
     try {
-      // ✅ იუზერი უკვე ავტორიზებულია OTP verification-ის შემდეგ
-      console.log("User is already authenticated, updating user data...");
+      console.log("STEP 1: Getting current session...");
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
 
-      // ✅ User მონაცემების განახლება
-      console.log("Starting user data update...");
+      if (!currentSession) {
+        throw new Error("No active session found");
+      }
+
+      console.log("STEP 2: Current session found:", {
+        userId: currentSession?.user?.id,
+      });
+
+      // ✅ პირველად ნავიგაცია
+      console.log("STEP 3: Navigating to driverVerification FIRST...");
+      router.replace("/(tabs)/driverVerification");
+      console.log("STEP 4: Navigation command sent!");
+
+      // ✅ შემდეგ მონაცემების განახლება background-ში
+      console.log("STEP 5: Now updating user data in background...");
 
       const userDataToUpdate = {
         email: email.trim().toLowerCase(),
@@ -641,123 +671,34 @@ export default function DriverSignUp() {
         van_option: vanOption,
         user_type: "driver",
         status: "incomplete",
-        sub: "", // ეს ველს Supabase ავტომატურად აყენებს
       };
 
-      console.log("Sending user data to updateUser:", userDataToUpdate);
-
-      // ✅ ჯერ ვნახოთ მიმდინარე session
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
-      console.log("Current session before updateUser:", {
-        session: !!currentSession,
-        userId: currentSession?.user?.id,
-        sessionId: currentSession?.access_token?.substring(0, 20) + "...",
-      });
-
+      console.log("STEP 6: Sending user data to updateUser...");
       const { data: updateData, error: updateError } =
         await supabase.auth.updateUser({
           data: userDataToUpdate,
         });
 
-      console.log("UpdateUser response:", { updateData, updateError });
+      console.log("STEP 7: UpdateUser response:", { updateData, updateError });
 
       if (updateError) {
         console.error("User update error:", updateError);
-        throw updateError;
+        // Don't throw, just log the error
+      } else {
+        console.log("STEP 8: User data updated successfully!");
       }
-
-      console.log("User data updated successfully!", updateData);
-
-      // ✅ ვნახოთ session updateUser-ის შემდეგ
-      const {
-        data: { session: afterUpdateSession },
-      } = await supabase.auth.getSession();
-      console.log("Session after updateUser:", {
-        session: !!afterUpdateSession,
-        userId: afterUpdateSession?.user?.id,
-        sessionId: afterUpdateSession?.access_token?.substring(0, 20) + "...",
-      });
 
       // ✅ Session-ის შენახვა Zustand store-ში
-      console.log("About to store session in Zustand store...");
-      console.log("afterUpdateSession exists:", !!afterUpdateSession);
-      console.log("afterUpdateSession type:", typeof afterUpdateSession);
-
-      if (afterUpdateSession) {
-        console.log("Storing session in Zustand store");
-        setSession(afterUpdateSession);
-        setUser(afterUpdateSession.user);
-        console.log("Session stored in Zustand store successfully");
-
-        // ✅ ტესტი რომ დავრწმუნდეთ რომ session შენახულია
-        const testStore = useAuthStore.getState();
-        console.log("Zustand store test - session stored:", {
-          hasSession: !!testStore.session,
-          hasUser: !!testStore.user,
-          userId: testStore.user?.id,
-        });
-
-        // ✅ ველოდებით რომ session შენახული იყოს
-        await new Promise((resolve) => setTimeout(resolve, 200));
-      } else {
-        console.log(
-          "❌ afterUpdateSession is null or undefined - cannot store in Zustand"
-        );
-      }
+      console.log("STEP 9: Storing session in Zustand store...");
+      setSession(currentSession);
+      setUser(currentSession.user);
+      console.log("Session stored in Zustand store successfully");
 
       // ✅ რეგისტრაცია დასრულებულია
-      console.log("Setting isRegistrationComplete to true");
+      console.log("STEP 10: Setting isRegistrationComplete to true");
       setIsRegistrationComplete(true);
 
-      console.log("Registration completed, navigating immediately...");
-
-      // ✅ დაუყოვნებელი navigation session refresh-ის შემდეგ
-      try {
-        console.log("Refreshing session before navigation...");
-        await supabase.auth.refreshSession();
-        console.log("Session refreshed before navigation");
-      } catch (error) {
-        console.error("Error refreshing session before navigation:", error);
-      }
-
-      console.log("Getting final session for navigation");
-
-      // ✅ ბოლო ცდა session-ის შენახვისა navigation-ის წინ
-      const finalSession = await supabase.auth.getSession();
-      if (finalSession.data.session) {
-        console.log("Final session storage before navigation");
-        setSession(finalSession.data.session);
-        setUser(finalSession.data.session.user);
-        console.log("Final session stored in Zustand store");
-
-        // ✅ ველოდებით რომ session შენახული იყოს
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-
-      // ✅ Session-ის გადაცემა navigation params-ით
-      console.log("Navigating to homepage with session data");
-      console.log("Final session data:", {
-        hasSession: !!finalSession.data.session,
-        hasUser: !!finalSession.data.session?.user,
-        userId: finalSession.data.session?.user?.id,
-        sessionDataLength: JSON.stringify(finalSession.data.session).length,
-        userDataLength: JSON.stringify(finalSession.data.session?.user).length,
-      });
-
-      console.log("About to call router.replace with params");
-      const navigationParams = {
-        pathname: "/homepage" as any,
-        params: {
-          sessionData: JSON.stringify(finalSession.data.session),
-          userData: JSON.stringify(finalSession.data.session?.user),
-        },
-      };
-      console.log("Navigation params object:", navigationParams);
-
-      router.replace(navigationParams);
-      console.log("router.replace called successfully");
+      console.log("STEP 11: All background tasks completed!");
     } catch (error) {
       console.error("Registration error:", error);
       const errorMessage = (error as Error)?.message || "";

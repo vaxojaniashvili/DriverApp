@@ -72,7 +72,6 @@ const HomeScreen: React.FC = () => {
   const [statusUpdateCompleted, setStatusUpdateCompleted] = useState(false);
   const [paramsProcessed, setParamsProcessed] = useState(false);
   const [fetchUserDataInProgress, setFetchUserDataInProgress] = useState(false);
-  const [locationApi404Detected, setLocationApi404Detected] = useState(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -197,7 +196,7 @@ const HomeScreen: React.FC = () => {
       } else {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Session timeout")), 5000)
+          setTimeout(() => reject(new Error("Session timeout")), 10000)
         );
 
         try {
@@ -207,11 +206,21 @@ const HomeScreen: React.FC = () => {
           ])) as any;
           session = result.data.session;
         } catch (sessionError) {
-          session = null;
+          console.log("Session timeout, trying again...");
+          // Try one more time without timeout
+          try {
+            const {
+              data: { session: retrySession },
+            } = await supabase.auth.getSession();
+            session = retrySession;
+          } catch (retryError) {
+            console.error("Retry failed:", retryError);
+            session = null;
+          }
         }
 
         if (!session) {
-          console.error("No session or user found");
+          console.error("No session or user found after retry");
           router.replace("/signUp" as any);
           return;
         }
@@ -301,22 +310,7 @@ const HomeScreen: React.FC = () => {
 
       try {
         const response = await fetch(
-          "https://api.thevanapp.com/api/driver-loc",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiToken}`,
-            },
-            body: JSON.stringify({
-              email: userEmail,
-              location: {
-                lat: location?.latitude,
-                lng: location?.longitude,
-              },
-              status: modeRef.current,
-            }),
-          }
+          `https://api.thevanapp.com/api/driver-loc`
         );
 
         if (!response.ok) {
@@ -358,20 +352,9 @@ const HomeScreen: React.FC = () => {
   }, [userEmail, apiToken, userIndicator]);
 
   const sendLocationToApi = async () => {
-    // Skip if we've already detected that the location API doesn't exist
-    if (locationApi404Detected) {
-      return;
-    }
-
     if (!userEmail || !location || !apiToken || userIndicator !== "active") {
       console.log(
-        "Missing data or indicator not active, skipping location update:",
-        {
-          hasUserEmail: !!userEmail,
-          hasLocation: !!location,
-          hasApiToken: !!apiToken,
-          userIndicator,
-        }
+        "Missing data or indicator not active, skipping location update"
       );
       return;
     }
@@ -388,13 +371,6 @@ const HomeScreen: React.FC = () => {
         status: modeRef.current,
       };
 
-      console.log("Sending location to API with payload:", {
-        email: payload.email,
-        location: payload.location,
-        status: payload.status,
-        apiTokenLength: apiToken?.length || 0,
-      });
-
       const response = await fetch("https://api.thevanapp.com/api/driver-loc", {
         method: "POST",
         headers: {
@@ -404,65 +380,14 @@ const HomeScreen: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
-      console.log("API response received:", {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok,
-      });
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API error response:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorText,
-        });
-
-        if (response.status === 404) {
-          // Check if it's a driver not found error or endpoint not found
-          if (
-            errorText.includes("No driver found") ||
-            errorText.includes("driver")
-          ) {
-            console.error("404 Error: Driver not found in database");
-            console.error(
-              "Driver with email",
-              userEmail,
-              "not found in driver-details table"
-            );
-            setLocationApi404Detected(true); // Mark as detected to prevent future attempts
-            return; // Don't throw error, just return
-          } else {
-            console.error(
-              "404 Error: API endpoint not found. Possible issues:"
-            );
-            console.error("1. API endpoint /api/driver-loc does not exist");
-            console.error("2. Server is not running");
-            console.error("3. Wrong API base URL");
-            setLocationApi404Detected(true); // Mark as detected to prevent future attempts
-            return; // Don't throw error, just return
-          }
-        }
-
-        throw new Error(
-          `API response error: ${response.status} - ${errorText}`
-        );
+        throw new Error(`API response error: ${response.status}`);
       }
 
-      const responseData = await response.json();
-      console.log("Location sent successfully:", responseData);
       setLastSentTime(Date.now());
     } catch (error) {
       console.error("Error sending location to API:", error);
-
-      // Don't show error to user for 404, just log it
-      if (error instanceof Error && error.message.includes("404")) {
-        console.log("404 error detected - API endpoint may not exist");
-        setLocationApi404Detected(true); // Mark as detected
-        setLocationSendError(null); // Don't show error to user
-      } else {
-        setLocationSendError("Failed to send location data");
-      }
+      setLocationSendError("Failed to send location data");
     }
   };
 

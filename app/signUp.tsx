@@ -483,9 +483,9 @@ export default function DriverSignUp() {
               unique_id: verificationResult.data.session?.user?.id,
               name: name,
               last_name: surname,
-              email: email.trim().toLowerCase(),
-              phone: phoneNumber || "123",
               plate: "test",
+              email: email,
+              phone: phoneNumber || "123",
             }),
           }
         );

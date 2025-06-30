@@ -12,4 +12,5 @@ export const COUNTRIES = [
   { name: "Poland", code: "PL", dialCode: "+48", flag: "🇵🇱" },
   { name: "Netherlands", code: "NL", dialCode: "+31", flag: "🇳🇱" },
   { name: "Malta", code: "MT", dialCode: "+356", flag: "🇲🇹" },
+  { name: "India", code: "IN", dialCode: "+91", flag: "🇮🇳" },
 ];

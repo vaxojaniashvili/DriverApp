@@ -18,16 +18,13 @@ export const RegistrationForm = ({
   password,
   confirmPassword,
   vanOption,
-  contactMethod,
   loading,
   showPassword,
   showConfirmPassword,
   nameError,
   surnameError,
-  emailError,
   phoneNumberError,
   passwordError,
-  confirmPasswordError,
   vanOptionError,
   isContactVerified, // ახალი prop
   setName,
@@ -39,13 +36,7 @@ export const RegistrationForm = ({
   setShowPassword,
   setShowConfirmPassword,
   setVanOption,
-  setContactMethod,
-  validateName,
-  validateSurname,
-  validateEmail,
   validatePhoneNumber,
-  validatePassword,
-  validateConfirmPassword,
   validateVanOption,
   sendVerificationCode, // ვერიფიკაციის კოდის გაგზავნა
   completeRegistration, // მთავარი რეგისტრაცია
@@ -63,7 +54,7 @@ export const RegistrationForm = ({
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredCountries = COUNTRIES.filter(
-    (country) =>
+    (country: any) =>
       country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       country.dialCode.includes(searchQuery)
   );
@@ -111,16 +102,14 @@ export const RegistrationForm = ({
             size: 22,
             color: "#27ae60",
           }}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setName(text);
-            if (nameError) validateName(text);
           }}
           inputStyle={{ paddingTop: 5 }}
           value={name}
           placeholder="First name"
           autoCapitalize="words"
           errorMessage={nameError}
-          onBlur={() => validateName(name)}
         />
 
         <SurnameInput
@@ -131,16 +120,14 @@ export const RegistrationForm = ({
             size: 22,
             color: "#27ae60",
           }}
-          onChangeText={(text) => {
+          onChangeText={(text: string) => {
             setSurname(text);
-            if (surnameError) validateSurname(text);
           }}
           inputStyle={{ paddingTop: 5 }}
           value={surname}
           placeholder="Last name"
           autoCapitalize="words"
           errorMessage={surnameError}
-          onBlur={() => validateSurname(surname)}
         />
       </NameSurnameRow>
 
@@ -199,12 +186,14 @@ export const RegistrationForm = ({
                 }}
                 placeholder="Search country..."
                 value={searchQuery}
-                onChangeText={setSearchQuery}
+                onChangeText={(text: string) => {
+                  setSearchQuery(text);
+                }}
               />
             </View>
 
             <ScrollView style={{ padding: 10 }}>
-              {filteredCountries.map((country) => (
+              {filteredCountries.map((country: any) => (
                 <TouchableOpacity
                   key={country.code}
                   style={{
@@ -261,18 +250,14 @@ export const RegistrationForm = ({
           onPress: () => setShowPassword(!showPassword),
         }}
         inputStyle={{ paddingTop: 5 }}
-        onChangeText={(text) => {
+        onChangeText={(text: string) => {
           setPassword(text);
-          if (passwordError) validatePassword(text);
-          if (confirmPassword && confirmPasswordError)
-            validateConfirmPassword(confirmPassword);
         }}
         value={password}
         secureTextEntry={!showPassword}
         placeholder="Create a password"
         autoCapitalize="none"
         errorMessage={passwordError}
-        onBlur={() => validatePassword(password)}
       />
 
       <StyledInput
@@ -291,16 +276,13 @@ export const RegistrationForm = ({
           onPress: () => setShowConfirmPassword(!showConfirmPassword),
         }}
         inputStyle={{ paddingTop: 5 }}
-        onChangeText={(text) => {
+        onChangeText={(text: string) => {
           setConfirmPassword(text);
-          if (confirmPasswordError) validateConfirmPassword(text);
         }}
         value={confirmPassword}
         secureTextEntry={!showConfirmPassword}
         placeholder="Confirm your password"
         autoCapitalize="none"
-        errorMessage={confirmPasswordError}
-        onBlur={() => validateConfirmPassword(confirmPassword)}
       />
 
       <View style={{ marginBottom: 25, marginTop: -10, marginLeft: 11 }}>
@@ -322,7 +304,7 @@ export const RegistrationForm = ({
               alignItems: "center",
               marginRight: 20,
             }}
-            onPress={() => setContactMethod("email")}
+            onPress={() => setVanOption("phone")}
           >
             <View
               style={{
@@ -336,40 +318,7 @@ export const RegistrationForm = ({
                 alignItems: "center",
               }}
             >
-              {contactMethod === "email" && (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: "#27ae60",
-                  }}
-                />
-              )}
-            </View>
-            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Email</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-            onPress={() => setContactMethod("phone")}
-          >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: "#27ae60",
-                marginRight: 10,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              {contactMethod === "phone" && (
+              {vanOption === "phone" && (
                 <View
                   style={{
                     width: 10,
@@ -385,73 +334,7 @@ export const RegistrationForm = ({
         </View>
       </View>
 
-      {contactMethod === "email" && (
-        <View style={{ marginBottom: 10 }}>
-          <Text
-            style={{
-              fontSize: 14,
-              color: "#86939e",
-              fontWeight: "bold",
-              marginBottom: 10,
-              marginLeft: 10,
-            }}
-          >
-            Email
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              borderBottomWidth: 1,
-              borderBottomColor: "#86939e",
-              paddingBottom: 8,
-              marginHorizontal: 10,
-            }}
-          >
-            <TextInput
-              style={{
-                flex: 1,
-                fontSize: 16,
-                paddingVertical: 5,
-                color: "#2c3e50",
-                marginRight: 10,
-              }}
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (emailError) validateEmail(text);
-              }}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              onBlur={() => validateEmail(email)}
-            />
-            <TouchableOpacity
-              style={getVerifyButtonStyle()}
-              onPress={isContactVerified ? null : sendVerificationCode}
-              disabled={isContactVerified || loading}
-            >
-              <Text style={{ color: "white", fontWeight: "bold" }}>
-                {getVerifyButtonText()}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {emailError ? (
-            <Text
-              style={{
-                color: "#e74c3c",
-                fontSize: 12,
-                marginTop: 5,
-                marginLeft: 10,
-              }}
-            >
-              {emailError}
-            </Text>
-          ) : null}
-        </View>
-      )}
-
-      {contactMethod === "phone" && (
+      {vanOption === "phone" && (
         <View style={{ marginBottom: 10 }}>
           <Text
             style={{
@@ -505,13 +388,11 @@ export const RegistrationForm = ({
                 marginRight: 10,
               }}
               value={phoneNumber}
-              onChangeText={(text) => {
+              onChangeText={(text: string) => {
                 setPhoneNumber(text);
-                if (phoneNumberError) validatePhoneNumber(text);
               }}
               placeholder="Enter phone number"
               keyboardType="phone-pad"
-              onBlur={() => validatePhoneNumber(phoneNumber)}
             />
             <TouchableOpacity
               style={getVerifyButtonStyle()}
@@ -686,7 +567,7 @@ export const RegistrationForm = ({
             marginTop: 5,
           }}
         >
-          Please verify your {contactMethod} to continue
+          Please verify your phone to continue
         </Text>
       )}
 

@@ -32,7 +32,6 @@ const MyToast = (message: string, duration = "short") => {
 
 export default function DriverVerificationScreen() {
   const [name, setName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
 
@@ -44,11 +43,9 @@ export default function DriverVerificationScreen() {
   const [country, setCountry] = useState("");
 
   const [isValid, setIsValid] = useState(false);
-  const [isMobileVerified, setIsMobileVerified] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [showVerificationScreen, setShowVerificationScreen] = useState(false);
   const [verifyingEmail, setVerifyingEmail] = useState(false);
-  const [verifyingMobile, setVerifyingMobile] = useState(false);
   const [otp, setOtp] = useState("");
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -61,6 +58,10 @@ export default function DriverVerificationScreen() {
   const [userData, setUserData] = useState<any[]>([]);
   const [plateLetters, setPlateLetters] = useState("");
   const [plateNumbers, setPlateNumbers] = useState("");
+  const [emailStep, setEmailStep] = useState<"input" | "otp" | "verified">(
+    "input"
+  );
+  const [phone, setPhone] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -98,24 +99,6 @@ export default function DriverVerificationScreen() {
               setIsEmailVerified(true);
               setEmail(user.email || user.user_metadata?.email || "");
             }
-
-            if (user?.user_metadata?.phone_verified) {
-              setIsMobileVerified(true);
-              setPhoneNumber(user.user_metadata?.phone || "");
-            }
-
-            // Set default verification type
-            if (
-              user?.user_metadata?.email_verified &&
-              !user?.user_metadata?.phone_verified
-            ) {
-              setVerificationType("phone");
-            } else if (
-              user?.user_metadata?.phone_verified &&
-              !user?.user_metadata?.email_verified
-            ) {
-              setVerificationType("email");
-            }
           }
         } catch (error) {
           console.error("Error refreshing data:", error);
@@ -144,34 +127,10 @@ export default function DriverVerificationScreen() {
           setEmail(user.email);
         }
 
-        // Check if user registered with phone and it's verified
-        if (user?.phone && user?.phone_confirmed_at) {
-          setIsMobileVerified(true);
-          setPhoneNumber(user.phone);
-        }
-
         // Check from user metadata for signup method
         if (user?.user_metadata?.email_verified) {
           setIsEmailVerified(true);
           setEmail(user.email || user.user_metadata.email || "");
-        }
-
-        if (user?.user_metadata?.phone_verified) {
-          setIsMobileVerified(true);
-          setPhoneNumber(user.user_metadata.phone || "");
-        }
-
-        // Set default verification type based on what's already verified
-        if (
-          user?.user_metadata?.email_verified &&
-          !user?.user_metadata?.phone_verified
-        ) {
-          setVerificationType("phone"); // If email is verified, default to phone
-        } else if (
-          user?.user_metadata?.phone_verified &&
-          !user?.user_metadata?.email_verified
-        ) {
-          setVerificationType("email"); // If phone is verified, default to email
         }
       } catch (error) {
         console.error("Unexpected error:", error);
@@ -195,20 +154,10 @@ export default function DriverVerificationScreen() {
           setEmail(user.email);
         }
 
-        // Check if user registered with phone and it's verified
-        if (user?.phone && user?.phone_confirmed_at) {
-          setIsMobileVerified(true);
-          setPhoneNumber(user.phone);
-        }
-
         // Also check from API data if available
         if (data[0]?.email === user?.email && user?.email) {
           setIsEmailVerified(true);
           setEmail(user.email);
-        }
-        if (data[0]?.phone && data[0]?.phone === user?.user_metadata?.phone) {
-          setIsMobileVerified(true);
-          setPhoneNumber(user.user_metadata.phone);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -233,9 +182,7 @@ export default function DriverVerificationScreen() {
     const isNameValid = name?.trim() !== "";
     // At least one contact method should be provided and verified
     const hasEmail = email.trim() !== "";
-    const hasPhone = phoneNumber.trim() !== "";
-    const hasAtLeastOneContact = hasEmail || hasPhone;
-    const hasAtLeastOneVerified = isEmailVerified || isMobileVerified;
+    const hasAtLeastOneVerified = isEmailVerified;
     const isAddressValid =
       streetAddress1.trim() !== "" &&
       city.trim() !== "" &&
@@ -247,7 +194,7 @@ export default function DriverVerificationScreen() {
 
     setIsValid(
       isNameValid &&
-        hasAtLeastOneContact &&
+        hasEmail &&
         hasAtLeastOneVerified &&
         isAddressValid &&
         isLicensePlateValid
@@ -255,8 +202,6 @@ export default function DriverVerificationScreen() {
   }, [
     name,
     email,
-    phoneNumber,
-    isMobileVerified,
     isEmailVerified,
     streetAddress1,
     city,
@@ -268,9 +213,52 @@ export default function DriverVerificationScreen() {
     plateNumbers,
   ]);
 
+  useEffect(() => {
+    const fetchUserPhone = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const phoneFromUser =
+        user?.phone ||
+        user?.user_metadata?.phone ||
+        user?.user_metadata?.temp_phone ||
+        null;
+      setPhone(phoneFromUser);
+    };
+    fetchUserPhone();
+  }, []);
+
+  useEffect(() => {
+    const checkIfAlreadyVerified = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user?.id) return;
+        const res = await fetch(
+          `https://api.thevanapp.com/api/driver-details/${user.id}`
+        );
+        const data = await res.json();
+        const indicator = data && data[0]?.indicator;
+        if (indicator === "active") {
+          // Already verified, redirect to homepage
+          router.replace("/(tabs)/homepage");
+        }
+      } catch (err) {
+        console.error("Error checking driver indicator:", err);
+      }
+    };
+    checkIfAlreadyVerified();
+  }, []);
+
   const sendEmailVerification = async () => {
     if (!email) {
       MyToast("Please enter a valid email address");
+      return;
+    }
+
+    if (!phone) {
+      MyToast("Please enter a valid phone number");
       return;
     }
 
@@ -284,70 +272,49 @@ export default function DriverVerificationScreen() {
         return;
       }
 
-      console.log("Sending OTP to email:", email);
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
+      // Country code-ების მოცილება
+      const cleanPhone = () => {
+        let cleaned = phone;
+
+        // + ნიშნის მოცილება
+        if (cleaned.startsWith("+")) {
+          cleaned = cleaned.slice(1);
+        }
+
+        // country code-ების მოცილება
+        if (cleaned.startsWith("91")) {
+          cleaned = cleaned.slice(2);
+        } else if (cleaned.startsWith("356")) {
+          cleaned = cleaned.slice(3);
+        }
+
+        return cleaned;
+      };
+
+      const cleanPhoneNumber = cleanPhone();
+
+      const res = await fetch("https://api.thevanapp.com/api/verify/driver", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: cleanPhoneNumber, email }),
       });
 
-      if (error) {
-        console.log("Supabase OTP error:", error);
-        MyToast("Error sending verification email. Please try again.");
-      } else {
-        MyToast("Verification code sent. Check your email for the code.");
+      const text = await res.text();
+      if (!res.ok) {
+        console.error("Email verification error:", text);
+        setVerificationError(text || "Failed to send verification code");
+        throw new Error("Failed to send verification code: " + text);
       }
 
-      setVerifyingEmail(true);
-      setShowVerificationScreen(true);
+      MyToast("Verification code sent. Check your email for the code.");
+      setEmailStep("otp");
       setTimer(60);
       setCanResend(false);
       setOtp("");
     } catch (err) {
       console.error("Email verification error:", err);
-      setVerificationError("An error occurred");
+      setVerificationError((err as Error).message || "An error occurred");
       MyToast("An error occurred");
-    } finally {
-      setIsVerificationLoading(false);
-    }
-  };
-
-  const sendMobileVerification = async () => {
-    if (!phoneNumber) {
-      MyToast("Please enter a valid phone number");
-      return;
-    }
-
-    setIsVerificationLoading(true);
-    setVerificationError("");
-
-    try {
-      const formattedPhone = phoneNumber.startsWith("+")
-        ? phoneNumber
-        : `+995${phoneNumber}`;
-
-      console.log("Sending OTP to phone:", formattedPhone);
-      const { data, error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-        options: {
-          channel: "sms",
-        },
-      });
-
-      if (error) {
-        console.log("Supabase SMS OTP error:", error);
-        MyToast("Error sending SMS verification code. Please try again.");
-      } else {
-        MyToast("Verification code sent to your phone number.");
-      }
-
-      setVerifyingMobile(true);
-      setShowVerificationScreen(true);
-      setTimer(60);
-      setCanResend(false);
-      setOtp("");
-    } catch (err) {
-      console.error("Mobile verification error:", err);
-      setVerificationError("An error occurred");
-      MyToast("An error occurred while sending SMS");
     } finally {
       setIsVerificationLoading(false);
     }
@@ -359,132 +326,28 @@ export default function DriverVerificationScreen() {
       MyToast("Please enter the complete 6-digit OTP");
       return;
     }
-
-    const TEST_CODES = ["123456", "000000", "111111", "999999", "856135"];
-
     setIsVerificationLoading(true);
     setVerificationError("");
-
     try {
-      if (TEST_CODES.includes(otp)) {
-        console.log("Using test code:", otp);
-        if (verifyingEmail) {
-          setIsEmailVerified(true);
-          setShowVerificationScreen(false);
-          setVerifyingEmail(false);
-          setOtp("");
-          MyToast("Email verified successfully! (Test Mode)");
-        } else if (verifyingMobile) {
-          setIsMobileVerified(true);
-          setShowVerificationScreen(false);
-          setVerifyingMobile(false);
-          setOtp("");
-          MyToast("Phone number verified successfully! (Test Mode)");
+      const res = await fetch(
+        "https://api.thevanapp.com/api/verify/driver/confirm",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: otp, email }),
         }
-        return;
+      );
+      if (!res.ok) {
+        throw new Error("Failed to verify code");
       }
-
-      if (verifyingEmail) {
-        console.log("Verifying email OTP:", otp);
-
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.verifyOtp({
-          email: email.trim().toLowerCase(),
-          token: otp,
-          type: "email",
-        });
-
-        if (error) {
-          console.error("Email OTP verification error:", error);
-          if (error.message?.includes("expired")) {
-            setVerificationError(
-              "OTP code has expired. Please request a new code."
-            );
-            MyToast("OTP code has expired. Please request a new code.");
-          } else if (error.message?.includes("invalid")) {
-            setVerificationError(
-              "Invalid OTP code. Please check and try again."
-            );
-            MyToast("Invalid OTP code. Please check and try again.");
-          } else {
-            setVerificationError(
-              "Verification failed. Please try again or request a new code."
-            );
-            MyToast(
-              "Verification failed. Please try again or request a new code."
-            );
-          }
-          return;
-        }
-
-        if (session) {
-          setIsEmailVerified(true);
-          setShowVerificationScreen(false);
-          setVerifyingEmail(false);
-          setOtp("");
-          MyToast("Email verified successfully!");
-        } else {
-          setVerificationError("Verification failed. Please try again.");
-          MyToast("Verification failed. Please try again.");
-        }
-      } else if (verifyingMobile) {
-        console.log("Verifying mobile OTP:", otp);
-
-        const formattedPhone = phoneNumber.startsWith("+")
-          ? phoneNumber
-          : `+995${phoneNumber}`;
-
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.verifyOtp({
-          phone: formattedPhone,
-          token: otp,
-          type: "sms",
-        });
-
-        if (error) {
-          console.error("Mobile OTP verification error:", error);
-          if (error.message?.includes("expired")) {
-            setVerificationError(
-              "OTP code has expired. Please request a new code."
-            );
-            MyToast("OTP code has expired. Please request a new code.");
-          } else if (error.message?.includes("invalid")) {
-            setVerificationError(
-              "Invalid OTP code. Please check and try again."
-            );
-            MyToast("Invalid OTP code. Please check and try again.");
-          } else {
-            setVerificationError(
-              "Verification failed. Please try again or request a new code."
-            );
-            MyToast(
-              "Verification failed. Please try again or request a new code."
-            );
-          }
-          return;
-        }
-
-        if (session) {
-          setIsMobileVerified(true);
-          setShowVerificationScreen(false);
-          setVerifyingMobile(false);
-          setOtp("");
-          MyToast("Phone number verified successfully!");
-        } else {
-          setVerificationError("Verification failed. Please try again.");
-          MyToast("Verification failed. Please try again.");
-        }
-      }
+      setIsEmailVerified(true);
+      setEmailStep("verified");
+      setOtp("");
+      MyToast("Email verified successfully!");
     } catch (err) {
       console.error("OTP verification error:", err);
-      setVerificationError(
-        "An error occurred during verification. Please try again."
-      );
-      MyToast("An error occurred during verification. Please try again.");
+      setVerificationError("Verification failed. Please try again.");
+      MyToast("Verification failed. Please try again.");
     } finally {
       setIsVerificationLoading(false);
     }
@@ -510,25 +373,6 @@ export default function DriverVerificationScreen() {
         } else {
           MyToast("Verification code resent. Check your email.");
         }
-      } else if (verifyingMobile) {
-        console.log("Resending OTP to phone:", phoneNumber);
-        const formattedPhone = phoneNumber.startsWith("+")
-          ? phoneNumber
-          : `+995${phoneNumber}`;
-
-        const { data, error } = await supabase.auth.signInWithOtp({
-          phone: formattedPhone,
-          options: {
-            channel: "sms",
-          },
-        });
-
-        if (error) {
-          console.log("Mobile OTP resend error:", error);
-          MyToast("Error resending verification code. Please try again.");
-        } else {
-          MyToast("Verification code resent to your phone.");
-        }
       }
 
       setTimer(60);
@@ -548,6 +392,19 @@ export default function DriverVerificationScreen() {
     }
 
     console.log("Starting submission process...");
+    console.log("Form data to submit:", {
+      name,
+      email,
+      streetAddress1,
+      streetAddress2,
+      city,
+      stateProvince,
+      zipCode,
+      country,
+      plateLetters,
+      plateNumbers,
+      licensePlate: `${plateLetters}${plateNumbers}`,
+    });
     setIsLoading(true);
 
     try {
@@ -560,9 +417,25 @@ export default function DriverVerificationScreen() {
       const userId = user.id;
       console.log("User ID:", userId);
 
-      // Send PUT request to verify endpoint with empty body
+      // Send PUT request with all form data
       console.log("Sending verification request to API...");
       try {
+        const formData = {
+          name,
+          email,
+          street_address_1: streetAddress1,
+          street_address_2: streetAddress2,
+          city,
+          state_province: stateProvince,
+          zip_code: zipCode,
+          country,
+          license_plate: `${plateLetters}${plateNumbers}`,
+          phone: phone,
+          // Add any other fields that need to be saved
+        };
+
+        console.log("Sending form data:", formData);
+
         const response = await fetch(
           `https://api.thevanapp.com/api/driver-details/verify/${userId}`,
           {
@@ -571,7 +444,7 @@ export default function DriverVerificationScreen() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${apiToken}`,
             },
-            body: JSON.stringify({}), // Empty body
+            body: JSON.stringify(formData),
           }
         );
 
@@ -597,10 +470,40 @@ export default function DriverVerificationScreen() {
         console.log("API verification failed, but continuing with navigation");
       }
 
+      // ✅ Update Supabase user_metadata with address and other form data
+      try {
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: {
+            address_line_1: streetAddress1,
+            address_line_2: streetAddress2,
+            city: city,
+            state: stateProvince,
+            postal_code: zipCode,
+            country: country,
+            license_plate: `${plateLetters}${plateNumbers}`,
+            email: email,
+            // Update existing fields
+            first_name: name.split(" ")[0] || name,
+            last_name: name.split(" ").slice(1).join(" ") || "",
+            full_name: name,
+            phone: phone,
+            status: "complete",
+            email_verified: true,
+          },
+        });
+
+        if (updateError) {
+          console.error("Supabase user_metadata update error:", updateError);
+        } else {
+          console.log("Supabase user_metadata updated successfully");
+        }
+      } catch (supabaseError) {
+        console.error("Error updating Supabase user metadata:", supabaseError);
+      }
+
       // Clear form data
       setName("");
       setEmail("");
-      setPhoneNumber("");
       setStreetAddress1("");
       setStreetAddress2("");
       setCity("");
@@ -705,7 +608,7 @@ export default function DriverVerificationScreen() {
             marginBottom: 16,
           }}
         >
-          Verify Your {verifyingEmail ? "Email" : "Phone Number"}
+          Verify Your Email
         </Text>
         <Text
           style={{
@@ -716,9 +619,7 @@ export default function DriverVerificationScreen() {
           }}
         >
           Enter the 6-digit code sent to{"\n"}
-          <Text style={{ fontWeight: "600" }}>
-            {verifyingEmail ? email : phoneNumber}
-          </Text>
+          <Text style={{ fontWeight: "600" }}>{email}</Text>
         </Text>
 
         <View style={{ width: "100%", marginBottom: 32 }}>
@@ -740,11 +641,7 @@ export default function DriverVerificationScreen() {
               onPress={() => {
                 setVerificationError("");
                 setOtp("");
-                if (verifyingEmail) {
-                  sendEmailVerification();
-                } else if (verifyingMobile) {
-                  sendMobileVerification();
-                }
+                sendEmailVerification();
               }}
               disabled={isVerificationLoading}
               style={{
@@ -818,7 +715,6 @@ export default function DriverVerificationScreen() {
           onPress={() => {
             setShowVerificationScreen(false);
             setVerifyingEmail(false);
-            setVerifyingMobile(false);
             setOtp("");
             setVerificationError("");
             setTimer(60);
@@ -850,7 +746,7 @@ export default function DriverVerificationScreen() {
             paddingTop: Platform.OS === "android" ? 40 : 60,
           }}
         >
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => router.back()}
             style={{
               width: 30,
@@ -862,7 +758,7 @@ export default function DriverVerificationScreen() {
             }}
           >
             <AntDesign name="arrowleft" size={28} color="#27ae60" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <View
             style={{
@@ -914,311 +810,138 @@ export default function DriverVerificationScreen() {
               containerStyle={{ marginBottom: 20 }}
             />
 
-            {/* Verification Type Selection - Always show */}
-            <View style={{ marginTop: -25 }}>
+            <Input
+              label="Email"
+              leftIcon={{
+                type: "material-community",
+                name: "email-outline",
+                size: 22,
+                color: "#27ae60",
+              }}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              containerStyle={{ marginBottom: 10 }}
+              editable={emailStep !== "verified"}
+            />
+
+            {(isEmailVerified || emailStep === "verified") && (
               <Text
                 style={{
-                  fontSize: 16,
-                  fontWeight: "600",
-                  color: "#374151",
-                  marginBottom: 15,
-                  marginLeft: 10,
+                  color: "#27ae60",
+                  textAlign: "center",
+                  marginBottom: 10,
                 }}
               >
-                {!isEmailVerified && !isMobileVerified
-                  ? "Choose verification method:"
-                  : isEmailVerified && isMobileVerified
-                  ? "Your verification details:"
-                  : isEmailVerified
-                  ? "Add phone number:"
-                  : "Add email address:"}
+                Email verified ✓
               </Text>
+            )}
 
-              <View
+            {emailStep === "input" && (
+              <TouchableOpacity
+                onPress={sendEmailVerification}
+                disabled={isVerificationLoading || !email || isEmailVerified}
                 style={{
-                  flexDirection: "row",
+                  backgroundColor: isEmailVerified ? "#27ae60" : "#10b981",
+                  borderRadius: 8,
+                  paddingVertical: 12,
                   marginHorizontal: 10,
-                  marginBottom: 20,
+                  marginBottom: 10,
+                  alignItems: "center",
                 }}
               >
-                <TouchableOpacity
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    flex: 1,
-                    paddingVertical: 12,
-                    paddingHorizontal: 16,
-                    backgroundColor:
-                      verificationType === "email" ? "#dcfce7" : "#f9fafb",
-                    borderRadius: 8,
-                    marginRight: 8,
-                    borderWidth: 1,
-                    borderColor:
-                      verificationType === "email" ? "#10b981" : "#e5e7eb",
-                  }}
-                  onPress={() => setVerificationType("email")}
-                >
-                  <View
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      borderWidth: 2,
-                      borderColor:
-                        verificationType === "email" ? "#10b981" : "#d1d5db",
-                      marginRight: 8,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      backgroundColor:
-                        verificationType === "email"
-                          ? "#10b981"
-                          : "transparent",
-                    }}
-                  >
-                    {verificationType === "email" && (
-                      <View
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: "white",
-                        }}
-                      />
-                    )}
-                  </View>
+                {isVerificationLoading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
                   <Text
-                    style={{
-                      color: "#374151",
-                      fontWeight: "500",
-                    }}
+                    style={{ color: "white", fontWeight: "600", fontSize: 16 }}
                   >
-                    Email {isEmailVerified ? "✓" : ""}
+                    {isEmailVerified ? "Verified" : "Verify"}
                   </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
+                )}
+              </TouchableOpacity>
+            )}
+            {emailStep === "otp" && (
+              <View style={{ marginBottom: 10 }}>
+                <Text
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    flex: 1,
-                    paddingVertical: 12,
-                    paddingHorizontal: 16,
-                    backgroundColor:
-                      verificationType === "phone" ? "#dcfce7" : "#f9fafb",
-                    borderRadius: 8,
-                    marginLeft: 8,
+                    textAlign: "center",
+                    color: "#6b7280",
+                    marginBottom: 8,
+                  }}
+                >
+                  Enter the 6-digit code sent to {email}
+                </Text>
+                <TextInput
+                  value={otp}
+                  onChangeText={setOtp}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  style={{
                     borderWidth: 1,
-                    borderColor:
-                      verificationType === "phone" ? "#10b981" : "#e5e7eb",
-                  }}
-                  onPress={() => setVerificationType("phone")}
-                >
-                  <View
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      borderWidth: 2,
-                      borderColor:
-                        verificationType === "phone" ? "#10b981" : "#d1d5db",
-                      marginRight: 8,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      backgroundColor:
-                        verificationType === "phone"
-                          ? "#10b981"
-                          : "transparent",
-                    }}
-                  >
-                    {verificationType === "phone" && (
-                      <View
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: "white",
-                        }}
-                      />
-                    )}
-                  </View>
-                  <Text
-                    style={{
-                      color: "#374151",
-                      fontWeight: "500",
-                    }}
-                  >
-                    Phone {isMobileVerified ? "✓" : ""}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Show verified status for both email and phone */}
-            {isEmailVerified && (
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 15,
-                  marginBottom: 20,
-                  marginTop: -10,
-                  backgroundColor: "#dcfce7",
-                  borderRadius: 8,
-                }}
-              >
-                <Text
-                  style={{ fontSize: 16, fontWeight: "600", color: "#15803d" }}
-                >
-                  Email: Verified ✓
-                </Text>
-                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 2 }}>
-                  {email}
-                </Text>
-              </View>
-            )}
-
-            {isMobileVerified && (
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 15,
-                  marginBottom: 20,
-                  marginTop: -10,
-                  backgroundColor: "#dcfce7",
-                  borderRadius: 8,
-                }}
-              >
-                <Text
-                  style={{ fontSize: 16, fontWeight: "600", color: "#15803d" }}
-                >
-                  Phone Number: Verified ✓
-                </Text>
-                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 2 }}>
-                  {phoneNumber}
-                </Text>
-              </View>
-            )}
-
-            {/* Email/Phone Field - Only show if not verified */}
-            <View style={{ marginBottom: 20, marginTop: -10 }}>
-              {verificationType === "email" && !isEmailVerified && (
-                <>
-                  <Input
-                    label="Email address"
-                    leftIcon={{
-                      type: "material-community",
-                      name: "email-outline",
-                      size: 22,
-                      color: "#27ae60",
-                    }}
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Enter your email address"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    containerStyle={{ marginBottom: 0 }}
-                  />
-                  {email.trim() !== "" && (
-                    <TouchableOpacity
-                      onPress={sendEmailVerification}
-                      disabled={isVerificationLoading}
-                      style={{
-                        backgroundColor: "#10b981",
-                        borderRadius: 8,
-                        paddingVertical: 12,
-                        marginHorizontal: 10,
-                        marginTop: -5,
-                        alignItems: "center",
-                      }}
-                    >
-                      {isVerificationLoading && verifyingEmail ? (
-                        <ActivityIndicator color="white" size="small" />
-                      ) : (
-                        <Text
-                          style={{
-                            color: "white",
-                            fontWeight: "600",
-                            fontSize: 16,
-                          }}
-                        >
-                          Send Email Verification Code
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-
-              {verificationType === "phone" && !isMobileVerified && (
-                <>
-                  <Input
-                    label="Phone Number"
-                    leftIcon={{
-                      type: "material-community",
-                      name: "phone-outline",
-                      size: 22,
-                      color: "#27ae60",
-                    }}
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    placeholder="Enter your phone number"
-                    keyboardType="phone-pad"
-                    containerStyle={{ marginBottom: 0, marginTop: 15 }}
-                  />
-                  {phoneNumber.trim() !== "" && (
-                    <TouchableOpacity
-                      onPress={sendMobileVerification}
-                      disabled={isVerificationLoading}
-                      style={{
-                        backgroundColor: "#10b981",
-                        borderRadius: 8,
-                        paddingVertical: 12,
-                        marginHorizontal: 10,
-                        marginTop: 5,
-                        alignItems: "center",
-                      }}
-                    >
-                      {isVerificationLoading && verifyingMobile ? (
-                        <ActivityIndicator color="white" size="small" />
-                      ) : (
-                        <Text
-                          style={{
-                            color: "white",
-                            fontWeight: "600",
-                            fontSize: 16,
-                          }}
-                        >
-                          Send SMS Verification Code
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </>
-              )}
-
-              {/* Show message if both are verified */}
-              {isEmailVerified && isMobileVerified && (
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 15,
-                    marginBottom: 20,
-                    backgroundColor: "#dcfce7",
+                    borderColor: "#10b981",
                     borderRadius: 8,
+                    padding: 12,
+                    fontSize: 18,
+                    letterSpacing: 8,
+                    textAlign: "center",
+                    marginBottom: 8,
+                    backgroundColor: "#fff",
                   }}
-                >
+                  placeholder="------"
+                  autoFocus
+                />
+                {verificationError ? (
                   <Text
                     style={{
-                      fontSize: 16,
-                      fontWeight: "600",
-                      color: "#15803d",
+                      color: "#ef4444",
                       textAlign: "center",
+                      marginBottom: 8,
                     }}
                   >
-                    Both email and phone are verified ✓
+                    {verificationError}
                   </Text>
-                </View>
-              )}
-            </View>
+                ) : null}
+                <TouchableOpacity
+                  onPress={verifyOtp}
+                  disabled={isVerificationLoading || otp.length !== 6}
+                  style={{
+                    backgroundColor: "#10b981",
+                    borderRadius: 8,
+                    paddingVertical: 12,
+                    marginHorizontal: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  {isVerificationLoading ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text
+                      style={{
+                        color: "white",
+                        fontWeight: "600",
+                        fontSize: 16,
+                      }}
+                    >
+                      Confirm
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+            {/* {emailStep === "verified" && (
+              <Text
+                style={{
+                  color: "#27ae60",
+                  textAlign: "center",
+                  marginBottom: 10,
+                }}
+              >
+                Email verified ✓
+              </Text>
+            )} */}
 
             <LicensePlateInput
               plateLetters={plateLetters}
@@ -1320,9 +1043,10 @@ export default function DriverVerificationScreen() {
 
             <TouchableOpacity
               onPress={handleSubmit}
-              disabled={!isValid || isLoading}
+              disabled={!isValid || isLoading || !isEmailVerified}
               style={{
-                backgroundColor: isValid ? "#27ae60" : "#cccccc",
+                backgroundColor:
+                  isValid && isEmailVerified ? "#27ae60" : "#cccccc",
                 borderRadius: 10,
                 padding: 12,
                 marginTop: 20,

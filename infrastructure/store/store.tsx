@@ -21,6 +21,16 @@ interface AuthState {
   loadSessionFromStorage: () => Promise<void>;
   clearSessionFromStorage: () => Promise<void>;
   logout: () => Promise<void>;
+  uuid: string | null;
+  setUUID: (uuid: string | null) => void;
+  name: string | null;
+  setName: (name: string | null) => void;
+  phone: string | null;
+  setPhone: (phone: string | null) => void;
+  vanOption: string | null;
+  setVanOption: (vanOption: string | null) => void;
+  email: string | null;
+  setEmail: (email: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -107,4 +117,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error("Error during logout:", error);
     }
   },
+
+  uuid: null,
+  setUUID: (uuid: string | null) => set({ uuid }),
+  name: null,
+  setName: (name: string | null) => set({ name }),
+  phone: null,
+  setPhone: (phone: string | null) => set({ phone }),
+  vanOption: null,
+  setVanOption: (vanOption: string | null) => set({ vanOption }),
+  email: null,
+  setEmail: (email: string | null) => set({ email }),
 }));

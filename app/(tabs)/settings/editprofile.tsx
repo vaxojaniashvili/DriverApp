@@ -60,18 +60,34 @@ const EditProfile = () => {
       }
 
       const metadata = user.user_metadata;
+      console.log("User metadata loaded:", metadata);
 
       setUserId(user.id);
       setEmail(user.email || "");
 
-      setName(metadata.full_name || metadata.fullname || "");
-      setPhoneNumber(metadata.phone || "");
-      setAddressLine1(metadata.address_line_1 || "");
+      // ✅ Load data with better fallbacks
+      setName(
+        metadata.full_name || metadata.fullname || metadata.first_name || ""
+      );
+      setPhoneNumber(metadata.phone || user.phone || "");
+      setAddressLine1(metadata.address_line_1 || metadata.address || "");
       setAddressLine2(metadata.address_line_2 || "");
       setCity(metadata.city || "");
-      setState(metadata.state || "");
-      setPostalCode(metadata.postal_code || "");
+      setState(metadata.state || metadata.state_province || "");
+      setPostalCode(metadata.postal_code || metadata.zip_code || "");
       setCountry(metadata.country || "");
+
+      console.log("Form data loaded:", {
+        name:
+          metadata.full_name || metadata.fullname || metadata.first_name || "",
+        phone: metadata.phone || user.phone || "",
+        address1: metadata.address_line_1 || metadata.address || "",
+        city: metadata.city || "",
+        state: metadata.state || metadata.state_province || "",
+        postal: metadata.postal_code || metadata.zip_code || "",
+        country: metadata.country || "",
+      });
+
       const { data: driverData, error: driverError } = await supabase
         .from("users")
         .select("*")
@@ -94,6 +110,17 @@ const EditProfile = () => {
 
     setLoading(true);
     try {
+      console.log("Updating profile with data:", {
+        name,
+        phoneNumber,
+        addressLine1,
+        addressLine2,
+        city,
+        state,
+        postalCode,
+        country,
+      });
+
       const fullAddress = [
         addressLine1,
         addressLine2,
@@ -123,14 +150,19 @@ const EditProfile = () => {
       });
 
       if (error) {
+        console.error("Supabase update error:", error);
         throw error;
       }
 
+      console.log("Profile updated successfully");
       Alert.alert("Success", "Profile updated successfully");
       router.push("/settings");
     } catch (error) {
-      Alert.alert("Error", "Failed to update profile");
       console.error("Error updating profile:", error);
+      Alert.alert(
+        "Error",
+        "Failed to update profile: " + (error as Error).message
+      );
     } finally {
       setLoading(false);
     }

@@ -20,7 +20,6 @@ import { useRouter } from "expo-router";
 import { useAuthStore } from "@/infrastructure/store/store";
 
 export default function DriverSignUp() {
-  const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
@@ -31,7 +30,7 @@ export default function DriverSignUp() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [contactMethod, setContactMethod] = useState("email");
+  const [contactMethod, setContactMethod] = useState("phone");
   const [vanOption, setVanOption] = useState("");
 
   // Verification state
@@ -50,9 +49,7 @@ export default function DriverSignUp() {
   const [currentStep, setCurrentStep] = useState(1);
 
   // Form validation errors
-  const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [nameError, setNameError] = useState("");
   const [surnameError, setSurnameError] = useState("");
   const [phoneNumberError, setPhoneNumberError] = useState("");
@@ -75,20 +72,27 @@ export default function DriverSignUp() {
     const checkExistingSession = async () => {
       await loadSessionFromStorage();
       const currentState = useAuthStore.getState();
-
-      if (currentState.session && currentState.user) {
-        console.log(
-          "User already authenticated, redirecting to driverVerification"
-        );
-        console.log("Existing session found:", {
-          hasSession: !!currentState.session,
-          hasUser: !!currentState.user,
-          userId: currentState.user?.id,
-        });
+      // Fetch user indicator/status from store or Supabase
+      let indicator = null;
+      let status = null;
+      if (currentState.user) {
+        indicator =
+          currentState.user.indicator ||
+          currentState.user.user_metadata?.indicator;
+        status =
+          currentState.user.status || currentState.user.user_metadata?.status;
+      }
+      // Only redirect if not verified
+      if (
+        currentState.session &&
+        currentState.user &&
+        indicator !== "active" &&
+        status !== "completed"
+      ) {
+        console.log("User not verified, redirecting to driverVerification");
         router.replace("/(tabs)/driverVerification");
       }
     };
-
     checkExistingSession();
   }, []);
 
@@ -173,68 +177,8 @@ export default function DriverSignUp() {
     console.log("isContactVerified state changed to:", isContactVerified);
   }, [isContactVerified]);
 
-  const validateEmail = (email: string) => {
-    if (contactMethod === "phone") {
-      setEmailError("");
-      return true;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError("Email is required");
-      return false;
-    } else if (!emailRegex.test(email)) {
-      setEmailError("Invalid email format");
-      return false;
-    }
-    setEmailError("");
-    return true;
-  };
-
-  const validatePassword = (password: string) => {
-    if (!password) {
-      setPasswordError("Password is required");
-      return false;
-    } else if (password.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
-      return false;
-    }
-    setPasswordError("");
-    return true;
-  };
-
-  const validateConfirmPassword = (confirmPass: string) => {
-    if (!confirmPass) {
-      setConfirmPasswordError("Please confirm your password");
-      return false;
-    } else if (confirmPass !== password) {
-      setConfirmPasswordError("Passwords do not match");
-      return false;
-    }
-    setConfirmPasswordError("");
-    return true;
-  };
-
-  const validateName = (name: string) => {
-    if (!name.trim()) {
-      setNameError("Name is required");
-      return false;
-    }
-    setNameError("");
-    return true;
-  };
-
-  const validateSurname = (surname: string) => {
-    if (!surname.trim()) {
-      setSurnameError("Surname is required");
-      return false;
-    }
-    setSurnameError("");
-    return true;
-  };
-
   const validatePhoneNumber = (phone: string) => {
-    if (contactMethod === "email") {
+    if (contactMethod === "phone") {
       setPhoneNumberError("");
       return true;
     }
@@ -292,52 +236,29 @@ export default function DriverSignUp() {
   const sendVerificationCode = async () => {
     console.log("=== STARTING sendVerificationCode ===");
     console.log("Contact method:", contactMethod);
-    console.log("Email:", email);
     console.log("Phone:", phoneNumber);
 
     // ვალიდაცია
-    if (contactMethod === "email") {
-      const isEmailValid = validateEmail(email);
-      if (!isEmailValid) {
-        console.log("Email validation failed");
-        return;
-      }
-    } else {
-      const isPhoneValid = validatePhoneNumber(phoneNumber);
-      if (!isPhoneValid) {
-        console.log("Phone validation failed");
-        return;
-      }
+    const isPhoneValid = validatePhoneNumber(phoneNumber);
+    if (!isPhoneValid) {
+      console.log("Phone validation failed");
+      return;
     }
 
     setLoading(true);
     try {
-      if (contactMethod === "phone") {
-        const formattedPhone = phoneNumber.startsWith("+")
-          ? phoneNumber
-          : `${selectedCountry.dialCode}${phoneNumber}`;
+      const formattedPhone = phoneNumber.startsWith("+")
+        ? phoneNumber
+        : `${selectedCountry.dialCode}${phoneNumber}`;
 
-        console.log("Sending OTP to phone:", formattedPhone);
+      console.log("Sending OTP to phone:", formattedPhone);
 
-        const { data, error } = await supabase.auth.signInWithOtp({
-          phone: formattedPhone,
-        });
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+      });
 
-        console.log("Phone OTP response:", { data, error });
-        if (error) throw error;
-      } else {
-        console.log("Sending OTP to email:", email);
-
-        const { data, error } = await supabase.auth.signInWithOtp({
-          email: email.trim().toLowerCase(),
-          options: {
-            shouldCreateUser: true,
-          },
-        });
-
-        console.log("Email OTP response:", { data, error });
-        if (error) throw error;
-      }
+      console.log("Phone OTP response:", { data, error });
+      if (error) throw error;
 
       setVerificationSent(true);
       setIsVerifying(true);
@@ -346,20 +267,13 @@ export default function DriverSignUp() {
 
       Alert.alert(
         "Success",
-        contactMethod === "phone"
-          ? "Verification code sent successfully!"
-          : "Verification code sent successfully! Check your email for the code."
+        "Verification code sent successfully! Check your phone for the code."
       );
     } catch (error) {
       console.error("OTP send error:", error);
       const errorMessage = (error as Error)?.message || "";
 
-      if (errorMessage.includes("Email provider not enabled")) {
-        Alert.alert(
-          "Configuration Error",
-          "Email provider is not enabled in Supabase. Please contact support."
-        );
-      } else if (errorMessage.includes("SMS provider not enabled")) {
+      if (errorMessage.includes("SMS provider not enabled")) {
         Alert.alert(
           "Configuration Error",
           "SMS provider is not enabled in Supabase. Please contact support."
@@ -407,25 +321,16 @@ export default function DriverSignUp() {
       console.log("IN TRY BLOCK - STARTING REAL VERIFICATION");
       let verificationResult;
 
-      if (contactMethod === "phone") {
-        const formattedPhone = phoneNumber.startsWith("+")
-          ? phoneNumber
-          : `${selectedCountry.dialCode}${phoneNumber}`;
+      const formattedPhone = phoneNumber.startsWith("+")
+        ? phoneNumber
+        : `${selectedCountry.dialCode}${phoneNumber}`;
 
-        console.log("Verifying phone OTP:", otpValue);
-        verificationResult = await supabase.auth.verifyOtp({
-          phone: formattedPhone,
-          token: otpValue,
-          type: "sms",
-        });
-      } else {
-        console.log("Verifying email OTP:", otpValue);
-        verificationResult = await supabase.auth.verifyOtp({
-          email: email.trim().toLowerCase(),
-          token: otpValue,
-          type: "email",
-        });
-      }
+      console.log("Verifying phone OTP:", otpValue);
+      verificationResult = await supabase.auth.verifyOtp({
+        phone: formattedPhone,
+        token: otpValue,
+        type: "sms",
+      });
 
       console.log("Verification result:", verificationResult);
 
@@ -465,9 +370,7 @@ export default function DriverSignUp() {
       console.log("SHOWING ALERT");
       Alert.alert(
         "Success",
-        `${
-          contactMethod === "phone" ? "Phone number" : "Email"
-        } verified successfully! Now you can complete your registration.`
+        "Phone number verified successfully! Now you can complete your registration."
       );
 
       try {
@@ -484,8 +387,8 @@ export default function DriverSignUp() {
               name: name,
               last_name: surname,
               plate: "test",
-              email: email,
               phone: phoneNumber || "123",
+              email: "test",
             }),
           }
         );
@@ -533,36 +436,22 @@ export default function DriverSignUp() {
 
     setLoading(true);
     try {
-      if (contactMethod === "phone") {
-        const formattedPhone = phoneNumber.startsWith("+")
-          ? phoneNumber
-          : `${selectedCountry.dialCode}${phoneNumber}`;
+      const formattedPhone = phoneNumber.startsWith("+")
+        ? phoneNumber
+        : `${selectedCountry.dialCode}${phoneNumber}`;
 
-        console.log("Resending OTP to phone:", formattedPhone);
-        const { data, error } = await supabase.auth.signInWithOtp({
-          phone: formattedPhone,
-        });
+      console.log("Resending OTP to phone:", formattedPhone);
+      const { data, error } = await supabase.auth.signInWithOtp({
+        phone: formattedPhone,
+      });
 
-        if (error) throw error;
-      } else {
-        console.log("Resending OTP to email:", email);
-        const { data, error } = await supabase.auth.signInWithOtp({
-          email: email.trim().toLowerCase(),
-          options: {
-            shouldCreateUser: true,
-          },
-        });
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       setTimer(60);
       setCanResend(false);
       Alert.alert(
         "Code Resent",
-        contactMethod === "phone"
-          ? "A new verification code has been sent to your phone."
-          : "A new verification code has been sent to your email."
+        "A new verification code has been sent to your phone."
       );
     } catch (error) {
       console.error("OTP resend error:", error);
@@ -605,24 +494,29 @@ export default function DriverSignUp() {
     console.log("Current step:", currentStep);
     console.log("Loading state:", loading);
 
-    // ყველა ფილდის ვალიდაცია
-    const isEmailValid = validateEmail(email);
-    const isPhoneValid = validatePhoneNumber(phoneNumber);
-    const isNameValid = validateName(name);
-    const isSurnameValid = validateSurname(surname);
-    const isPasswordValid = validatePassword(password);
-    const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
-    const isVanOptionValid = validateVanOption(vanOption);
+    // Add logging before validation
+    console.log("phoneNumber before validation:", phoneNumber);
+    let finalPhoneNumber = phoneNumber;
+    if (!finalPhoneNumber) {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        finalPhoneNumber =
+          user?.phone ||
+          user?.user_metadata?.phone ||
+          user?.user_metadata?.temp_phone ||
+          "";
+        console.log("Fetched phone from Supabase user:", finalPhoneNumber);
+      } catch (err) {
+        console.error("Error fetching user for phone fallback:", err);
+      }
+    }
 
-    if (
-      !isEmailValid ||
-      !isPhoneValid ||
-      !isNameValid ||
-      !isSurnameValid ||
-      !isPasswordValid ||
-      !isConfirmPasswordValid ||
-      !isVanOptionValid
-    ) {
+    // Use finalPhoneNumber for validation and update
+    const isPhoneValid = validatePhoneNumber(finalPhoneNumber);
+    const isVanOptionValid = validateVanOption(vanOption);
+    if (!isPhoneValid || !isVanOptionValid) {
       console.log("Validation failed, showing alert");
       Alert.alert("Error", "Please fill all required fields correctly.");
       return;
@@ -661,13 +555,10 @@ export default function DriverSignUp() {
       console.log("STEP 5: Now updating user data in background...");
 
       const userDataToUpdate = {
-        email: email.trim().toLowerCase(),
-        email_verified: contactMethod === "email" ? true : false,
-        phone_verified: contactMethod === "phone" ? true : false,
         first_name: name,
         last_name: surname,
         full_name: `${name} ${surname}`,
-        phone: phoneNumber,
+        phone: finalPhoneNumber,
         van_option: vanOption,
         user_type: "driver",
         status: "incomplete",
@@ -738,10 +629,10 @@ export default function DriverSignUp() {
     setCanResend(false);
 
     // შესაბამისი ველების გასუფთავება
-    if (method === "email") {
+    if (method === "phone") {
       setPhoneNumberError("");
     } else {
-      setEmailError("");
+      setPhoneNumberError("");
     }
   };
 
@@ -770,7 +661,6 @@ export default function DriverSignUp() {
             {isVerifying ? (
               <VerificationScreen
                 contactMethod={contactMethod}
-                email={email}
                 phoneNumber={phoneNumber}
                 otpDigits={otpDigits}
                 otpInputRefs={otpInputRefs}
@@ -789,7 +679,6 @@ export default function DriverSignUp() {
                   <RegistrationForm
                     name={name}
                     surname={surname}
-                    email={email}
                     phoneNumber={phoneNumber}
                     COUNTRIES={COUNTRIES}
                     selectedCountry={selectedCountry}
@@ -803,28 +692,19 @@ export default function DriverSignUp() {
                     showConfirmPassword={showConfirmPassword}
                     nameError={nameError}
                     surnameError={surnameError}
-                    emailError={emailError}
                     phoneNumberError={phoneNumberError}
                     passwordError={passwordError}
-                    confirmPasswordError={confirmPasswordError}
                     vanOptionError={vanOptionError}
                     isContactVerified={isContactVerified}
                     setName={setName}
                     setSurname={setSurname}
-                    setEmail={setEmail}
                     setPhoneNumber={setPhoneNumber}
                     setPassword={setPassword}
                     setConfirmPassword={setConfirmPassword}
                     setShowPassword={setShowPassword}
                     setShowConfirmPassword={setShowConfirmPassword}
                     setVanOption={setVanOption}
-                    setContactMethod={handleContactMethodChange}
-                    validateName={validateName}
-                    validateSurname={validateSurname}
-                    validateEmail={validateEmail}
                     validatePhoneNumber={validatePhoneNumber}
-                    validatePassword={validatePassword}
-                    validateConfirmPassword={validateConfirmPassword}
                     validateVanOption={validateVanOption}
                     sendVerificationCode={sendVerificationCode}
                     completeRegistration={completeRegistration}

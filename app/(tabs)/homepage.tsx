@@ -132,6 +132,7 @@ const HomeScreen: React.FC = () => {
           },
         }
       );
+
       const data = await response.json();
 
       if (Array.isArray(data) && data.length > 0) {
@@ -140,25 +141,26 @@ const HomeScreen: React.FC = () => {
         setDriverDetails(driverInfo);
         setUserIndicator(driverInfo.indicator || data[0].indicator);
 
-        if (driverInfo.email === userEmail) {
-          setDriverData({
-            ...driverInfo,
-            plate: driverInfo.plate,
-            id: driverInfo.id,
-          } as DriverData);
+        // ✅ Set userEmail from API data if not already set
+        if (!userEmail && driverInfo.email) {
+          setUserEmail(driverInfo.email);
         }
+
+        // ✅ Set driver data regardless of email match since API data is correct
+        setDriverData({
+          ...driverInfo,
+          plate: driverInfo.plate,
+          id: driverInfo.id,
+        } as DriverData);
+      } else {
       }
-    } catch (error) {
-      console.log("Error fetching driver details:", error);
-    }
+    } catch (error) {}
   };
 
   const fetchUserData = async () => {
     try {
-      // ✅ ჯერ ვიტვირთავთ session-ს AsyncStorage-იდან
       await loadSessionFromStorage();
 
-      // ✅ ვცდილობთ navigation params-იდან session-ის მიღებას დაუყოვნებლივ
       if (params.sessionData && params.userData) {
         try {
           const sessionFromParams = JSON.parse(params.sessionData as string);
@@ -177,9 +179,7 @@ const HomeScreen: React.FC = () => {
             setPhoneNumber(user.phone || user.user_metadata.phone || "");
             setFullname(user.user_metadata.full_name || "");
           }
-        } catch (parseError) {
-          console.error("Error parsing session data from params:", parseError);
-        }
+        } catch (parseError) {}
       } else {
       }
 
@@ -205,22 +205,21 @@ const HomeScreen: React.FC = () => {
             timeoutPromise,
           ])) as any;
           session = result.data.session;
+          user = result.data.session?.user;
         } catch (sessionError) {
-          console.log("Session timeout, trying again...");
-          // Try one more time without timeout
           try {
             const {
               data: { session: retrySession },
             } = await supabase.auth.getSession();
             session = retrySession;
+            user = retrySession?.user;
           } catch (retryError) {
-            console.error("Retry failed:", retryError);
             session = null;
+            user = null;
           }
         }
 
-        if (!session) {
-          console.error("No session or user found after retry");
+        if (!session || !user) {
           router.replace("/signUp" as any);
           return;
         }
@@ -228,41 +227,36 @@ const HomeScreen: React.FC = () => {
         setSession(session);
         setApiToken(session.access_token);
         setUserId(user?.id as any);
-        if (!user) {
-          console.error("No user found");
-          return;
-        }
 
-        setUserEmail(user.email || user.user_metadata.email || "");
-        setPhoneNumber(user.phone || user.user_metadata.phone || "");
+        // ✅ Set user data properly
+        const userEmailValue = user.email || user.user_metadata?.email || "";
+        const phoneValue = user.phone || user.user_metadata?.phone || "";
+        const fullNameValue = user.user_metadata?.full_name || "";
+
+        setUserEmail(userEmailValue);
+        setPhoneNumber(phoneValue);
+        setFullname(fullNameValue);
 
         await fetchDriverDetails();
       }
 
       setUserId(user?.id as any);
 
-      // console.log("dataa", user);
-
-      setUserEmail(user.email || user.user_metadata.email || "");
-      setPhoneNumber(user.phone || user.user_metadata.phone || "");
-
       await fetchDriverDetails();
     } catch (error) {
-      console.error("Error in fetchUserData:", error);
     } finally {
       setFetchUserDataInProgress(false);
     }
   };
 
-  useEffect(() => {
-    if (userEmail && apiToken) {
-      const interval = setInterval(() => {
-        fetchDriverDetails();
-      }, 100);
+  useEffect(() => {}, [userEmail]);
 
-      return () => clearInterval(interval);
+  // ✅ Only call fetchDriverDetails once when userEmail and apiToken are available
+  useEffect(() => {
+    if (userEmail && apiToken && !driverData) {
+      fetchDriverDetails();
     }
-  }, [userEmail, apiToken]);
+  }, [userEmail, apiToken, driverData]);
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
@@ -320,7 +314,6 @@ const HomeScreen: React.FC = () => {
         const data = await response.json();
 
         if (!data || !Array.isArray(data) || data.length === 0) {
-          console.log("No driver data found");
           setDriverData(null);
           return;
         }
@@ -328,7 +321,6 @@ const HomeScreen: React.FC = () => {
         const currentDriver = data.find((driver) => driver.email === userEmail);
 
         if (!currentDriver) {
-          console.log("No driver data found for email:", userEmail);
           setDriverData(null);
           return;
         }
@@ -338,10 +330,8 @@ const HomeScreen: React.FC = () => {
         if (currentDriver.id) {
           setmyID(currentDriver.id);
         } else {
-          console.error("Driver data missing ID field");
         }
       } catch (error) {
-        console.error("Error fetching driver data:", error);
         setDriverData(null);
       } finally {
         setLoadingData(false);
@@ -353,9 +343,6 @@ const HomeScreen: React.FC = () => {
 
   const sendLocationToApi = async () => {
     if (!userEmail || !location || !apiToken || userIndicator !== "active") {
-      console.log(
-        "Missing data or indicator not active, skipping location update"
-      );
       return;
     }
 
@@ -386,7 +373,6 @@ const HomeScreen: React.FC = () => {
 
       setLastSentTime(Date.now());
     } catch (error) {
-      console.error("Error sending location to API:", error);
       setLocationSendError("Failed to send location data");
     }
   };
@@ -409,7 +395,6 @@ const HomeScreen: React.FC = () => {
     await fetchDriverDetails();
 
     if (!apiToken || userIndicator !== "active") {
-      console.log("No API token or indicator not active, skipping refresh");
       setRefreshing(false);
       return false;
     }
@@ -421,7 +406,6 @@ const HomeScreen: React.FC = () => {
       } = await supabase.auth.getUser();
 
       if (userError) {
-        console.error("Error fetching user:", userError);
         return;
       }
 
@@ -492,14 +476,12 @@ const HomeScreen: React.FC = () => {
         setRefreshing(false);
         return true;
       } else {
-        console.log("No pending orders found");
         setOrders([]);
         setActiveOrder(null);
         setRefreshing(false);
         return false;
       }
     } catch (error) {
-      console.error("Error refreshing orders:", error);
       setRefreshing(false);
       return false;
     }
@@ -516,14 +498,11 @@ const HomeScreen: React.FC = () => {
           } = await supabase.auth.getUser();
 
           if (userError || !user) {
-            console.error("Error fetching user:", userError);
             return;
           }
 
           setFullname(user.user_metadata.full_name || "");
-        } catch (error) {
-          console.error("Error refreshing user data:", error);
-        }
+        } catch (error) {}
       };
 
       refreshUserData().then(() => {
@@ -539,7 +518,6 @@ const HomeScreen: React.FC = () => {
   );
   const processOrders = (ordersData: any[]) => {
     if (!Array.isArray(ordersData)) {
-      console.log("Order data is not an array:", ordersData);
       setOrders([]);
       setActiveOrder(null);
       setOngoingOrders([]);
@@ -573,7 +551,6 @@ const HomeScreen: React.FC = () => {
 
   const handleAccept = async (orderId: string) => {
     if (!driverData?.id || !apiToken || userIndicator !== "active") {
-      console.log("Missing driver data, API token, or indicator not active");
       return;
     }
 
@@ -584,7 +561,6 @@ const HomeScreen: React.FC = () => {
       } = await supabase.auth.getUser();
 
       if (userError) {
-        console.error("Error fetching user:", userError);
         return;
       }
 
@@ -609,9 +585,7 @@ const HomeScreen: React.FC = () => {
       }
 
       onRefresh();
-    } catch (error) {
-      console.log("Error accepting order:", error);
-    }
+    } catch (error) {}
   };
 
   return (
@@ -655,13 +629,9 @@ const HomeScreen: React.FC = () => {
               <UserDetailsSection>
                 <InfoCard>
                   <InfoIcon>
-                    <MaterialIcons
-                      name={userEmail ? "email" : "phone"}
-                      size={16}
-                      color="#666"
-                    />
+                    <MaterialIcons name="phone" size={16} color="#666" />
                   </InfoIcon>
-                  <InfoText>{userEmail ? userEmail : phoneNumber}</InfoText>
+                  <InfoText>{phoneNumber || "No phone number"}</InfoText>
                 </InfoCard>
 
                 {driverData?.plate && userIndicator === "active" && (
@@ -780,7 +750,7 @@ const HomeScreen: React.FC = () => {
                   </JobsContainer>
                 )}
 
-              {userIndicator === "active" && !isAutomatic && (
+              {/* {userIndicator === "active" && !isAutomatic && (
                 <JobsContainer>
                   <SectionTitle>Available Orders</SectionTitle>
                   {loadingData ? (
@@ -805,7 +775,7 @@ const HomeScreen: React.FC = () => {
                     </NoJobsText>
                   )}
                 </JobsContainer>
-              )}
+              )} */}
 
               {userIndicator === "active" &&
                 isAutomatic &&

@@ -37,26 +37,6 @@ export default function Auth() {
     setUser: setStoreUser,
   } = useAuthStore();
 
-  // Check for existing session on component mount
-  useEffect(() => {
-    const checkExistingSession = async () => {
-      await loadSessionFromStorage();
-      const currentState = useAuthStore.getState();
-
-      if (currentState.session && currentState.user) {
-        console.log("User already authenticated, redirecting to homepage");
-        console.log("Existing session found:", {
-          hasSession: !!currentState.session,
-          hasUser: !!currentState.user,
-          userId: currentState.user?.id,
-        });
-        router.replace("/homepage");
-      }
-    };
-
-    checkExistingSession();
-  }, []);
-
   // იდენტიფიკატორის ვალიდაცია
   const validateIdentifier = (text: string) => {
     if (!text) {
@@ -294,9 +274,26 @@ export default function Auth() {
           const status = userData?.user?.user_metadata?.status;
           console.log("User status:", status);
 
-          // Only redirect if user status is active or complete
+          // Check if user is in registration process
+          const isInRegistration =
+            userData?.user?.user_metadata?.user_type === "driver" &&
+            (status === "incomplete" || !status);
+
+          // Check if user has verified contact but hasn't completed full registration
+          const hasVerifiedContact =
+            userData?.user?.user_metadata?.email_verified ||
+            userData?.user?.user_metadata?.phone_verified;
+          const isIncompleteRegistration =
+            userData?.user?.user_metadata?.user_type === "driver" &&
+            hasVerifiedContact &&
+            (status === "incomplete" || !status);
+
+          // Only redirect if user status is active or complete AND not in incomplete registration
           // This prevents redirects during registration process
-          if (status === "active" || status === "complete") {
+          if (
+            (status === "active" || status === "complete") &&
+            !isIncompleteRegistration
+          ) {
             console.log("Redirecting to homepage - user is active/complete");
             router.push("/homepage");
           } else if (status === "incomplete" || !status) {
@@ -331,9 +328,26 @@ export default function Auth() {
         const status = userData?.user?.user_metadata?.status;
         console.log("User status in auth state change:", status);
 
-        // Only redirect if user status is active or complete
+        // Check if user is in registration process
+        const isInRegistration =
+          userData?.user?.user_metadata?.user_type === "driver" &&
+          (status === "incomplete" || !status);
+
+        // Check if user has verified contact but hasn't completed full registration
+        const hasVerifiedContact =
+          userData?.user?.user_metadata?.email_verified ||
+          userData?.user?.user_metadata?.phone_verified;
+        const isIncompleteRegistration =
+          userData?.user?.user_metadata?.user_type === "driver" &&
+          hasVerifiedContact &&
+          (status === "incomplete" || !status);
+
+        // Only redirect if user status is active or complete AND not in incomplete registration
         // This prevents redirects during registration process
-        if (status === "active" || status === "complete") {
+        if (
+          (status === "active" || status === "complete") &&
+          !isIncompleteRegistration
+        ) {
           console.log("Redirecting to homepage from auth state change");
           router.push("/homepage");
         } else if (status === "incomplete" || !status) {

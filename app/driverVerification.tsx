@@ -416,7 +416,7 @@ export default function DriverVerificationScreen() {
 
       console.log("[handleSubmit] Form data:", formData);
 
-      // 1. API Verification (არ ვწყვეტთ პროცესს შეცდომის შემთხვევაში)
+      // API Verification
       let apiSuccess = false;
       try {
         const response = await fetch(
@@ -434,6 +434,7 @@ export default function DriverVerificationScreen() {
         if (response.ok) {
           console.log("[handleSubmit] API verification successful");
           apiSuccess = true;
+          router.push("/(tabs)/homepage");
         } else {
           const errorText = await response.text();
           console.error(
@@ -448,7 +449,7 @@ export default function DriverVerificationScreen() {
         MyToast(`API კავშირის შეცდომა: ${apiError.message}`);
       }
 
-      // 2. Supabase Update (არ ვწყვეტთ პროცესს შეცდომის შემთხვევაში)
+      // Supabase Update
       let supabaseSuccess = false;
       try {
         const { data: updatedUser, error: updateError } =
@@ -486,7 +487,10 @@ export default function DriverVerificationScreen() {
         MyToast(`Supabase კავშირის შეცდომა: ${supabaseError.message}`);
       }
 
-      // 3. Clear Form Data
+      // Success Message
+      MyToast("თქვენი ვერიფიკაციის მოთხოვნა წარმატებით გაიგზავნა!");
+
+      // Clear Form Data
       setName("");
       setEmail("");
       setStreetAddress1("");
@@ -499,47 +503,16 @@ export default function DriverVerificationScreen() {
       setPlateLetters("");
       setPlateNumbers("");
 
-      // 4. Success Message
-      MyToast("თქვენი ვერიფიკაციის მოთხოვნა წარმატებით გაიგზავნა!");
+      setIsLoading(false);
 
-      // 5. Navigation - ყოველთვის ვცდილობთ გადავიდეთ
       console.log("[handleSubmit] Attempting navigation...");
-
-      // Navigation timeout როგორც fallback
-      const navigationTimeout = setTimeout(() => {
-        console.log("[handleSubmit] Navigation timeout reached");
-        setIsLoading(false);
-      }, 5000);
-
-      try {
-        await router.replace("/(tabs)/homepage");
-        clearTimeout(navigationTimeout);
-        console.log("[handleSubmit] Navigation successful");
-      } catch (routerError) {
-        clearTimeout(navigationTimeout);
-        console.error("[handleSubmit] Router error:", routerError);
-        MyToast(`რედირექტის შეცდომა: ${routerError.message}`);
-
-        // Alternative navigation method
-        try {
-          router.push("/(tabs)/homepage");
-          console.log("[handleSubmit] Alternative navigation used");
-        } catch (altRouterError) {
-          console.error(
-            "[handleSubmit] Alternative navigation failed:",
-            altRouterError
-          );
-          MyToast(
-            "გადასვლა ვერ მოხერხდა, გთხოვთ ხელით გადახვიდეთ მთავარ გვერდზე"
-          );
-        }
-      }
+      router.push("/(tabs)/homepage");
     } catch (generalError) {
       console.error("[handleSubmit] General error:", generalError);
       MyToast(`ზოგადი შეცდომა: ${generalError.message}`);
     } finally {
-      // ყოველთვის ვთიშავთ loading-ს
-      console.log("[handleSubmit] Setting loading to false");
+      // ★ ეს უნდა იყოს ყველაზე ბოლოს და ყოველთვის გამოვრთავდეს loading-ს
+      console.log("[handleSubmit] Setting loading to false in finally block");
       setIsLoading(false);
     }
   };

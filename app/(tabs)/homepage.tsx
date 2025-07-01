@@ -96,6 +96,17 @@ const HomeScreen: React.FC = () => {
     }
   }, [params, paramsProcessed, fetchUserDataInProgress]);
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      console.log("data", user);
+    };
+    fetchUser();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       if (
@@ -137,16 +148,15 @@ const HomeScreen: React.FC = () => {
 
       if (Array.isArray(data) && data.length > 0) {
         const driverInfo = data[0];
+        setFullname(driverInfo.name);
 
         setDriverDetails(driverInfo);
         setUserIndicator(driverInfo.indicator || data[0].indicator);
 
-        // ✅ Set userEmail from API data if not already set
         if (!userEmail && driverInfo.email) {
           setUserEmail(driverInfo.email);
         }
 
-        // ✅ Set driver data regardless of email match since API data is correct
         setDriverData({
           ...driverInfo,
           plate: driverInfo.plate,
@@ -177,7 +187,7 @@ const HomeScreen: React.FC = () => {
             setUserId(user?.id as any);
             setUserEmail(user.email || user.user_metadata.email || "");
             setPhoneNumber(user.phone || user.user_metadata.phone || "");
-            setFullname(user.user_metadata.full_name || "");
+            // setFullname(user.user_metadata.full_name || "");
 
             // Fetch user status
             const status = user.user_metadata?.status;
@@ -244,7 +254,7 @@ const HomeScreen: React.FC = () => {
 
         setUserEmail(userEmailValue);
         setPhoneNumber(phoneValue);
-        setFullname(fullNameValue);
+        // setFullname(fullNameValue);
 
         await fetchDriverDetails();
       }
@@ -510,7 +520,7 @@ const HomeScreen: React.FC = () => {
             return;
           }
 
-          setFullname(user.user_metadata.full_name || "");
+          // setFullname(user.user_metadata.full_name || "");
         } catch (error) {}
       };
 
@@ -759,7 +769,7 @@ const HomeScreen: React.FC = () => {
                   </JobsContainer>
                 )}
 
-              {/* {userIndicator === "active" && !isAutomatic && (
+              {userIndicator === "active" && !isAutomatic && (
                 <JobsContainer>
                   <SectionTitle>Available Orders</SectionTitle>
                   {loadingData ? (
@@ -784,7 +794,7 @@ const HomeScreen: React.FC = () => {
                     </NoJobsText>
                   )}
                 </JobsContainer>
-              )} */}
+              )}
 
               {userIndicator === "active" &&
                 isAutomatic &&

@@ -14,6 +14,7 @@ import styled from "styled-components/native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
+import { useAuthStore } from "@/infrastructure/store/store";
 
 const EditProfile = () => {
   const [name, setName] = useState("");
@@ -21,6 +22,7 @@ const EditProfile = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState("");
+  const { refreshUserFromSupabase } = useAuthStore();
 
   // Address fields
   const [addressLine1, setAddressLine1] = useState("");
@@ -155,6 +157,16 @@ const EditProfile = () => {
       }
 
       console.log("Profile updated successfully");
+
+      // ✅ Try-catch fetchUserData-ისთვის
+      try {
+        await fetchUserData();
+        console.log("Data refreshed successfully");
+      } catch (fetchError) {
+        console.error("Error refreshing data:", fetchError);
+        // მაინც გავაგრძელოთ, data refresh ნაკლებად მნიშვნელოვანია
+      }
+
       Alert.alert("Success", "Profile updated successfully");
       router.push("/settings");
     } catch (error) {
@@ -164,6 +176,7 @@ const EditProfile = () => {
         "Failed to update profile: " + (error as Error).message
       );
     } finally {
+      // ✅ ყოველთვის რესეტი loading-ისა
       setLoading(false);
     }
   };
@@ -291,10 +304,8 @@ const EditProfile = () => {
                 </HalfInputGroup>
               </RowContainer>
 
-              <SaveButton onPress={handleSubmit} disabled={loading}>
-                <SaveButtonText>
-                  {loading ? "Saving..." : "Save Changes"}
-                </SaveButtonText>
+              <SaveButton onPress={handleSubmit}>
+                <SaveButtonText>Save Changes</SaveButtonText>
               </SaveButton>
             </ScrollView>
           </ContentContainer>

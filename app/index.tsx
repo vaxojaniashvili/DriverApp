@@ -318,7 +318,7 @@ export default function Auth() {
           console.log(
             "Redirecting to driverVerification from auth state change"
           );
-          router.push("/(tabs)/driverVerification");
+          router.push("/driverVerification");
         }
       } else {
         console.log("No session in auth state change");

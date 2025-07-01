@@ -98,7 +98,7 @@ export default function DriverSignUp() {
           router.replace("/(tabs)/homepage");
         } else {
           console.log("[signUp] Redirecting to driverVerification");
-          router.replace("/(tabs)/driverVerification");
+          router.replace("/driverVerification");
         }
       } else {
         console.log("[signUp] No session or user, staying on signUp");
@@ -559,7 +559,7 @@ export default function DriverSignUp() {
 
       // ✅ პირველად ნავიგაცია
       console.log("STEP 3: Navigating to driverVerification FIRST...");
-      router.replace("/(tabs)/driverVerification");
+      router.replace("/driverVerification");
       console.log("STEP 4: Navigation command sent!");
 
       // ✅ შემდეგ მონაცემების განახლება background-ში

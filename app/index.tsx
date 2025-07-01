@@ -35,6 +35,9 @@ export default function Auth() {
     loadSessionFromStorage,
     setSession: setStoreSession,
     setUser: setStoreUser,
+    userIndicator,
+    setUserIndicator,
+    userStatus,
   } = useAuthStore();
 
   // იდენტიფიკატორის ვალიდაცია
@@ -91,6 +94,29 @@ export default function Auth() {
     return true;
   };
 
+  const navigateBasedOnUserStatus = async (user: any) => {
+    console.log("🔄 Checking user status for navigation...");
+
+    // Store-იდან status check
+    if (userIndicator === "active" || userStatus === "active") {
+      console.log("✅ User verified in store, going to homepage");
+      router.push("/(tabs)/homepage");
+      return;
+    }
+
+    // User metadata-დან status check
+    const userMetadataStatus = user?.user_metadata?.status;
+    if (userMetadataStatus === "active" || userMetadataStatus === "complete") {
+      console.log("✅ User verified in metadata, going to homepage");
+      setUserIndicator("active"); // Store-ში განახლება
+      router.push("/(tabs)/homepage");
+    } else {
+      console.log("❌ User not verified, going to verification");
+      setUserIndicator("inactive"); // Store-ში განახლება
+      router.push("/driverVerification");
+    }
+  };
+
   // OTP კოდის გაგზავნა
   async function sendOtp() {
     const isIdentifierValid = validateIdentifier(identifier);
@@ -145,8 +171,6 @@ export default function Auth() {
       setLoading(false);
     }
   }
-
-  // OTP კოდის ვერიფიკაცია ტელეფონისთვის
   async function verifyOtp() {
     const isOtpValid = validateOtp(otpCode);
 
@@ -184,7 +208,8 @@ export default function Auth() {
           console.log("Session stored successfully after OTP verification");
         }
 
-        router.push("/homepage");
+        // ✅ Store-ის მეშვეობით navigation
+        await navigateBasedOnUserStatus(data.user);
       } else {
         Alert.alert("error", "error");
       }
@@ -196,7 +221,7 @@ export default function Auth() {
     }
   }
 
-  // იმეილით ავტორიზაცია (ძველი მეთოდით)
+  // ✅ განახლებული signInWithEmail
   async function signInWithEmail() {
     const isIdentifierValid = validateIdentifier(identifier);
     const isPasswordValid = validatePassword(password);
@@ -231,7 +256,8 @@ export default function Auth() {
           console.log("Session stored successfully after email sign in");
         }
 
-        router.push("/homepage");
+        // ✅ Store-ის მეშვეობით navigation
+        await navigateBasedOnUserStatus(data.user);
       } else {
         Alert.alert("error", "error");
       }
@@ -258,6 +284,9 @@ export default function Auth() {
 
     const checkSession = async () => {
       try {
+        // ✅ პირველ რიგში Store-იდან შევამოწმოთ
+        await loadSessionFromStorage();
+
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -267,27 +296,17 @@ export default function Auth() {
 
         if (!data.session) {
           console.log("No active session found");
-          // router.push("/signUp");
           return;
         }
 
         console.log("Active session found:", data.session.user?.id);
-        setSession(data.session);
 
-        // Fetch user and check status
-        const { data: userData } = await supabase.auth.getUser();
-        const status = userData?.user?.user_metadata?.status;
-        console.log("User status:", status);
+        // Store-ში შენახვა
+        await setStoreSession(data.session);
+        await setStoreUser(data.session.user);
 
-        // if (status === "active" || status === "complete") {
-        //   console.log("Redirecting to homepage - user is active/complete");
-        //   router.push("/homepage");
-        // } else {
-        //   console.log(
-        //     "Redirecting to driverVerification - user is incomplete or no status"
-        //   );
-        //   router.push("/(tabs)/driverVerification");
-        // }
+        // ✅ Store-ის მეშვეობით navigation
+        await navigateBasedOnUserStatus(data.session.user);
       } catch (e) {
         console.error("Exception checking session:", e);
       } finally {
@@ -297,6 +316,7 @@ export default function Auth() {
 
     checkSession();
 
+    // ✅ Auth state change listener-ი
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -304,25 +324,15 @@ export default function Auth() {
 
       if (session) {
         console.log("Session detected in auth state change");
-        setSession(session);
 
-        // Fetch user and check status
-        const { data: userData } = await supabase.auth.getUser();
-        const status = userData?.user?.user_metadata?.status;
-        console.log("User status in auth state change:", status);
+        // Store-ში შენახვა
+        await setStoreSession(session);
+        await setStoreUser(session.user);
 
-        if (status === "active" || status === "complete") {
-          console.log("Redirecting to homepage from auth state change");
-          router.push("/homepage");
-        } else {
-          console.log(
-            "Redirecting to driverVerification from auth state change"
-          );
-          router.push("/driverVerification");
-        }
+        // ✅ Store-ის მეშვეობით navigation
+        await navigateBasedOnUserStatus(session.user);
       } else {
         console.log("No session in auth state change");
-        // router.push("/signUp");
       }
     });
 

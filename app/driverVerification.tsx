@@ -15,6 +15,7 @@ import { router, useFocusEffect } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 import { Input } from "@rneui/themed";
 import { LicensePlateInput } from "@/components/DriverPlate";
+import { useAuthStore } from "@/infrastructure/store/store";
 
 const MyToast = (message: string, duration = "short") => {
   if (Platform.OS === "android") {
@@ -30,6 +31,14 @@ const MyToast = (message: string, duration = "short") => {
 };
 
 export default function DriverVerificationScreen() {
+  const {
+    completeVerification,
+    setUserIndicator,
+    setDriverData,
+    session,
+    user: storeUser,
+  } = useAuthStore();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [licensePlate, setLicensePlate] = useState("");
@@ -434,7 +443,6 @@ export default function DriverVerificationScreen() {
         if (response.ok) {
           console.log("[handleSubmit] API verification successful");
           apiSuccess = true;
-          router.push("/(tabs)/homepage");
         } else {
           const errorText = await response.text();
           console.error(
@@ -467,7 +475,7 @@ export default function DriverVerificationScreen() {
               last_name: name.split(" ").slice(1).join(" ") || "",
               full_name: name,
               phone: phone,
-              status: "active",
+              status: "active", // ← ეს მნიშვნელოვანია
               email_verified: true,
             },
           });
@@ -487,31 +495,50 @@ export default function DriverVerificationScreen() {
         MyToast(`Supabase კავშირის შეცდომა: ${supabaseError.message}`);
       }
 
-      // Success Message
-      MyToast("თქვენი ვერიფიკაციის მოთხოვნა წარმატებით გაიგზავნა!");
+      // ✅ თუ ორივე წარმატებულია - Store-ს განახლება
+      if (apiSuccess && supabaseSuccess) {
+        MyToast("თქვენი ვერიფიკაციის მოთხოვნა წარმატებით გაიგზავნა!");
 
-      // Clear Form Data
-      setName("");
-      setEmail("");
-      setStreetAddress1("");
-      setStreetAddress2("");
-      setCity("");
-      setStateProvince("");
-      setZipCode("");
-      setCountry("");
-      setLicensePlate("");
-      setPlateLetters("");
-      setPlateNumbers("");
+        // ✅ Store-ში verification-ის complete-ება
+        const verificationData = {
+          name,
+          email,
+          phone,
+          license_plate: `${plateLetters}${plateNumbers}`,
+          indicator: "active",
+          id: userId,
+          ...formData,
+        };
 
-      setIsLoading(false);
+        await completeVerification(verificationData);
 
-      console.log("[handleSubmit] Attempting navigation...");
-      router.push("/(tabs)/homepage");
+        console.log("✅ Store updated, user is now verified");
+
+        // Clear Form Data
+        setName("");
+        setEmail("");
+        setStreetAddress1("");
+        setStreetAddress2("");
+        setCity("");
+        setStateProvince("");
+        setZipCode("");
+        setCountry("");
+        setLicensePlate("");
+        setPlateLetters("");
+        setPlateNumbers("");
+
+        // ✅ Navigation homepage-ზე (Store-ის მეშვეობით homepage უკვე იცის რომ user verified არის)
+        console.log(
+          "[handleSubmit] Navigating to homepage - user verified in store"
+        );
+        router.replace("/(tabs)/homepage"); // replace იქნება უკეთესი
+      } else {
+        MyToast("ვერიფიკაცია ვერ დასრულდა სრულად");
+      }
     } catch (generalError) {
       console.error("[handleSubmit] General error:", generalError);
       MyToast(`ზოგადი შეცდომა: ${generalError.message}`);
     } finally {
-      // ★ ეს უნდა იყოს ყველაზე ბოლოს და ყოველთვის გამოვრთავდეს loading-ს
       console.log("[handleSubmit] Setting loading to false in finally block");
       setIsLoading(false);
     }

@@ -17,6 +17,15 @@ interface AuthState {
   setPickupRadius: (radius: number) => void;
   pickupCount: number;
   setPickupCount: (count: number) => void;
+
+  // ✅ ახალი fields user verification-ისთვის
+  userStatus: "inactive" | "pending" | "active";
+  setUserStatus: (status: "inactive" | "pending" | "active") => void;
+  driverData: any | null;
+  setDriverData: (data: any) => void;
+  userIndicator: string | null;
+  setUserIndicator: (indicator: string | null) => void;
+
   // AsyncStorage methods
   loadSessionFromStorage: () => Promise<void>;
   clearSessionFromStorage: () => Promise<void>;
@@ -31,6 +40,9 @@ interface AuthState {
   setVanOption: (vanOption: string | null) => void;
   email: string | null;
   setEmail: (email: string | null) => void;
+
+  // ✅ ახალი method - complete verification და navigation-ის მართვისთვის
+  completeVerification: (userData: any) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -69,6 +81,55 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   pickupCount: 1,
   setPickupCount: (count) => set({ pickupCount: count }),
 
+  // ✅ ახალი state fields
+  userStatus: "inactive",
+  setUserStatus: (status) => {
+    console.log("🔄 Setting user status in store:", status);
+    set({ userStatus: status });
+  },
+  driverData: null,
+  setDriverData: (data) => {
+    console.log("🔄 Setting driver data in store:", data);
+    set({ driverData: data });
+  },
+  userIndicator: null,
+  setUserIndicator: (indicator) => {
+    console.log("🔄 Setting user indicator in store:", indicator);
+    set({ userIndicator: indicator });
+  },
+
+  // ✅ ახალი method - complete verification
+  completeVerification: async (userData) => {
+    console.log("✅ Completing verification in store with data:", userData);
+
+    // Update all relevant state
+    set({
+      userStatus: "active",
+      userIndicator: "active",
+      driverData: userData,
+      name: userData.name,
+      email: userData.email,
+      phone: userData.phone,
+    });
+
+    // Update user metadata in session as well
+    const currentUser = get().user;
+    if (currentUser) {
+      const updatedUser = {
+        ...currentUser,
+        user_metadata: {
+          ...currentUser.user_metadata,
+          status: "active",
+          full_name: userData.name,
+          email_verified: true,
+        },
+      };
+      set({ user: updatedUser });
+    }
+
+    console.log("✅ Store updated successfully for verified user");
+  },
+
   // Load session from AsyncStorage
   loadSessionFromStorage: async () => {
     try {
@@ -91,7 +152,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await AsyncStorage.removeItem("user_session");
       await AsyncStorage.removeItem("user_data");
-      set({ session: null, user: null });
+      set({
+        session: null,
+        user: null,
+        userStatus: "inactive",
+        userIndicator: null,
+        driverData: null,
+      });
       console.log("Session cleared from AsyncStorage");
     } catch (error) {
       console.error("Error clearing session from AsyncStorage:", error);
@@ -111,6 +178,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAutomatic: true,
         pickupRadius: 1,
         pickupCount: 1,
+        userStatus: "inactive",
+        userIndicator: null,
+        driverData: null,
       });
       console.log("User logged out successfully");
     } catch (error) {

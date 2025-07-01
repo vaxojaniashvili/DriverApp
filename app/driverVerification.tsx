@@ -497,7 +497,7 @@ export default function DriverVerificationScreen() {
 
       // ✅ თუ ორივე წარმატებულია - Store-ს განახლება
       if (apiSuccess && supabaseSuccess) {
-        MyToast("თქვენი ვერიფიკაციის მოთხოვნა წარმატებით გაიგზავნა!");
+        MyToast("Your verification request has been sent!");
 
         // ✅ Store-ში verification-ის complete-ება
         const verificationData = {

@@ -265,46 +265,29 @@ export default function Auth() {
           return;
         }
 
-        if (data.session) {
-          console.log("Active session found:", data.session.user?.id);
-          setSession(data.session);
-
-          // Fetch user and check status
-          const { data: userData } = await supabase.auth.getUser();
-          const status = userData?.user?.user_metadata?.status;
-          console.log("User status:", status);
-
-          // Check if user is in registration process
-          const isInRegistration =
-            userData?.user?.user_metadata?.user_type === "driver" &&
-            (status === "incomplete" || !status);
-
-          // Check if user has verified contact but hasn't completed full registration
-          const hasVerifiedContact =
-            userData?.user?.user_metadata?.email_verified ||
-            userData?.user?.user_metadata?.phone_verified;
-          const isIncompleteRegistration =
-            userData?.user?.user_metadata?.user_type === "driver" &&
-            hasVerifiedContact &&
-            (status === "incomplete" || !status);
-
-          // Only redirect if user status is active or complete AND not in incomplete registration
-          // This prevents redirects during registration process
-          if (
-            (status === "active" || status === "complete") &&
-            !isIncompleteRegistration
-          ) {
-            console.log("Redirecting to homepage - user is active/complete");
-            router.push("/homepage");
-          } else if (status === "incomplete" || !status) {
-            console.log(
-              "Redirecting to signUp - user is incomplete or no status"
-            );
-            router.push("/signUp");
-          }
-        } else {
+        if (!data.session) {
           console.log("No active session found");
+          // router.push("/signUp");
+          return;
         }
+
+        console.log("Active session found:", data.session.user?.id);
+        setSession(data.session);
+
+        // Fetch user and check status
+        const { data: userData } = await supabase.auth.getUser();
+        const status = userData?.user?.user_metadata?.status;
+        console.log("User status:", status);
+
+        // if (status === "active" || status === "complete") {
+        //   console.log("Redirecting to homepage - user is active/complete");
+        //   router.push("/homepage");
+        // } else {
+        //   console.log(
+        //     "Redirecting to driverVerification - user is incomplete or no status"
+        //   );
+        //   router.push("/(tabs)/driverVerification");
+        // }
       } catch (e) {
         console.error("Exception checking session:", e);
       } finally {
@@ -328,34 +311,18 @@ export default function Auth() {
         const status = userData?.user?.user_metadata?.status;
         console.log("User status in auth state change:", status);
 
-        // Check if user is in registration process
-        const isInRegistration =
-          userData?.user?.user_metadata?.user_type === "driver" &&
-          (status === "incomplete" || !status);
-
-        // Check if user has verified contact but hasn't completed full registration
-        const hasVerifiedContact =
-          userData?.user?.user_metadata?.email_verified ||
-          userData?.user?.user_metadata?.phone_verified;
-        const isIncompleteRegistration =
-          userData?.user?.user_metadata?.user_type === "driver" &&
-          hasVerifiedContact &&
-          (status === "incomplete" || !status);
-
-        // Only redirect if user status is active or complete AND not in incomplete registration
-        // This prevents redirects during registration process
-        if (
-          (status === "active" || status === "complete") &&
-          !isIncompleteRegistration
-        ) {
+        if (status === "active" || status === "complete") {
           console.log("Redirecting to homepage from auth state change");
           router.push("/homepage");
-        } else if (status === "incomplete" || !status) {
-          console.log("Redirecting to signUp from auth state change");
-          router.push("/signUp");
+        } else {
+          console.log(
+            "Redirecting to driverVerification from auth state change"
+          );
+          router.push("/(tabs)/driverVerification");
         }
       } else {
         console.log("No session in auth state change");
+        // router.push("/signUp");
       }
     });
 

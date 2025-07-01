@@ -14,7 +14,6 @@ import {
 import { router, useFocusEffect } from "expo-router";
 import { supabase } from "@/infrastructure/db/supabase";
 import { Input } from "@rneui/themed";
-import { AntDesign } from "@expo/vector-icons";
 import { LicensePlateInput } from "@/components/DriverPlate";
 
 const MyToast = (message: string, duration = "short") => {
@@ -62,9 +61,11 @@ export default function DriverVerificationScreen() {
     "input"
   );
   const [phone, setPhone] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
+      setIsAuthLoading(true);
       const {
         data: { session },
         error: sessionError,
@@ -74,16 +75,14 @@ export default function DriverVerificationScreen() {
       if (!data.session) {
         router.replace("/signUp");
       }
+      setIsAuthLoading(false);
     };
-
     checkAuth();
   }, []);
 
-  // Add focus effect to refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       console.log("DriverVerification screen focused, refreshing data...");
-      // Refresh user data when screen comes into focus
       const refreshData = async () => {
         try {
           const {
@@ -92,13 +91,6 @@ export default function DriverVerificationScreen() {
           } = await supabase.auth.getUser();
           if (!userError && user) {
             setUser(user as any);
-            setName(user?.user_metadata?.full_name || "");
-
-            // Check verification status
-            if (user?.user_metadata?.email_verified) {
-              setIsEmailVerified(true);
-              setEmail(user.email || user.user_metadata?.email || "");
-            }
           }
         } catch (error) {
           console.error("Error refreshing data:", error);
@@ -110,6 +102,22 @@ export default function DriverVerificationScreen() {
   );
 
   useEffect(() => {
+    if (user) {
+      console.log("[driverVerification] user:", user);
+      const userFullName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.fullname ||
+        user.user_metadata?.first_name ||
+        "";
+      console.log("[driverVerification] resolved full name:", userFullName);
+      setName(userFullName);
+      setTimeout(() => {
+        console.log("[driverVerification] name state after set:", userFullName);
+      }, 0);
+    }
+  }, [user]);
+
+  useEffect(() => {
     const fetchUserData = async () => {
       try {
         const {
@@ -117,17 +125,14 @@ export default function DriverVerificationScreen() {
           error: userError,
         } = await supabase.auth.getUser();
         setUser(user as any);
-        setName(user?.user_metadata.full_name);
 
         console.log(user);
 
-        // Check if user registered with email and it's verified
         if (user?.email && user?.email_confirmed_at) {
           setIsEmailVerified(true);
           setEmail(user.email);
         }
 
-        // Check from user metadata for signup method
         if (user?.user_metadata?.email_verified) {
           setIsEmailVerified(true);
           setEmail(user.email || user.user_metadata.email || "");
@@ -148,13 +153,11 @@ export default function DriverVerificationScreen() {
         const data = await res.json();
         setUserData(data);
 
-        // Check if user registered with email and it's verified
         if (user?.email && user?.email_confirmed_at) {
           setIsEmailVerified(true);
           setEmail(user.email);
         }
 
-        // Also check from API data if available
         if (data[0]?.email === user?.email && user?.email) {
           setIsEmailVerified(true);
           setEmail(user.email);
@@ -180,7 +183,6 @@ export default function DriverVerificationScreen() {
 
   useEffect(() => {
     const isNameValid = name?.trim() !== "";
-    // At least one contact method should be provided and verified
     const hasEmail = email.trim() !== "";
     const hasAtLeastOneVerified = isEmailVerified;
     const isAddressValid =
@@ -241,7 +243,6 @@ export default function DriverVerificationScreen() {
         const data = await res.json();
         const indicator = data && data[0]?.indicator;
         if (indicator === "active") {
-          // Already verified, redirect to homepage
           router.replace("/(tabs)/homepage");
         }
       } catch (err) {
@@ -272,16 +273,13 @@ export default function DriverVerificationScreen() {
         return;
       }
 
-      // Country code-ების მოცილება
       const cleanPhone = () => {
         let cleaned = phone;
 
-        // + ნიშნის მოცილება
         if (cleaned.startsWith("+")) {
           cleaned = cleaned.slice(1);
         }
 
-        // country code-ების მოცილება
         if (cleaned.startsWith("91")) {
           cleaned = cleaned.slice(2);
         } else if (cleaned.startsWith("356")) {
@@ -388,54 +386,39 @@ export default function DriverVerificationScreen() {
   const handleSubmit = async () => {
     if (!isValid) {
       console.log("Form is not valid, cannot submit");
+      MyToast("ფორმა არ არის სრულად შევსებული");
       return;
     }
 
-    console.log("Starting submission process...");
-    console.log("Form data to submit:", {
-      name,
-      email,
-      streetAddress1,
-      streetAddress2,
-      city,
-      stateProvince,
-      zipCode,
-      country,
-      plateLetters,
-      plateNumbers,
-      licensePlate: `${plateLetters}${plateNumbers}`,
-    });
+    console.log("[handleSubmit] Starting submission process...");
     setIsLoading(true);
 
     try {
-      // Use existing user state instead of trying to get it again
       if (!user || !user.id) {
-        console.error("No user found in state");
-        throw new Error("No user found in state");
+        console.error("[handleSubmit] No user found in state");
+        MyToast("მომხმარებელი ვერ მოიძებნა");
+        return;
       }
 
       const userId = user.id;
-      console.log("User ID:", userId);
+      const formData = {
+        name,
+        email,
+        street_address_1: streetAddress1,
+        street_address_2: streetAddress2,
+        city,
+        state_province: stateProvince,
+        zip_code: zipCode,
+        country,
+        license_plate: `${plateLetters}${plateNumbers}`,
+        phone: phone,
+      };
 
-      // Send PUT request with all form data
-      console.log("Sending verification request to API...");
+      console.log("[handleSubmit] Form data:", formData);
+
+      // 1. API Verification (არ ვწყვეტთ პროცესს შეცდომის შემთხვევაში)
+      let apiSuccess = false;
       try {
-        const formData = {
-          name,
-          email,
-          street_address_1: streetAddress1,
-          street_address_2: streetAddress2,
-          city,
-          state_province: stateProvince,
-          zip_code: zipCode,
-          country,
-          license_plate: `${plateLetters}${plateNumbers}`,
-          phone: phone,
-          // Add any other fields that need to be saved
-        };
-
-        console.log("Sending form data:", formData);
-
         const response = await fetch(
           `https://api.thevanapp.com/api/driver-details/verify/${userId}`,
           {
@@ -448,60 +431,62 @@ export default function DriverVerificationScreen() {
           }
         );
 
-        console.log("API response status:", response.status);
-
-        if (!response.ok) {
+        if (response.ok) {
+          console.log("[handleSubmit] API verification successful");
+          apiSuccess = true;
+        } else {
           const errorText = await response.text();
           console.error(
-            "Failed to verify driver details:",
+            "[handleSubmit] API error:",
             response.status,
             errorText
           );
-          // Don't throw here, just log the error and continue
-          console.log(
-            "API verification failed, but continuing with navigation"
-          );
-        } else {
-          console.log("API verification successful");
+          MyToast(`API შეცდომა: ${errorText}`);
         }
-      } catch (putError) {
-        console.error("Error sending PUT request:", putError);
-        // Don't throw here, continue with navigation
-        console.log("API verification failed, but continuing with navigation");
+      } catch (apiError) {
+        console.error("[handleSubmit] API request failed:", apiError);
+        MyToast(`API კავშირის შეცდომა: ${apiError.message}`);
       }
 
-      // ✅ Update Supabase user_metadata with address and other form data
+      // 2. Supabase Update (არ ვწყვეტთ პროცესს შეცდომის შემთხვევაში)
+      let supabaseSuccess = false;
       try {
-        const { error: updateError } = await supabase.auth.updateUser({
-          data: {
-            address_line_1: streetAddress1,
-            address_line_2: streetAddress2,
-            city: city,
-            state: stateProvince,
-            postal_code: zipCode,
-            country: country,
-            license_plate: `${plateLetters}${plateNumbers}`,
-            email: email,
-            // Update existing fields
-            first_name: name.split(" ")[0] || name,
-            last_name: name.split(" ").slice(1).join(" ") || "",
-            full_name: name,
-            phone: phone,
-            status: "complete",
-            email_verified: true,
-          },
-        });
+        const { data: updatedUser, error: updateError } =
+          await supabase.auth.updateUser({
+            data: {
+              address_line_1: streetAddress1,
+              address_line_2: streetAddress2,
+              city: city,
+              state: stateProvince,
+              postal_code: zipCode,
+              country: country,
+              license_plate: `${plateLetters}${plateNumbers}`,
+              email: email,
+              first_name: name.split(" ")[0] || name,
+              last_name: name.split(" ").slice(1).join(" ") || "",
+              full_name: name,
+              phone: phone,
+              status: "active",
+              email_verified: true,
+            },
+          });
 
-        if (updateError) {
-          console.error("Supabase user_metadata update error:", updateError);
+        if (!updateError && updatedUser) {
+          console.log("[handleSubmit] Supabase update successful");
+          supabaseSuccess = true;
+          setUser(updatedUser.user);
         } else {
-          console.log("Supabase user_metadata updated successfully");
+          console.error("[handleSubmit] Supabase error:", updateError);
+          MyToast(
+            `Supabase შეცდომა: ${updateError?.message || "უცნობი შეცდომა"}`
+          );
         }
       } catch (supabaseError) {
-        console.error("Error updating Supabase user metadata:", supabaseError);
+        console.error("[handleSubmit] Supabase request failed:", supabaseError);
+        MyToast(`Supabase კავშირის შეცდომა: ${supabaseError.message}`);
       }
 
-      // Clear form data
+      // 3. Clear Form Data
       setName("");
       setEmail("");
       setStreetAddress1("");
@@ -514,19 +499,47 @@ export default function DriverVerificationScreen() {
       setPlateLetters("");
       setPlateNumbers("");
 
-      MyToast("Your verification request has been submitted successfully!");
+      // 4. Success Message
+      MyToast("თქვენი ვერიფიკაციის მოთხოვნა წარმატებით გაიგზავნა!");
 
-      // Navigate to homepage immediately after successful verification
-      console.log(
-        "Verification completed successfully, navigating to homepage"
-      );
+      // 5. Navigation - ყოველთვის ვცდილობთ გადავიდეთ
+      console.log("[handleSubmit] Attempting navigation...");
 
-      // Navigate to homepage
-      router.replace("/(tabs)/homepage");
-    } catch (error) {
-      console.error("Verification error:", error);
-      MyToast("Error submitting verification: " + (error as Error).message);
+      // Navigation timeout როგორც fallback
+      const navigationTimeout = setTimeout(() => {
+        console.log("[handleSubmit] Navigation timeout reached");
+        setIsLoading(false);
+      }, 5000);
+
+      try {
+        await router.replace("/(tabs)/homepage");
+        clearTimeout(navigationTimeout);
+        console.log("[handleSubmit] Navigation successful");
+      } catch (routerError) {
+        clearTimeout(navigationTimeout);
+        console.error("[handleSubmit] Router error:", routerError);
+        MyToast(`რედირექტის შეცდომა: ${routerError.message}`);
+
+        // Alternative navigation method
+        try {
+          router.push("/(tabs)/homepage");
+          console.log("[handleSubmit] Alternative navigation used");
+        } catch (altRouterError) {
+          console.error(
+            "[handleSubmit] Alternative navigation failed:",
+            altRouterError
+          );
+          MyToast(
+            "გადასვლა ვერ მოხერხდა, გთხოვთ ხელით გადახვიდეთ მთავარ გვერდზე"
+          );
+        }
+      }
+    } catch (generalError) {
+      console.error("[handleSubmit] General error:", generalError);
+      MyToast(`ზოგადი შეცდომა: ${generalError.message}`);
     } finally {
+      // ყოველთვის ვთიშავთ loading-ს
+      console.log("[handleSubmit] Setting loading to false");
       setIsLoading(false);
     }
   };
@@ -588,6 +601,14 @@ export default function DriverVerificationScreen() {
       </View>
     );
   };
+
+  if (isAuthLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#10b981" />
+      </View>
+    );
+  }
 
   if (showVerificationScreen) {
     return (
@@ -746,20 +767,6 @@ export default function DriverVerificationScreen() {
             paddingTop: Platform.OS === "android" ? 40 : 60,
           }}
         >
-          {/* <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              width: 30,
-              height: 30,
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: 20,
-              borderRadius: 30,
-            }}
-          >
-            <AntDesign name="arrowleft" size={28} color="#27ae60" />
-          </TouchableOpacity> */}
-
           <View
             style={{
               backgroundColor: "#fff",
@@ -931,17 +938,6 @@ export default function DriverVerificationScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            {/* {emailStep === "verified" && (
-              <Text
-                style={{
-                  color: "#27ae60",
-                  textAlign: "center",
-                  marginBottom: 10,
-                }}
-              >
-                Email verified ✓
-              </Text>
-            )} */}
 
             <LicensePlateInput
               plateLetters={plateLetters}
@@ -950,7 +946,6 @@ export default function DriverVerificationScreen() {
               setPlateNumbers={setPlateNumbers}
             />
 
-            {/* Address fields */}
             <Input
               label="Street Address Line 1"
               leftIcon={{

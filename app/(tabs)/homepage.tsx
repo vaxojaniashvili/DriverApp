@@ -178,6 +178,15 @@ const HomeScreen: React.FC = () => {
             setUserEmail(user.email || user.user_metadata.email || "");
             setPhoneNumber(user.phone || user.user_metadata.phone || "");
             setFullname(user.user_metadata.full_name || "");
+
+            // Fetch user status
+            const status = user.user_metadata?.status;
+            if (status === "active" || status === "complete") {
+              // Stay on homepage
+            } else {
+              router.replace("/(tabs)/driverVerification");
+              return;
+            }
           }
         } catch (parseError) {}
       } else {
@@ -220,7 +229,7 @@ const HomeScreen: React.FC = () => {
         }
 
         if (!session || !user) {
-          router.replace("/signUp" as any);
+          router.replace("/signUp");
           return;
         }
 

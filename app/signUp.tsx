@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   TouchableOpacity,
   Text,
+  ActivityIndicator,
 } from "react-native";
 import { supabase } from "../infrastructure/db/supabase";
 import { Button, Input, Icon } from "@rneui/themed";
@@ -62,17 +63,22 @@ export default function DriverSignUp() {
   // Zustand store for session management
   const { setSession, setUser, loadSessionFromStorage } = useAuthStore();
 
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
   useEffect(() => {
     // Load session from AsyncStorage on component mount
-    loadSessionFromStorage();
+    const load = async () => {
+      await loadSessionFromStorage();
+      setIsAuthLoading(false);
+    };
+    load();
   }, []);
 
   // Check if user is already authenticated and redirect to driverVerification
   useEffect(() => {
+    if (isAuthLoading) return;
     const checkExistingSession = async () => {
-      await loadSessionFromStorage();
       const currentState = useAuthStore.getState();
-      // Fetch user indicator/status from store or Supabase
       let indicator = null;
       let status = null;
       if (currentState.user) {
@@ -82,19 +88,24 @@ export default function DriverSignUp() {
         status =
           currentState.user.status || currentState.user.user_metadata?.status;
       }
-      // Only redirect if not verified
-      if (
-        currentState.session &&
-        currentState.user &&
-        indicator !== "active" &&
-        status !== "completed"
-      ) {
-        console.log("User not verified, redirecting to driverVerification");
-        router.replace("/(tabs)/driverVerification");
+      console.log("[signUp] session:", currentState.session);
+      console.log("[signUp] user:", currentState.user);
+      console.log("[signUp] status:", status);
+      // Only redirect if BOTH session and user exist
+      if (currentState.session && currentState.user) {
+        if (status === "active" || status === "complete") {
+          console.log("[signUp] Redirecting to homepage");
+          router.replace("/(tabs)/homepage");
+        } else {
+          console.log("[signUp] Redirecting to driverVerification");
+          router.replace("/(tabs)/driverVerification");
+        }
+      } else {
+        console.log("[signUp] No session or user, staying on signUp");
       }
     };
     checkExistingSession();
-  }, []);
+  }, [isAuthLoading]);
 
   useEffect(() => {
     if (otpInputRefs.current.length < 6) {
@@ -635,6 +646,16 @@ export default function DriverSignUp() {
       setPhoneNumberError("");
     }
   };
+
+  if (isAuthLoading) {
+    return (
+      <KeyboardAvoidingView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
+        <ActivityIndicator size="large" color="#10b981" />
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView

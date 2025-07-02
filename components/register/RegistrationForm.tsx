@@ -17,7 +17,6 @@ export const RegistrationForm = ({
   phoneNumber,
   password,
   confirmPassword,
-  vanOption,
   loading,
   showPassword,
   showConfirmPassword,
@@ -25,8 +24,6 @@ export const RegistrationForm = ({
   surnameError,
   phoneNumberError,
   passwordError,
-  vanOptionError,
-  isContactVerified, // ახალი prop
   setName,
   setSurname,
   setEmail,
@@ -35,11 +32,8 @@ export const RegistrationForm = ({
   setConfirmPassword,
   setShowPassword,
   setShowConfirmPassword,
-  setVanOption,
   validatePhoneNumber,
-  validateVanOption,
   sendVerificationCode, // ვერიფიკაციის კოდის გაგზავნა
-  completeRegistration, // მთავარი რეგისტრაცია
   Title,
   NameSurnameRow,
   NameInput,
@@ -58,32 +52,6 @@ export const RegistrationForm = ({
       country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       country.dialCode.includes(searchQuery)
   );
-
-  // ვერიფიკაციის ღილაკის ტექსტი
-  const getVerifyButtonText = () => {
-    if (isContactVerified) {
-      return "✓ Verified";
-    }
-    return "Verify";
-  };
-
-  // ვერიფიკაციის ღილაკის ფერი
-  const getVerifyButtonStyle = () => {
-    if (isContactVerified) {
-      return {
-        paddingHorizontal: 10,
-        paddingVertical: 10,
-        backgroundColor: "#27ae60",
-        borderRadius: 10,
-      };
-    }
-    return {
-      paddingHorizontal: 10,
-      paddingVertical: 10,
-      backgroundColor: "#3498db",
-      borderRadius: 10,
-    };
-  };
 
   return (
     <View style={{ width: "100%" }}>
@@ -285,251 +253,80 @@ export const RegistrationForm = ({
         autoCapitalize="none"
       />
 
-      <View style={{ marginBottom: 25, marginTop: -10, marginLeft: 11 }}>
+      {/* Phone Number Input (without verify button) */}
+      <View style={{ marginBottom: 10 }}>
         <Text
           style={{
-            fontSize: 16,
-            fontWeight: "500",
+            fontSize: 14,
+            color: "#86939e",
+            fontWeight: "bold",
             marginBottom: 10,
-            color: "#2c3e50",
+            marginLeft: 10,
           }}
         >
-          Verification Method:
+          Phone Number
         </Text>
-
-        <View style={{ flexDirection: "row" }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            borderBottomWidth: 1,
+            borderBottomColor: "#86939e",
+            paddingBottom: 8,
+            marginHorizontal: 10,
+          }}
+        >
           <TouchableOpacity
+            onPress={() => setShowCountryPicker(true)}
             style={{
               flexDirection: "row",
               alignItems: "center",
-              marginRight: 20,
+              padding: 5,
+              marginRight: 10,
+              backgroundColor: "#f5f5f5",
+              borderRadius: 5,
             }}
-            onPress={() => setVanOption("phone")}
           >
-            <View
-              style={{
-                width: 20,
-                height: 20,
-                borderRadius: 10,
-                borderWidth: 2,
-                borderColor: "#27ae60",
-                marginRight: 10,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              {vanOption === "phone" && (
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: "#27ae60",
-                  }}
-                />
-              )}
-            </View>
-            <Text style={{ fontSize: 16, color: "#2c3e50" }}>Phone</Text>
+            <Text style={{ fontSize: 20, marginRight: 5 }}>
+              {selectedCountry.flag}
+            </Text>
+            <Text style={{ fontSize: 16, color: "#2c3e50" }}>
+              {selectedCountry.dialCode}
+            </Text>
+            <Text style={{ fontSize: 12, marginLeft: 5, color: "#7f8c8d" }}>
+              ▼
+            </Text>
           </TouchableOpacity>
-        </View>
-      </View>
 
-      {vanOption === "phone" && (
-        <View style={{ marginBottom: 10 }}>
+          <TextInput
+            style={{
+              flex: 1,
+              fontSize: 16,
+              paddingVertical: 5,
+              color: "#2c3e50",
+            }}
+            value={phoneNumber}
+            onChangeText={(text: string) => {
+              setPhoneNumber(text);
+            }}
+            placeholder="Enter phone number"
+            keyboardType="phone-pad"
+          />
+        </View>
+        {phoneNumberError ? (
           <Text
             style={{
-              fontSize: 14,
-              color: "#86939e",
-              fontWeight: "bold",
-              marginBottom: 10,
+              color: "#e74c3c",
+              fontSize: 12,
+              marginTop: 5,
               marginLeft: 10,
             }}
           >
-            Phone Number
-          </Text>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              borderBottomWidth: 1,
-              borderBottomColor: "#86939e",
-              paddingBottom: 8,
-              marginHorizontal: 10,
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => setShowCountryPicker(true)}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                padding: 5,
-                marginRight: 10,
-                backgroundColor: "#f5f5f5",
-                borderRadius: 5,
-              }}
-            >
-              <Text style={{ fontSize: 20, marginRight: 5 }}>
-                {selectedCountry.flag}
-              </Text>
-              <Text style={{ fontSize: 16, color: "#2c3e50" }}>
-                {selectedCountry.dialCode}
-              </Text>
-              <Text style={{ fontSize: 12, marginLeft: 5, color: "#7f8c8d" }}>
-                ▼
-              </Text>
-            </TouchableOpacity>
-
-            <TextInput
-              style={{
-                flex: 1,
-                fontSize: 16,
-                paddingVertical: 5,
-                color: "#2c3e50",
-                marginRight: 10,
-              }}
-              value={phoneNumber}
-              onChangeText={(text: string) => {
-                setPhoneNumber(text);
-              }}
-              placeholder="Enter phone number"
-              keyboardType="phone-pad"
-            />
-            <TouchableOpacity
-              style={getVerifyButtonStyle()}
-              onPress={isContactVerified ? null : sendVerificationCode}
-              disabled={isContactVerified || loading}
-            >
-              <Text style={{ color: "white", fontWeight: "bold" }}>
-                {getVerifyButtonText()}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {phoneNumberError ? (
-            <Text
-              style={{
-                color: "#e74c3c",
-                fontSize: 12,
-                marginTop: 5,
-                marginLeft: 10,
-              }}
-            >
-              {phoneNumberError}
-            </Text>
-          ) : null}
-        </View>
-      )}
-
-      <View style={{ marginBottom: 20 }}>
-        <Text
-          style={{
-            fontSize: 16,
-            fontWeight: "500",
-            marginBottom: 10,
-            color: "#2c3e50",
-            marginLeft: 8,
-          }}
-        >
-          Select an option:
-        </Text>
-
-        <TouchableOpacity
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            padding: 15,
-            backgroundColor: vanOption === "own" ? "#e8f8f0" : "#fff",
-            borderWidth: 1,
-            borderColor: vanOption === "own" ? "#27ae60" : "#ddd",
-            borderRadius: 10,
-            marginBottom: 10,
-          }}
-          onPress={() => {
-            setVanOption("own");
-            if (vanOptionError) validateVanOption("own");
-          }}
-        >
-          <View
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: 10,
-              borderWidth: 2,
-              borderColor: "#27ae60",
-              marginRight: 10,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            {vanOption === "own" && (
-              <View
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: "#27ae60",
-                }}
-              />
-            )}
-          </View>
-          <Text style={{ fontSize: 16, color: "#2c3e50" }}>
-            I have my own van
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            padding: 15,
-            backgroundColor: vanOption === "company" ? "#e8f8f0" : "#fff",
-            borderWidth: 1,
-            borderColor: vanOption === "company" ? "#27ae60" : "#ddd",
-            borderRadius: 10,
-          }}
-          onPress={() => {
-            setVanOption("company");
-            if (vanOptionError) validateVanOption("company");
-          }}
-        >
-          <View
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: 10,
-              borderWidth: 2,
-              borderColor: "#27ae60",
-              marginRight: 10,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            {vanOption === "company" && (
-              <View
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: "#27ae60",
-                }}
-              />
-            )}
-          </View>
-          <Text style={{ fontSize: 16, color: "#2c3e50" }}>
-            I want to drive your van
-          </Text>
-        </TouchableOpacity>
-
-        {vanOptionError ? (
-          <Text style={{ color: "#e74c3c", fontSize: 12, marginTop: 5 }}>
-            {vanOptionError}
+            {phoneNumberError}
           </Text>
         ) : null}
       </View>
 
-      {/* მთავარი რეგისტრაციის ღილაკი */}
-      {(() => {
-        return null;
-      })()}
       <StyledButton
         ViewComponent={LinearGradient}
         linearGradientProps={{
@@ -537,15 +334,12 @@ export const RegistrationForm = ({
           start: { x: 0, y: 0 },
           end: { x: 1, y: 0 },
         }}
-        title="Continue"
-        disabled={loading || !isContactVerified}
+        title="Verify account"
+        disabled={loading}
         onPress={() => {
-          console.log("RegistrationForm: Continue button pressed");
-          console.log("isContactVerified:", isContactVerified);
-          console.log("loading:", loading);
-          console.log("Button was disabled:", loading || !isContactVerified);
-          console.log("Calling completeRegistration function");
-          completeRegistration();
+          console.log("RegistrationForm: Verify button pressed");
+          console.log("Calling sendVerificationCode function");
+          sendVerificationCode();
         }}
         loading={loading}
         buttonStyle={{
@@ -557,19 +351,6 @@ export const RegistrationForm = ({
           fontSize: 16,
         }}
       />
-
-      {!isContactVerified && (
-        <Text
-          style={{
-            textAlign: "center",
-            color: "#e74c3c",
-            fontSize: 12,
-            marginTop: 5,
-          }}
-        >
-          Please verify your phone to continue
-        </Text>
-      )}
 
       <View style={{ marginTop: 10, alignItems: "center" }}>
         <View style={{ flexDirection: "row", gap: 5 }}>

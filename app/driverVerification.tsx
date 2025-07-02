@@ -71,6 +71,8 @@ export default function DriverVerificationScreen() {
   );
   const [phone, setPhone] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [vanOption, setVanOption] = useState("");
+  const [vanOptionError, setVanOptionError] = useState("");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -421,6 +423,7 @@ export default function DriverVerificationScreen() {
         country,
         license_plate: `${plateLetters}${plateNumbers}`,
         phone: phone,
+        van_option: vanOption,
       };
 
       console.log("[handleSubmit] Form data:", formData);
@@ -454,7 +457,11 @@ export default function DriverVerificationScreen() {
         }
       } catch (apiError) {
         console.error("[handleSubmit] API request failed:", apiError);
-        MyToast(`API კავშირის შეცდომა: ${apiError.message}`);
+        MyToast(
+          `API კავშირის შეცდომა: ${
+            apiError instanceof Error ? apiError.message : String(apiError)
+          }`
+        );
       }
 
       // Supabase Update
@@ -477,6 +484,7 @@ export default function DriverVerificationScreen() {
               phone: phone,
               status: "active", // ← ეს მნიშვნელოვანია
               email_verified: true,
+              van_option: vanOption,
             },
           });
 
@@ -487,12 +495,22 @@ export default function DriverVerificationScreen() {
         } else {
           console.error("[handleSubmit] Supabase error:", updateError);
           MyToast(
-            `Supabase შეცდომა: ${updateError?.message || "უცნობი შეცდომა"}`
+            `Supabase შეცდომა: ${
+              updateError instanceof Error
+                ? updateError.message
+                : String(updateError)
+            }`
           );
         }
       } catch (supabaseError) {
         console.error("[handleSubmit] Supabase request failed:", supabaseError);
-        MyToast(`Supabase კავშირის შეცდომა: ${supabaseError.message}`);
+        MyToast(
+          `Supabase კავშირის შეცდომა: ${
+            supabaseError instanceof Error
+              ? supabaseError.message
+              : String(supabaseError)
+          }`
+        );
       }
 
       // ✅ თუ ორივე წარმატებულია - Store-ს განახლება
@@ -501,13 +519,19 @@ export default function DriverVerificationScreen() {
 
         // ✅ Store-ში verification-ის complete-ება
         const verificationData = {
+          indicator: "active",
+          id: userId,
+          van_option: vanOption,
           name,
           email,
           phone,
           license_plate: `${plateLetters}${plateNumbers}`,
-          indicator: "active",
-          id: userId,
-          ...formData,
+          street_address_1: streetAddress1,
+          street_address_2: streetAddress2,
+          city,
+          state_province: stateProvince,
+          zip_code: zipCode,
+          country,
         };
 
         await completeVerification(verificationData);
@@ -537,7 +561,13 @@ export default function DriverVerificationScreen() {
       }
     } catch (generalError) {
       console.error("[handleSubmit] General error:", generalError);
-      MyToast(`ზოგადი შეცდომა: ${generalError.message}`);
+      MyToast(
+        `ზოგადი შეცდომა: ${
+          generalError instanceof Error
+            ? generalError.message
+            : String(generalError)
+        }`
+      );
     } finally {
       console.log("[handleSubmit] Setting loading to false in finally block");
       setIsLoading(false);
@@ -600,6 +630,15 @@ export default function DriverVerificationScreen() {
         />
       </View>
     );
+  };
+
+  const validateVanOption = (option: string) => {
+    if (!option) {
+      setVanOptionError("Please select an option");
+      return false;
+    }
+    setVanOptionError("");
+    return true;
   };
 
   if (isAuthLoading) {
@@ -855,7 +894,7 @@ export default function DriverVerificationScreen() {
                   borderRadius: 8,
                   paddingVertical: 12,
                   marginHorizontal: 10,
-                  marginBottom: 10,
+                  marginBottom: 15,
                   alignItems: "center",
                 }}
               >
@@ -939,13 +978,6 @@ export default function DriverVerificationScreen() {
               </View>
             )}
 
-            <LicensePlateInput
-              plateLetters={plateLetters}
-              setPlateLetters={setPlateLetters}
-              plateNumbers={plateNumbers}
-              setPlateNumbers={setPlateNumbers}
-            />
-
             <Input
               label="Street Address Line 1"
               leftIcon={{
@@ -958,7 +990,7 @@ export default function DriverVerificationScreen() {
               onChangeText={setStreetAddress1}
               placeholder="Enter street address"
               autoCapitalize="words"
-              containerStyle={{ marginBottom: 5 }}
+              containerStyle={{ marginBottom: 5, marginTop: 10 }}
             />
 
             <Input
@@ -1035,6 +1067,120 @@ export default function DriverVerificationScreen() {
               autoCapitalize="words"
               containerStyle={{ marginBottom: 5 }}
             />
+
+            <LicensePlateInput
+              plateLetters={plateLetters}
+              setPlateLetters={setPlateLetters}
+              plateNumbers={plateNumbers}
+              setPlateNumbers={setPlateNumbers}
+            />
+
+            <View style={{ marginBottom: 20 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "500",
+                  marginBottom: 10,
+                  color: "#2c3e50",
+                  marginLeft: 8,
+                }}
+              >
+                Select an option:
+              </Text>
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 15,
+                  backgroundColor: vanOption === "own" ? "#e8f8f0" : "#fff",
+                  borderWidth: 1,
+                  borderColor: vanOption === "own" ? "#27ae60" : "#ddd",
+                  borderRadius: 10,
+                  marginBottom: 10,
+                }}
+                onPress={() => {
+                  setVanOption("own");
+                  if (vanOptionError) validateVanOption("own");
+                }}
+              >
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: "#27ae60",
+                    marginRight: 10,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  {vanOption === "own" && (
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: "#27ae60",
+                      }}
+                    />
+                  )}
+                </View>
+                <Text style={{ fontSize: 16, color: "#2c3e50" }}>
+                  I have my own van
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 15,
+                  backgroundColor: vanOption === "company" ? "#e8f8f0" : "#fff",
+                  borderWidth: 1,
+                  borderColor: vanOption === "company" ? "#27ae60" : "#ddd",
+                  borderRadius: 10,
+                }}
+                onPress={() => {
+                  setVanOption("company");
+                  if (vanOptionError) validateVanOption("company");
+                }}
+              >
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: "#27ae60",
+                    marginRight: 10,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  {vanOption === "company" && (
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: "#27ae60",
+                      }}
+                    />
+                  )}
+                </View>
+                <Text style={{ fontSize: 16, color: "#2c3e50" }}>
+                  I want to drive your van
+                </Text>
+              </TouchableOpacity>
+
+              {vanOptionError ? (
+                <Text style={{ color: "#e74c3c", fontSize: 12, marginTop: 5 }}>
+                  {vanOptionError}
+                </Text>
+              ) : null}
+            </View>
 
             <TouchableOpacity
               onPress={handleSubmit}

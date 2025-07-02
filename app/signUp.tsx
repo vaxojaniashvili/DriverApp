@@ -16,7 +16,6 @@ import { DocumentsScreen } from "@/components/register/DocumentsScreen";
 import { ConfirmationScreen } from "@/components/register/ConfirmationScreen";
 import { COUNTRIES } from "@/components/Countries";
 import { VerificationScreen } from "@/components/register/ VerificationScreen";
-import { Session } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/infrastructure/store/store";
 
@@ -32,7 +31,6 @@ export default function DriverSignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [contactMethod, setContactMethod] = useState("phone");
-  const [vanOption, setVanOption] = useState("");
 
   // Verification state
   const [isVerifying, setIsVerifying] = useState(false);
@@ -54,7 +52,6 @@ export default function DriverSignUp() {
   const [nameError, setNameError] = useState("");
   const [surnameError, setSurnameError] = useState("");
   const [phoneNumberError, setPhoneNumberError] = useState("");
-  const [vanOptionError, setVanOptionError] = useState("");
 
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[12]);
 
@@ -203,15 +200,6 @@ export default function DriverSignUp() {
       return false;
     }
     setPhoneNumberError("");
-    return true;
-  };
-
-  const validateVanOption = (option: string) => {
-    if (!option) {
-      setVanOptionError("Please select an option");
-      return false;
-    }
-    setVanOptionError("");
     return true;
   };
 
@@ -397,7 +385,7 @@ export default function DriverSignUp() {
               unique_id: verificationResult.data.session?.user?.id,
               name: name,
               last_name: surname,
-              plate: "test",
+              plate: "DSD-001",
               phone: phoneNumber || "123",
               email: "test",
             }),
@@ -526,8 +514,7 @@ export default function DriverSignUp() {
 
     // Use finalPhoneNumber for validation and update
     const isPhoneValid = validatePhoneNumber(finalPhoneNumber);
-    const isVanOptionValid = validateVanOption(vanOption);
-    if (!isPhoneValid || !isVanOptionValid) {
+    if (!isPhoneValid) {
       console.log("Validation failed, showing alert");
       Alert.alert("Error", "Please fill all required fields correctly.");
       return;
@@ -570,7 +557,6 @@ export default function DriverSignUp() {
         last_name: surname,
         full_name: `${name} ${surname}`,
         phone: finalPhoneNumber,
-        van_option: vanOption,
         user_type: "driver",
         status: "incomplete",
       };
@@ -706,7 +692,6 @@ export default function DriverSignUp() {
                     setSelectedCountry={setSelectedCountry}
                     password={password}
                     confirmPassword={confirmPassword}
-                    vanOption={vanOption}
                     contactMethod={contactMethod}
                     loading={loading}
                     showPassword={showPassword}
@@ -715,7 +700,6 @@ export default function DriverSignUp() {
                     surnameError={surnameError}
                     phoneNumberError={phoneNumberError}
                     passwordError={passwordError}
-                    vanOptionError={vanOptionError}
                     isContactVerified={isContactVerified}
                     setName={setName}
                     setSurname={setSurname}
@@ -724,9 +708,7 @@ export default function DriverSignUp() {
                     setConfirmPassword={setConfirmPassword}
                     setShowPassword={setShowPassword}
                     setShowConfirmPassword={setShowConfirmPassword}
-                    setVanOption={setVanOption}
                     validatePhoneNumber={validatePhoneNumber}
-                    validateVanOption={validateVanOption}
                     sendVerificationCode={sendVerificationCode}
                     completeRegistration={completeRegistration}
                     Title={Title}
@@ -740,7 +722,6 @@ export default function DriverSignUp() {
               })()
             ) : currentStep === 2 ? (
               <DocumentsScreen
-                vanOption={vanOption}
                 loading={loading}
                 setCurrentStep={setCurrentStep}
                 Title={Title}
@@ -749,7 +730,6 @@ export default function DriverSignUp() {
               />
             ) : (
               <ConfirmationScreen
-                vanOption={vanOption}
                 Title={Title}
                 StyledButton={StyledButton}
                 completeRegistration={completeRegistration}

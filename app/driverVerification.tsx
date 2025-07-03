@@ -848,6 +848,25 @@ export default function DriverVerificationScreen() {
               Please fill in your details to verify your account
             </Text>
 
+            <View
+              style={{
+                marginBottom: 30,
+                flexDirection: "row",
+                marginTop: -20,
+                gap: 5,
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{ fontSize: 16, color: "#7f8c8d", textAlign: "center" }}
+              >
+                Status:
+              </Text>
+              <Text style={{ fontSize: 16, color: "red", textAlign: "center" }}>
+                Incomplete
+              </Text>
+            </View>
+
             <Input
               label="Full Name"
               leftIcon={{

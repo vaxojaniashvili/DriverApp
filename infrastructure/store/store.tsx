@@ -17,7 +17,10 @@ interface AuthState {
   setPickupRadius: (radius: number) => void;
   pickupCount: number;
   setPickupCount: (count: number) => void;
-  surname: any;
+
+  // ✅ surname-ის ტიპის დაზუსტება
+  surname: string | null;
+  setSurname: (surname: string | null) => void;
 
   // ✅ ახალი fields user verification-ისთვის
   userStatus: "inactive" | "pending" | "active";
@@ -35,10 +38,7 @@ interface AuthState {
   setUUID: (uuid: string | null) => void;
   name: string | null;
   setName: (name: string | null) => void;
-  setSurname: (surname: string | null) => void; // ✅ ეს უკვე გაქვთ
-
   phone: string | null;
-
   setPhone: (phone: string | null) => void;
   vanOption: string | null;
   setVanOption: (vanOption: string | null) => void;
@@ -47,6 +47,10 @@ interface AuthState {
 
   // ✅ ახალი method - complete verification და navigation-ის მართვისთვის
   completeVerification: (userData: any) => Promise<void>;
+
+  // ✅ დამატებული: არჩეული ქვეყნის დროშის შესანახად
+  selectedCountryFlag: string | null;
+  setSelectedCountryFlag: (flag: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -85,6 +89,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   pickupCount: 1,
   setPickupCount: (count) => set({ pickupCount: count }),
 
+  // ✅ surname-ის ინიციალიზაცია
+  surname: null,
+  setSurname: (surname: string | null) => set({ surname }),
+
   // ✅ ახალი state fields
   userStatus: "inactive",
   setUserStatus: (status) => {
@@ -114,6 +122,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       name: userData.name,
       email: userData.email,
       phone: userData.phone,
+      surname: userData.last_name, // ✅ გვარის განახლებაც
     });
 
     // Update user metadata in session as well
@@ -126,6 +135,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           status: "active",
           full_name: userData.name,
           email_verified: true,
+          last_name: userData.last_name, // ✅ გვარის დამატება user_metadata-ში
         },
       };
       set({ user: updatedUser });
@@ -139,6 +149,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const sessionData = await AsyncStorage.getItem("user_session");
       const userData = await AsyncStorage.getItem("user_data");
+      // ✅ ასევე ვცდილობთ დროშის ჩატვირთვას
+      const storedCountryFlag = await AsyncStorage.getItem(
+        "selected_country_flag"
+      );
 
       if (sessionData && userData) {
         const session = JSON.parse(sessionData);
@@ -146,6 +160,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ session, user });
       } else {
         console.log("No session found in AsyncStorage");
+      }
+      // ✅ დროშის ჩატვირთვა
+      if (storedCountryFlag) {
+        set({ selectedCountryFlag: storedCountryFlag });
       }
     } catch (error) {
       console.error("Error loading session from AsyncStorage:", error);
@@ -156,12 +174,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await AsyncStorage.removeItem("user_session");
       await AsyncStorage.removeItem("user_data");
+      // ✅ დროშის გასუფთავებაც
+      await AsyncStorage.removeItem("selected_country_flag");
       set({
         session: null,
         user: null,
         userStatus: "inactive",
         userIndicator: null,
         driverData: null,
+        selectedCountryFlag: null, // ✅ მდგომარეობის გასუფთავება
+        name: null, // ✅ სახელის გასუფთავება
+        surname: null, // ✅ გვარის გასუფთავება
+        phone: null, // ✅ ტელეფონის გასუფთავება
+        email: null, // ✅ მეილის გასუფთავება
       });
       console.log("Session cleared from AsyncStorage");
     } catch (error) {
@@ -174,6 +199,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       await AsyncStorage.removeItem("user_session");
       await AsyncStorage.removeItem("user_data");
+      // ✅ დროშის გასუფთავებაც
+      await AsyncStorage.removeItem("selected_country_flag");
       set({
         session: null,
         user: null,
@@ -185,6 +212,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         userStatus: "inactive",
         userIndicator: null,
         driverData: null,
+        selectedCountryFlag: null, // ✅ მდგომარეობის გასუფთავება
+        name: null, // ✅ სახელის გასუფთავება
+        surname: null, // ✅ გვარის გასუფთავება
+        phone: null, // ✅ ტელეფონის გასუფთავება
+        email: null, // ✅ მეილის გასუფთავება
       });
       console.log("User logged out successfully");
     } catch (error) {
@@ -198,10 +230,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setName: (name: string | null) => set({ name }),
   phone: null,
   setPhone: (phone: string | null) => set({ phone }),
-  surname: null, // ✅ ეს უკვე გაქვთ
-  setSurname: (surname: string | null) => set({ surname }),
   vanOption: null,
   setVanOption: (vanOption: string | null) => set({ vanOption }),
   email: null,
   setEmail: (email: string | null) => set({ email }),
+
+  // ✅ დამატებული: დროშის შენახვა Zustand-ში და AsyncStorage-ში
+  selectedCountryFlag: null,
+  setSelectedCountryFlag: async (flag: string | null) => {
+    set({ selectedCountryFlag: flag });
+    if (flag) {
+      await AsyncStorage.setItem("selected_country_flag", flag);
+    } else {
+      await AsyncStorage.removeItem("selected_country_flag");
+    }
+  },
 }));

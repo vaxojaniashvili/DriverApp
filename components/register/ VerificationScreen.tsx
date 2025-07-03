@@ -39,7 +39,7 @@ export const VerificationScreen = ({
         {otpDigits.map((digit: string, index: number) => (
           <TextInput
             key={index}
-            ref={(ref) => (otpInputRefs.current[index] = ref)}
+            ref={otpInputRefs.current[index]}
             style={{
               width: 48,
               height: 56,

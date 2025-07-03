@@ -111,11 +111,9 @@ export default function DriverSignUp() {
   }, [isAuthLoading]);
 
   useEffect(() => {
-    if (otpInputRefs.current.length < 6) {
-      otpInputRefs.current = Array(6)
-        .fill(null)
-        .map((_, i) => otpInputRefs.current[i] || React.createRef());
-    }
+    otpInputRefs.current = Array(6)
+      .fill(null)
+      .map(() => React.createRef());
   }, []);
 
   useEffect(() => {

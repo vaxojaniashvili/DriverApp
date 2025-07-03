@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { useAuthStore } from "@/infrastructure/store/store";
 
 export const RegistrationForm = ({
   name,
@@ -33,7 +34,7 @@ export const RegistrationForm = ({
   setShowPassword,
   setShowConfirmPassword,
   validatePhoneNumber,
-  sendVerificationCode, // ვერიფიკაციის კოდის გაგზავნა
+  sendVerificationCode,
   Title,
   NameSurnameRow,
   NameInput,
@@ -46,6 +47,8 @@ export const RegistrationForm = ({
 }: any) => {
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { setSelectedCountryFlag } = useAuthStore();
 
   const filteredCountries = COUNTRIES.filter(
     (country: any) =>
@@ -177,6 +180,7 @@ export const RegistrationForm = ({
                   }}
                   onPress={() => {
                     setSelectedCountry(country);
+                    setSelectedCountryFlag(country.flag);
                     setShowCountryPicker(false);
                     setSearchQuery("");
                   }}

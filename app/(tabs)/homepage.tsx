@@ -41,6 +41,7 @@ const HomeScreen: React.FC = () => {
   const [fullname, setFullname] = useState("");
   const [session, setSession] = useState<any>(null);
   const [userId, setUserId] = useState(null);
+  const [lastName, setLastName] = useState("");
 
   const [userIndicator, setUserIndicator] = useState<string | null>(null);
   const [driverDetails, setDriverDetails] = useState<any>(null);
@@ -60,6 +61,7 @@ const HomeScreen: React.FC = () => {
     loadSessionFromStorage,
     setSession: setStoreSession,
     setUser: setStoreUser,
+    selectedCountryFlag,
   } = useAuthStore();
 
   const [location, setLocation] = useState<LocationData | null>(null);
@@ -102,7 +104,6 @@ const HomeScreen: React.FC = () => {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
-      console.log("data", user);
     };
     fetchUser();
   }, []);
@@ -149,6 +150,7 @@ const HomeScreen: React.FC = () => {
       if (Array.isArray(data) && data.length > 0) {
         const driverInfo = data[0];
         setFullname(driverInfo.name);
+        setLastName(driverInfo.last_name);
 
         setDriverDetails(driverInfo);
         setUserIndicator(driverInfo.indicator || data[0].indicator);
@@ -632,7 +634,9 @@ const HomeScreen: React.FC = () => {
                   <Avatar>{fullname.charAt(0).toUpperCase()}</Avatar>
                 </AvatarContainer>
                 <UserTextInfo>
-                  <UserGreeting>Welcome, {fullname}</UserGreeting>
+                  <UserGreeting>
+                    Welcome, {fullname + " " + lastName}
+                  </UserGreeting>
                   {userIndicator !== "active" ? (
                     <Text style={{ fontWeight: 500 }}>
                       Status: <Text style={{ color: "red" }}>Incomplete</Text>
@@ -654,9 +658,9 @@ const HomeScreen: React.FC = () => {
               <UserDetailsSection>
                 <InfoCard>
                   <InfoIcon>
-                    <MaterialIcons name="phone" size={16} color="#666" />
+                    <Text>{selectedCountryFlag}</Text>
                   </InfoIcon>
-                  <InfoText>{phoneNumber || "No phone number"}</InfoText>
+                  <InfoText>{`+${phoneNumber}` || "No phone number"}</InfoText>
                 </InfoCard>
 
                 {driverData?.plate && userIndicator === "active" && (
@@ -871,7 +875,7 @@ const Header = styled.View`
 `;
 
 const UserGreeting = styled.Text`
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   color: ${DriverModeColors.dark};
   margin-bottom: 4px;

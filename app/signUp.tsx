@@ -58,7 +58,12 @@ export default function DriverSignUp() {
   const router = useRouter();
 
   // Zustand store for session management
-  const { setSession, setUser, loadSessionFromStorage } = useAuthStore();
+  const {
+    setSession,
+    setUser,
+    loadSessionFromStorage,
+    setName: setStoreName,
+  } = useAuthStore();
 
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
@@ -701,7 +706,10 @@ export default function DriverSignUp() {
                     phoneNumberError={phoneNumberError}
                     passwordError={passwordError}
                     isContactVerified={isContactVerified}
-                    setName={setName}
+                    setName={(text: any) => {
+                      setName(text);
+                      setStoreName(text);
+                    }}
                     setSurname={setSurname}
                     setPhoneNumber={setPhoneNumber}
                     setPassword={setPassword}

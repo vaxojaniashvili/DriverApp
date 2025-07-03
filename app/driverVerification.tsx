@@ -37,6 +37,7 @@ export default function DriverVerificationScreen() {
     setDriverData,
     session,
     user: storeUser,
+    name: storeName,
   } = useAuthStore();
 
   const [name, setName] = useState("");
@@ -113,6 +114,12 @@ export default function DriverVerificationScreen() {
   );
 
   useEffect(() => {
+    if (storeName) {
+      setName(storeName);
+    }
+  }, []);
+
+  useEffect(() => {
     if (user) {
       console.log("[driverVerification] user:", user);
       const userFullName =
@@ -121,7 +128,7 @@ export default function DriverVerificationScreen() {
         user.user_metadata?.first_name ||
         "";
       console.log("[driverVerification] resolved full name:", userFullName);
-      setName(userFullName);
+      // setName(userFullName);
       setTimeout(() => {
         console.log("[driverVerification] name state after set:", userFullName);
       }, 0);
@@ -890,7 +897,7 @@ export default function DriverVerificationScreen() {
                 onPress={sendEmailVerification}
                 disabled={isVerificationLoading || !email || isEmailVerified}
                 style={{
-                  backgroundColor: isEmailVerified ? "#27ae60" : "#10b981",
+                  backgroundColor: isEmailVerified ? "#27ae60" : "#f66161",
                   borderRadius: 8,
                   paddingVertical: 12,
                   marginHorizontal: 10,
@@ -1068,13 +1075,6 @@ export default function DriverVerificationScreen() {
               containerStyle={{ marginBottom: 5 }}
             />
 
-            <LicensePlateInput
-              plateLetters={plateLetters}
-              setPlateLetters={setPlateLetters}
-              plateNumbers={plateNumbers}
-              setPlateNumbers={setPlateNumbers}
-            />
-
             <View style={{ marginBottom: 20 }}>
               <Text
                 style={{
@@ -1131,6 +1131,13 @@ export default function DriverVerificationScreen() {
                   I have my own van
                 </Text>
               </TouchableOpacity>
+
+              <LicensePlateInput
+                plateLetters={plateLetters}
+                setPlateLetters={setPlateLetters}
+                plateNumbers={plateNumbers}
+                setPlateNumbers={setPlateNumbers}
+              />
 
               <TouchableOpacity
                 style={{

@@ -63,6 +63,7 @@ export default function DriverSignUp() {
     setUser,
     loadSessionFromStorage,
     setName: setStoreName,
+    setSurname: setStoreSurname,
   } = useAuthStore();
 
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -268,11 +269,6 @@ export default function DriverSignUp() {
       setIsVerifying(true);
       setTimer(60);
       setCanResend(false);
-
-      Alert.alert(
-        "Success",
-        "Verification code sent successfully! Check your phone for the code."
-      );
     } catch (error) {
       console.error("OTP send error:", error);
       const errorMessage = (error as Error)?.message || "";
@@ -710,7 +706,10 @@ export default function DriverSignUp() {
                       setName(text);
                       setStoreName(text);
                     }}
-                    setSurname={setSurname}
+                    setSurname={(text: any) => {
+                      setSurname(text);
+                      setStoreSurname(text);
+                    }}
                     setPhoneNumber={setPhoneNumber}
                     setPassword={setPassword}
                     setConfirmPassword={setConfirmPassword}

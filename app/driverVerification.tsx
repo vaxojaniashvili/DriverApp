@@ -38,6 +38,7 @@ export default function DriverVerificationScreen() {
     session,
     user: storeUser,
     name: storeName,
+    surname: storeSurname,
   } = useAuthStore();
 
   const [name, setName] = useState("");
@@ -115,7 +116,7 @@ export default function DriverVerificationScreen() {
 
   useEffect(() => {
     if (storeName) {
-      setName(storeName);
+      setName(`${storeName} ${storeSurname}`);
     }
   }, []);
 
@@ -522,8 +523,6 @@ export default function DriverVerificationScreen() {
 
       // ✅ თუ ორივე წარმატებულია - Store-ს განახლება
       if (apiSuccess && supabaseSuccess) {
-        MyToast("Your verification request has been sent!");
-
         // ✅ Store-ში verification-ის complete-ება
         const verificationData = {
           indicator: "active",

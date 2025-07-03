@@ -642,6 +642,12 @@ const HomeScreen: React.FC = () => {
                       Status: <Text style={{ color: "green" }}>Completed</Text>
                     </Text>
                   )}
+                  <View style={{ flexDirection: "row" }}>
+                    <Text>Driver:</Text>
+                    <Text style={{ color: "red", marginLeft: 9 }}>
+                      Inactive
+                    </Text>
+                  </View>
                 </UserTextInfo>
               </UserInfoSection>
 

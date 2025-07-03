@@ -17,6 +17,7 @@ interface AuthState {
   setPickupRadius: (radius: number) => void;
   pickupCount: number;
   setPickupCount: (count: number) => void;
+  surname: any;
 
   // ✅ ახალი fields user verification-ისთვის
   userStatus: "inactive" | "pending" | "active";
@@ -34,7 +35,10 @@ interface AuthState {
   setUUID: (uuid: string | null) => void;
   name: string | null;
   setName: (name: string | null) => void;
+  setSurname: (surname: string | null) => void; // ✅ ეს უკვე გაქვთ
+
   phone: string | null;
+
   setPhone: (phone: string | null) => void;
   vanOption: string | null;
   setVanOption: (vanOption: string | null) => void;
@@ -194,6 +198,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setName: (name: string | null) => set({ name }),
   phone: null,
   setPhone: (phone: string | null) => set({ phone }),
+  surname: null, // ✅ ეს უკვე გაქვთ
+  setSurname: (surname: string | null) => set({ surname }),
   vanOption: null,
   setVanOption: (vanOption: string | null) => set({ vanOption }),
   email: null,

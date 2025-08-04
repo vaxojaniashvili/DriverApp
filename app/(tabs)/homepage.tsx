@@ -29,6 +29,10 @@ import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import JobSelectionComponent from "@/components/homepage/jobs-selection/JobSelection";
 import PickupRadiusSelector from "@/components/homepage/pickup-radius/PickupRadiusSelector";
 
+// 🔔 PUSH NOTIFICATIONS IMPORTS
+import { usePushNotifications } from "@/hooks/usePushNotifications";
+import * as Notifications from "expo-notifications";
+
 const HomeScreen: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>("");
   const [phoneNumber, setPhoneNumber] = useState<number>();
@@ -75,6 +79,109 @@ const HomeScreen: React.FC = () => {
   const [paramsProcessed, setParamsProcessed] = useState(false);
   const [fetchUserDataInProgress, setFetchUserDataInProgress] = useState(false);
 
+  // 🔔 PUSH NOTIFICATIONS HOOK
+  const { expoPushToken, notification } = usePushNotifications();
+
+  // 🔔 TEST NOTIFICATION FUNCTIONS
+  const sendTestLocalNotification = async () => {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "🚐 ახალი ორდერი!",
+        body: "თბილისი → ბათუმი (Test Order)",
+        data: {
+          type: "new_order",
+          orderId: "TEST_123",
+          pickup: "თბილისი",
+          destination: "ბათუმი",
+          price: "50₾",
+        },
+      },
+      trigger: { seconds: 2 },
+    });
+    Alert.alert(
+      "📱 Test Notification",
+      "Local notification sent in 2 seconds!"
+    );
+  };
+
+  const sendTestPushNotification = async () => {
+    if (!expoPushToken) {
+      Alert.alert("❌ Error", "Push token not ready yet");
+      return;
+    }
+
+    try {
+      const message = {
+        to: expoPushToken,
+        sound: "default",
+        title: "🚐 ახალი ორდერი!",
+        body: "თბილისი → ბათუმი (Test Push)",
+        data: {
+          type: "new_order",
+          orderId: "PUSH_TEST_456",
+          pickup: "თბილისი",
+          destination: "ბათუმი",
+          price: "75₾",
+        },
+        priority: "high",
+        channelId: "default",
+      };
+
+      const response = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Accept-encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(message),
+      });
+
+      const responseData = await response.json();
+      console.log("✅ Test push sent:", responseData);
+      Alert.alert("🌐 Test Push", "Push notification sent successfully!");
+    } catch (error) {
+      console.error("❌ Error sending test push:", error);
+      Alert.alert("❌ Error", "Failed to send push notification");
+    }
+  };
+
+  // 🔔 SEND TOKEN TO BACKEND FUNCTION
+  const sendTokenToBackend = async (token: string, driverId: string) => {
+    try {
+      console.log("📤 Registering push token for driver:", driverId);
+
+      const response = await fetch(
+        "https://api.thevanapp.com/api/register-push-token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiToken}`,
+          },
+          body: JSON.stringify({
+            pushToken: token,
+            driverId: driverId,
+            platform: Platform.OS,
+            deviceInfo: {
+              email: userEmail,
+              fullName: fullname + " " + lastName,
+            },
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("✅ Push token registered successfully:", result);
+      } else {
+        console.error("❌ Failed to register token:", response.status);
+      }
+    } catch (error) {
+      console.error("❌ Token registration error:", error);
+    }
+  };
+
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
@@ -82,6 +189,44 @@ const HomeScreen: React.FC = () => {
   useEffect(() => {
     loadSessionFromStorage();
   }, []);
+
+  // 🔔 HANDLE NOTIFICATION RECEIVED (refresh orders when new order notification comes)
+  useEffect(() => {
+    if (notification) {
+      console.log("🔔 New notification in HomeScreen:", notification);
+
+      const data = notification.request.content.data as any;
+      if (data?.type === "new_order") {
+        console.log("📋 New order notification received:", data.orderId);
+
+        // Show in-app alert
+        Alert.alert(
+          "🚐 ახალი ორდერი!",
+          `ორდერი #${data.orderId}\n${data.pickup || "Unknown"} → ${
+            data.destination || "Unknown"
+          }\nფასი: ${data.price || "Unknown"}`,
+          [
+            {
+              text: "ნახვა",
+              onPress: () => {
+                console.log("🔄 Refreshing orders after notification...");
+                onRefresh(); // Refresh orders when user taps "View"
+              },
+            },
+            { text: "მოგვიანებით", style: "cancel" },
+          ]
+        );
+      }
+    }
+  }, [notification]);
+
+  // 🔔 REGISTER PUSH TOKEN WHEN READY
+  useEffect(() => {
+    if (expoPushToken && userId && apiToken) {
+      console.log("✅ HomeScreen push token ready:", expoPushToken);
+      sendTokenToBackend(expoPushToken, userId);
+    }
+  }, [expoPushToken, userId, apiToken]);
 
   useEffect(() => {
     if (
@@ -189,7 +334,6 @@ const HomeScreen: React.FC = () => {
             setUserId(user?.id as any);
             setUserEmail(user.email || user.user_metadata.email || "");
             setPhoneNumber(user.phone || user.user_metadata.phone || "");
-            // setFullname(user.user_metadata.full_name || "");
 
             // Fetch user status
             const status = user.user_metadata?.status;
@@ -213,7 +357,6 @@ const HomeScreen: React.FC = () => {
         setUserId(user?.id as any);
         setUserEmail(user.email || user.user_metadata.email || "");
         setPhoneNumber(user.phone || user.user_metadata.phone || "");
-        // setFullname(user.user_metadata.full_name || "");
       } else {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) =>
@@ -256,7 +399,6 @@ const HomeScreen: React.FC = () => {
 
         setUserEmail(userEmailValue);
         setPhoneNumber(phoneValue);
-        // setFullname(fullNameValue);
 
         await fetchDriverDetails();
       }
@@ -507,7 +649,6 @@ const HomeScreen: React.FC = () => {
       return false;
     }
   }, [apiToken, userIndicator]);
-  // Modify your useFocusEffect to also fetch user data
 
   useFocusEffect(
     useCallback(() => {
@@ -521,8 +662,6 @@ const HomeScreen: React.FC = () => {
           if (userError || !user) {
             return;
           }
-
-          // setFullname(user.user_metadata.full_name || "");
         } catch (error) {}
       };
 
@@ -537,6 +676,7 @@ const HomeScreen: React.FC = () => {
       return () => {};
     }, [onRefresh, apiToken, userIndicator])
   );
+
   const processOrders = (ordersData: any[]) => {
     if (!Array.isArray(ordersData)) {
       setOrders([]);
@@ -648,8 +788,25 @@ const HomeScreen: React.FC = () => {
                   )}
                   <View style={{ flexDirection: "row" }}>
                     <Text>Driver:</Text>
-                    <Text style={{ color: "red", marginLeft: 9 }}>
-                      Inactive
+                    <Text
+                      style={{
+                        color: mode === "active" ? "green" : "red",
+                        marginLeft: 9,
+                      }}
+                    >
+                      {mode === "active" ? "Active" : "Inactive"}
+                    </Text>
+                  </View>
+                  {/* 🔔 PUSH TOKEN STATUS */}
+                  <View style={{ flexDirection: "row", marginTop: 4 }}>
+                    <Text>Push:</Text>
+                    <Text
+                      style={{
+                        color: expoPushToken ? "green" : "red",
+                        marginLeft: 9,
+                      }}
+                    >
+                      {expoPushToken ? "✅ Ready" : "❌ Loading..."}
                     </Text>
                   </View>
                 </UserTextInfo>
@@ -672,6 +829,37 @@ const HomeScreen: React.FC = () => {
                   </InfoCard>
                 )}
               </UserDetailsSection>
+
+              {__DEV__ && userIndicator === "active" && (
+                <TestNotificationSection>
+                  <TestSectionTitle>
+                    🧪 Push Notification Tests
+                  </TestSectionTitle>
+
+                  <TestButtonsContainer>
+                    <TestButton onPress={sendTestLocalNotification}>
+                      <TestButtonText>📱 Test Local</TestButtonText>
+                    </TestButton>
+
+                    <TestButton
+                      onPress={sendTestPushNotification}
+                      disabled={!expoPushToken}
+                      style={{ opacity: expoPushToken ? 1 : 0.5 }}
+                    >
+                      <TestButtonText>🌐 Test Push</TestButtonText>
+                    </TestButton>
+                  </TestButtonsContainer>
+
+                  <TokenDisplay>
+                    <Text style={{ fontSize: 10, color: "#666" }}>
+                      Token:{" "}
+                      {expoPushToken
+                        ? expoPushToken.substring(0, 25) + "..."
+                        : "Loading..."}
+                    </Text>
+                  </TokenDisplay>
+                </TestNotificationSection>
+              )}
 
               {userIndicator !== "active" && (
                 <>
@@ -836,7 +1024,7 @@ const HomeScreen: React.FC = () => {
 
 export default HomeScreen;
 
-// Styled components remain the same as in original code
+// STYLED COMPONENTS
 const Container = styled.View`
   flex: 1;
   background-color: ${DriverModeColors.light};
@@ -936,6 +1124,7 @@ const NoOngoingJobsText = styled.Text`
   border-width: 0.5px;
   border-color: rgba(255, 255, 255, 0.35);
 `;
+
 const LoadingText = styled.Text`
   font-size: 14px;
   font-weight: 500;
@@ -952,6 +1141,7 @@ const GradientHeader = styled(LinearGradient)`
   border-bottom-left-radius: 16px;
   border-bottom-right-radius: 16px;
 `;
+
 const HeaderContent = styled.View``;
 
 const UserInfoSection = styled.View`
@@ -1008,6 +1198,52 @@ const InfoText = styled.Text`
   color: #333333;
   font-weight: 500;
   flex: 1;
+`;
+
+// 🔔 TEST NOTIFICATION STYLED COMPONENTS
+const TestNotificationSection = styled.View`
+  background-color: #f8f9fa;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border-width: 1px;
+  border-color: #e9ecef;
+`;
+
+const TestSectionTitle = styled.Text`
+  font-size: 14px;
+  font-weight: 700;
+  color: ${DriverModeColors.dark};
+  margin-bottom: 8px;
+`;
+
+const TestButtonsContainer = styled.View`
+  flex-direction: row;
+  gap: 8px;
+  margin-bottom: 8px;
+`;
+
+const TestButton = styled.TouchableOpacity`
+  flex: 1;
+  background-color: #007bff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const TestButtonText = styled.Text`
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+`;
+
+const TokenDisplay = styled.View`
+  background-color: #ffffff;
+  padding: 8px;
+  border-radius: 6px;
+  border-width: 1px;
+  border-color: #dee2e6;
 `;
 
 const VerificationAlert = styled.View`

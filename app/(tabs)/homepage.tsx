@@ -80,7 +80,8 @@ const HomeScreen: React.FC = () => {
   const [fetchUserDataInProgress, setFetchUserDataInProgress] = useState(false);
 
   // 🔔 PUSH NOTIFICATIONS HOOK
-  const { expoPushToken, notification } = usePushNotifications();
+  const { expoPushToken, notification, tokenError, tokenStatus } =
+    usePushNotifications();
 
   // 🔔 TEST NOTIFICATION FUNCTIONS
   const sendTestLocalNotification = async () => {
@@ -96,7 +97,7 @@ const HomeScreen: React.FC = () => {
           price: "50€",
         },
       },
-      trigger: { seconds: 2 },
+      trigger: null,
     });
   };
 
@@ -142,30 +143,26 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  // 🔔 SEND TOKEN TO BACKEND FUNCTION
   const sendTokenToBackend = async (token: string, driverId: string) => {
     try {
       console.log("📤 Registering push token for driver:", driverId);
 
-      const response = await fetch(
-        "https://api.thevanapp.com/api/register-push-token",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiToken}`,
+      const response = await fetch("https://api.thevanapp.com/api/pushtoken", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiToken}`,
+        },
+        body: JSON.stringify({
+          pushToken: token,
+          driverId: driverId,
+          platform: Platform.OS,
+          deviceInfo: {
+            deviceName: "",
+            osVersion: "",
           },
-          body: JSON.stringify({
-            pushToken: token,
-            driverId: driverId,
-            platform: Platform.OS,
-            deviceInfo: {
-              email: userEmail,
-              fullName: fullname + " " + lastName,
-            },
-          }),
-        }
-      );
+        }),
+      });
 
       if (response.ok) {
         const result = await response.json();
@@ -187,34 +184,55 @@ const HomeScreen: React.FC = () => {
   }, []);
 
   // 🔔 HANDLE NOTIFICATION RECEIVED (refresh orders when new order notification comes)
+  const [lastNotificationId, setLastNotificationId] = useState<string | null>(
+    null
+  );
+
   useEffect(() => {
-    if (notification) {
+    if (
+      notification &&
+      typeof notification === "object" &&
+      notification.request
+    ) {
       console.log("🔔 New notification in HomeScreen:", notification);
 
       const data = notification.request.content.data as any;
-      if (data?.type === "new_order") {
-        console.log("📋 New order notification received:", data.orderId);
+      const notificationId = notification.request.identifier;
 
-        // Show in-app alert
-        Alert.alert(
-          "🚐 New order!",
-          `Order #${data.orderId}\n${data.pickup || "Unknown"} → ${
-            data.destination || "Unknown"
-          }\nprice: ${data.price || "Unknown"}`,
-          [
-            {
-              text: "Touch",
-              onPress: () => {
-                console.log("🔄 Refreshing orders after notification...");
-                onRefresh(); // Refresh orders when user taps "View"
+      // Prevent duplicate alerts for the same notification
+      if (data?.type === "new_order" && lastNotificationId !== notificationId) {
+        console.log("📋 New order notification received:", data.orderId);
+        setLastNotificationId(notificationId);
+
+        // Show in-app alert with better iOS compatibility
+        setTimeout(() => {
+          Alert.alert(
+            "🚐 New order!",
+            `Order #${data.orderId}\n${data.pickup || "Unknown"} → ${
+              data.destination || "Unknown"
+            }\nprice: ${data.price || "Unknown"}`,
+            [
+              {
+                text: "Accept",
+                onPress: () => {
+                  console.log("🔄 Refreshing orders after notification...");
+                  onRefresh(); // Refresh orders when user taps "View"
+                },
               },
-            },
-            { text: "later", style: "cancel" },
-          ]
-        );
+              {
+                text: "Decline",
+                style: "cancel",
+                onPress: () => {
+                  console.log("User dismissed notification alert");
+                },
+              },
+            ],
+            { cancelable: true }
+          );
+        }, 100);
       }
     }
-  }, [notification]);
+  }, [notification, lastNotificationId]);
 
   // 🔔 REGISTER PUSH TOKEN WHEN READY
   useEffect(() => {
@@ -836,11 +854,19 @@ const HomeScreen: React.FC = () => {
 
                   <TokenDisplay>
                     <Text style={{ fontSize: 10, color: "#666" }}>
+                      Status: {tokenStatus}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: "#666" }}>
                       Token:{" "}
                       {expoPushToken
                         ? expoPushToken.substring(0, 25) + "..."
                         : "Loading..."}
                     </Text>
+                    {tokenError && (
+                      <Text style={{ fontSize: 10, color: "red" }}>
+                        Error: {tokenError}
+                      </Text>
+                    )}
                   </TokenDisplay>
                 </TestNotificationSection>
               )}

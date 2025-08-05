@@ -157,10 +157,8 @@ const HomeScreen: React.FC = () => {
           pushToken: token,
           driverId: driverId,
           platform: Platform.OS,
-          deviceInfo: {
-            deviceName: "",
-            osVersion: "",
-          },
+          deviceName: "",
+          osVersion: "",
         }),
       });
 

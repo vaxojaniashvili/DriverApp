@@ -17,10 +17,25 @@ export function usePushNotifications() {
   const [channels, setChannels] = useState([]);
   const [notification, setNotification] = useState(false);
   const [tokenError, setTokenError] = useState(null);
-  const [tokenStatus, setTokenStatus] = useState("initializing"); // "initializing", "loading", "success", "error"
+  const [tokenStatus, setTokenStatus] = useState("initializing");
 
   const notificationListener = useRef();
   const responseListener = useRef();
+
+  const [driverId, setDriverId] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      setDriverId(user.driverId);
+    };
+    fetchUser();
+  }, []);
+
+  console.log("sriver", driverId);
 
   useEffect(() => {
     console.log("🚀 Starting push notification setup...");
@@ -190,11 +205,8 @@ function handleIncomingNotification(notification) {
 
   console.log("Notification data:", data);
 
-  // Don't show alert here - let the HomeScreen handle it
-  // This prevents duplicate alerts
   if (data?.type === "new_order") {
     console.log("📋 New order notification:", data.orderId);
-    // Alert will be shown in HomeScreen component
   }
 }
 
@@ -203,8 +215,6 @@ function handleNotificationTap(response) {
 
   if (data?.type === "new_order") {
     console.log("Navigate to order:", data.orderId);
-    // You can add navigation logic here if needed
-    // For now, just log the action
   }
 }
 async function sendTokenToBackend(token) {
@@ -218,10 +228,8 @@ async function sendTokenToBackend(token) {
         pushToken: token,
         driverId: "12342242",
         platform: Platform.OS,
-        deviceInfo: {
-          deviceName: Device.deviceName,
-          osVersion: Device.osVersion,
-        },
+        deviceName: Device.deviceName,
+        osVersion: Device.osVersion,
       }),
     });
 

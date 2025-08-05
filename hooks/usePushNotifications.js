@@ -92,8 +92,8 @@ async function registerForPushNotificationsAsync() {
 
     if (finalStatus !== "granted") {
       Alert.alert(
-        "Push Notifications გათიშულია",
-        "გთხოვთ ჩართოთ push notifications Settings-ში"
+        "Push Notifications disabled",
+        "Please enable push notifications in Settings"
       );
       return;
     }
@@ -113,7 +113,7 @@ async function registerForPushNotificationsAsync() {
       token = `${e}`;
     }
   } else {
-    Alert.alert("Physical device საჭიროა Push Notifications-ისთვის");
+    Alert.alert("Physical device required for Push Notifications");
   }
 
   return token;
@@ -125,9 +125,9 @@ function handleIncomingNotification(notification) {
   console.log("Notification data:", data);
 
   if (data?.type === "new_order") {
-    Alert.alert("ახალი ორდერი!", `ორდერი #${data.orderId}`, [
-      { text: "შევეხოთ", onPress: () => console.log("Order viewed") },
-      { text: "მოგვიანებით", style: "cancel" },
+    Alert.alert("New Order!", `Order #${data.orderId}`, [
+      { text: "Touch", onPress: () => console.log("Order viewed") },
+      { text: "Later", style: "cancel" },
     ]);
   }
 }
@@ -148,7 +148,7 @@ async function sendTokenToBackend(token) {
       },
       body: JSON.stringify({
         pushToken: token,
-        driverId: "CURRENT_DRIVER_ID",
+        driverId: "12342242",
         platform: Platform.OS,
         deviceInfo: {
           deviceName: Device.deviceName,

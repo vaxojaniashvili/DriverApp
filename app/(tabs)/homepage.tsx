@@ -86,22 +86,18 @@ const HomeScreen: React.FC = () => {
   const sendTestLocalNotification = async () => {
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: "🚐 ახალი ორდერი!",
-        body: "თბილისი → ბათუმი (Test Order)",
+        title: "🚐 new order!",
+        body: "Tbilisi → Batumi (Test Order)",
         data: {
           type: "new_order",
           orderId: "TEST_123",
-          pickup: "თბილისი",
-          destination: "ბათუმი",
-          price: "50₾",
+          pickup: "Tbilisi",
+          destination: "Batumi",
+          price: "50€",
         },
       },
       trigger: { seconds: 2 },
     });
-    Alert.alert(
-      "📱 Test Notification",
-      "Local notification sent in 2 seconds!"
-    );
   };
 
   const sendTestPushNotification = async () => {
@@ -114,14 +110,14 @@ const HomeScreen: React.FC = () => {
       const message = {
         to: expoPushToken,
         sound: "default",
-        title: "🚐 ახალი ორდერი!",
-        body: "თბილისი → ბათუმი (Test Push)",
+        title: "🚐 New order!",
+        body: "Tbilisi → Batumi (Test Push)",
         data: {
           type: "new_order",
           orderId: "PUSH_TEST_456",
-          pickup: "თბილისი",
-          destination: "ბათუმი",
-          price: "75₾",
+          pickup: "Tbilisi",
+          destination: "Batumi",
+          price: "75€",
         },
         priority: "high",
         channelId: "default",
@@ -201,19 +197,19 @@ const HomeScreen: React.FC = () => {
 
         // Show in-app alert
         Alert.alert(
-          "🚐 ახალი ორდერი!",
-          `ორდერი #${data.orderId}\n${data.pickup || "Unknown"} → ${
+          "🚐 New order!",
+          `Order #${data.orderId}\n${data.pickup || "Unknown"} → ${
             data.destination || "Unknown"
-          }\nფასი: ${data.price || "Unknown"}`,
+          }\nprice: ${data.price || "Unknown"}`,
           [
             {
-              text: "ნახვა",
+              text: "Touch",
               onPress: () => {
                 console.log("🔄 Refreshing orders after notification...");
                 onRefresh(); // Refresh orders when user taps "View"
               },
             },
-            { text: "მოგვიანებით", style: "cancel" },
+            { text: "later", style: "cancel" },
           ]
         );
       }
@@ -795,18 +791,6 @@ const HomeScreen: React.FC = () => {
                       }}
                     >
                       {mode === "active" ? "Active" : "Inactive"}
-                    </Text>
-                  </View>
-                  {/* 🔔 PUSH TOKEN STATUS */}
-                  <View style={{ flexDirection: "row", marginTop: 4 }}>
-                    <Text>Push:</Text>
-                    <Text
-                      style={{
-                        color: expoPushToken ? "green" : "red",
-                        marginLeft: 9,
-                      }}
-                    >
-                      {expoPushToken ? "✅ Ready" : "❌ Loading..."}
                     </Text>
                   </View>
                 </UserTextInfo>

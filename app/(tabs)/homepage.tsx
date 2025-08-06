@@ -147,7 +147,7 @@ const HomeScreen: React.FC = () => {
     try {
       console.log("📤 Registering push token for driver:", driverId);
 
-      const response = await fetch("https://api.thevanapp.com/api/pushtoken", {
+      const response = await fetch("https://api.thevanapp.com/api/push", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -3,6 +3,7 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform, Alert } from "react-native";
+import { supabase } from "@/infrastructure/db/supabase";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,24 +19,34 @@ export function usePushNotifications() {
   const [notification, setNotification] = useState(false);
   const [tokenError, setTokenError] = useState(null);
   const [tokenStatus, setTokenStatus] = useState("initializing");
+  const [driverId, setDriverId] = useState(null);
 
   const notificationListener = useRef();
   const responseListener = useRef();
 
-  const [driverId, setDriverId] = useState(null);
-
   useEffect(() => {
     const fetchUser = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      setDriverId(user.driverId);
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          console.error("❌ User fetch error:", userError);
+          return;
+        }
+
+        const id = user?.driverId || user?.id;
+        console.log("👤 Driver ID set:", id);
+        setDriverId(id);
+      } catch (error) {
+        console.error("❌ Error fetching user:", error);
+      }
     };
+
     fetchUser();
   }, []);
-
-  console.log("sriver", driverId);
 
   useEffect(() => {
     console.log("🚀 Starting push notification setup...");
@@ -48,8 +59,8 @@ export function usePushNotifications() {
         setTokenStatus("success");
         setTokenError(null);
 
-        if (token) {
-          sendTokenToBackend(token);
+        if (token && driverId) {
+          sendTokenToBackend(token, driverId);
         }
       })
       .catch((error) => {
@@ -85,7 +96,13 @@ export function usePushNotifications() {
       responseListener.current &&
         Notifications.removeNotificationSubscription(responseListener.current);
     };
-  }, []);
+  }, [driverId]);
+
+  useEffect(() => {
+    if (expoPushToken && driverId) {
+      sendTokenToBackend(expoPushToken, driverId);
+    }
+  }, [driverId, expoPushToken]);
 
   return {
     expoPushToken,
@@ -93,6 +110,7 @@ export function usePushNotifications() {
     channels,
     tokenError,
     tokenStatus,
+    driverId,
   };
 }
 
@@ -116,7 +134,6 @@ async function registerForPushNotificationsAsync() {
     });
   }
 
-  // 🔧 DEVELOPMENT MODE: Allow emulator testing
   const isDevelopment = __DEV__;
   const shouldAllowEmulator = isDevelopment;
 
@@ -149,7 +166,6 @@ async function registerForPushNotificationsAsync() {
     try {
       console.log("🔍 Looking for project ID...");
 
-      // Try multiple ways to get project ID
       const projectId =
         Constants?.expoConfig?.extra?.eas?.projectId ??
         Constants?.easConfig?.projectId ??
@@ -200,9 +216,40 @@ async function registerForPushNotificationsAsync() {
   return token;
 }
 
+// შესწორებული sendTokenToBackend ფუნქცია
+async function sendTokenToBackend(token, driverId) {
+  // driverId parameter-ად მიიღება
+  if (!driverId) {
+    console.error("❌ Driver ID not available, skipping token registration");
+    return;
+  }
+
+  try {
+    console.log("📤 Sending token to backend with driver ID:", driverId);
+
+    const response = await fetch("https://api.thevanapp.com/api/push", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        pushToken: token,
+        driverId: driverId,
+        platform: Platform.OS,
+        deviceName: Device.deviceName,
+        osVersion: Device.osVersion,
+      }),
+    });
+
+    const result = await response.json();
+    console.log("✅ Token registered to backend:", result);
+  } catch (error) {
+    console.error("❌ Error registering token:", error);
+  }
+}
+
 function handleIncomingNotification(notification) {
   const data = notification.request.content.data;
-
   console.log("Notification data:", data);
 
   if (data?.type === "new_order") {
@@ -215,27 +262,5 @@ function handleNotificationTap(response) {
 
   if (data?.type === "new_order") {
     console.log("Navigate to order:", data.orderId);
-  }
-}
-async function sendTokenToBackend(token) {
-  try {
-    const response = await fetch("https://api.thevanapp.com/api/pushtoken", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        pushToken: token,
-        driverId: "12342242",
-        platform: Platform.OS,
-        deviceName: Device.deviceName,
-        osVersion: Device.osVersion,
-      }),
-    });
-
-    const result = await response.json();
-    console.log("✅ Token registered to backend:", result);
-  } catch (error) {
-    console.error("❌ Error registering token:", error);
   }
 }

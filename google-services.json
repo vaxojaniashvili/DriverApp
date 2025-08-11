@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "991708575200",
+    "project_id": "thevanapp-a4a59",
+    "storage_bucket": "thevanapp-a4a59.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:991708575200:android:df4e92994d0277bd576785",
+        "android_client_info": {
+          "package_name": "com.ivexinio.thevanappdriverapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDPzHRUiN-me8EDuWG9whoGFCvonIS2L0M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

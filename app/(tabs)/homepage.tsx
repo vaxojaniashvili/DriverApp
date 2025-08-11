@@ -52,11 +52,6 @@ const HomeScreen: React.FC = () => {
 
   const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
 
-  // 🔥 ახალი state ორდერების მონიტორინგისთვის
-  const [knownOrderIds, setKnownOrderIds] = useState<Set<string>>(new Set());
-  const [isOrderCheckingActive, setIsOrderCheckingActive] = useState(false);
-  const orderCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -85,6 +80,7 @@ const HomeScreen: React.FC = () => {
   const [paramsProcessed, setParamsProcessed] = useState(false);
   const [fetchUserDataInProgress, setFetchUserDataInProgress] = useState(false);
 
+  // 🔔 PUSH NOTIFICATIONS HOOK
   const { expoPushToken, notification, tokenError, tokenStatus } =
     usePushNotifications();
 
@@ -118,175 +114,6 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  const checkForNewOrders = async () => {
-    if (!apiToken || userIndicator !== "active" || !userId) {
-      return;
-    }
-
-    try {
-      console.log("🔍 Checking for new orders...");
-
-      const response = await fetch("https://api.thevanapp.com/api/paidorders", {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        console.error("❌ Failed to fetch orders:", response.status);
-        return;
-      }
-
-      const ordersData = await response.json();
-
-      if (!Array.isArray(ordersData) || ordersData.length === 0) {
-        return;
-      }
-
-      const newOrders = ordersData.filter(
-        (order: any) =>
-          order.type === "new_order" &&
-          order.order_status === "PENDING" &&
-          !knownOrderIds.has(order.id)
-      );
-
-      if (newOrders.length > 0) {
-        console.log(`🆕 Found ${newOrders.length} new orders:`, newOrders);
-
-        setKnownOrderIds((prev) => {
-          const newSet = new Set(prev);
-          newOrders.forEach((order: any) => newSet.add(order.id));
-          return newSet;
-        });
-
-        for (const order of newOrders) {
-          await sendNewOrderNotification(order);
-          await showNewOrderAlert(order);
-        }
-
-        processOrders(ordersData);
-      }
-    } catch (error) {
-      console.error("❌ Error checking for new orders:", error);
-    }
-  };
-
-  const sendNewOrderNotification = async (order: any) => {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "🚐 New Order Available!",
-          body: `${order.pickup_name || "Unknown"} → ${
-            order.destination_name || "Unknown"
-          }\nPrice: ${order.price || "Unknown"}₾`,
-          data: {
-            type: "new_order",
-            orderId: order.id,
-            pickup: order.pickup_name,
-            destination: order.destination_name,
-            price: order.price,
-          },
-        },
-        trigger: null,
-      });
-
-      if (expoPushToken) {
-        const message = {
-          to: expoPushToken,
-          sound: "default",
-          title: "🚐 New Order Available!",
-          body: `${order.pickup_name || "Unknown"} → ${
-            order.destination_name || "Unknown"
-          }\nPrice: ${order.price || "Unknown"}₾`,
-          data: {
-            type: "new_order",
-            orderId: order.id,
-            pickup: order.pickup_name,
-            destination: order.destination_name,
-            price: order.price,
-          },
-          priority: "high",
-          channelId: "default",
-        };
-
-        await fetch("https://exp.host/--/api/v2/push/send", {
-          method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Accept-encoding": "gzip, deflate",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(message),
-        });
-      }
-
-      console.log("✅ New order notification sent for order:", order.id);
-    } catch (error) {
-      console.error("❌ Error sending new order notification:", error);
-    }
-  };
-
-  const showNewOrderAlert = async (order: any) => {
-    const pickup = order.pickup_name || "Unknown location";
-    const destination = order.destination_name || "Unknown destination";
-    const price = order.price || "Unknown";
-
-    Alert.alert(
-      "🚐 New Order Available!",
-      `Route: ${pickup} → ${destination}\nPrice: ${price}₾\n\nWould you like to accept this order?`,
-      [
-        {
-          text: "Decline",
-          style: "cancel",
-          onPress: () => {
-            console.log("❌ Order declined:", order.id);
-          },
-        },
-        {
-          text: "Accept",
-          style: "default",
-          onPress: () => {
-            console.log("✅ Order accepted:", order.id);
-            handleAccept(order.id);
-          },
-        },
-      ],
-      {
-        cancelable: false,
-      }
-    );
-  };
-
-  // 🔄 ორდერების მონიტორინგის დაწყება
-  const startOrderMonitoring = () => {
-    if (isOrderCheckingActive || !apiToken || userIndicator !== "active") {
-      return;
-    }
-
-    console.log("🚀 Starting order monitoring...");
-    setIsOrderCheckingActive(true);
-
-    // პირველი შემოწმება
-    checkForNewOrders();
-
-    // პერიოდული შემოწმება ყოველ 10 წამში
-    orderCheckIntervalRef.current = setInterval(() => {
-      checkForNewOrders();
-    }, 10000); // 10 seconds
-  };
-
-  // ⏹️ ორდერების მონიტორინგის შეჩერება
-  const stopOrderMonitoring = () => {
-    console.log("⏹️ Stopping order monitoring...");
-    setIsOrderCheckingActive(false);
-
-    if (orderCheckIntervalRef.current) {
-      clearInterval(orderCheckIntervalRef.current);
-      orderCheckIntervalRef.current = null;
-    }
-  };
-
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
@@ -295,7 +122,7 @@ const HomeScreen: React.FC = () => {
     loadSessionFromStorage();
   }, []);
 
-  // 🔔 HANDLE NOTIFICATION RECEIVED (refresh orders when new order notification comes)
+  // 🔔 HANDLE PUSH NOTIFICATION RECEIVED (Backend-იდან შემომავალი notification-ის დამუშავება)
   const [lastNotificationId, setLastNotificationId] = useState<string | null>(
     null
   );
@@ -306,41 +133,76 @@ const HomeScreen: React.FC = () => {
       typeof notification === "object" &&
       notification.request
     ) {
-      console.log("🔔 New notification in HomeScreen:", notification);
+      console.log("🔔 Received push notification from backend:", notification);
 
       const data = notification.request.content.data as any;
       const notificationId = notification.request.identifier;
 
-      // Prevent duplicate alerts for the same notification
-      if (data?.type === "new_order" && lastNotificationId !== notificationId) {
-        console.log("📋 New order notification received:", data.orderId);
-        setLastNotificationId(notificationId);
+      // თავიდან ავიცილოთ duplicate notifications
+      if (lastNotificationId === notificationId) {
+        return;
+      }
+      setLastNotificationId(notificationId);
+
+      if (data?.type === "new_order") {
+        console.log("📋 New order notification received from backend");
+
+        setTimeout(() => {
+          console.log(
+            "🔄 Auto-refreshing orders after backend notification..."
+          );
+          onRefresh();
+        }, 500);
 
         setTimeout(() => {
           Alert.alert(
-            "🚐 New order!",
-            `Order #${data.orderId}\n${data.pickup || "Unknown"} → ${
-              data.destination || "Unknown"
-            }\nprice: ${data.price || "Unknown"}`,
+            "🚐 ახალი ორდერი!",
+            "დაემატა ახალი ორდერი. გადახედეთ ხელმისაწვდომ ორდერებს.",
             [
               {
-                text: "Accept",
+                text: "OK",
                 onPress: () => {
-                  console.log("🔄 Refreshing orders after notification...");
-                  onRefresh(); // Refresh orders when user taps "View"
-                },
-              },
-              {
-                text: "Decline",
-                style: "cancel",
-                onPress: () => {
-                  console.log("User dismissed notification alert");
+                  console.log("User acknowledged new order notification");
                 },
               },
             ],
             { cancelable: true }
           );
-        }, 100);
+        }, 1000);
+      } else if (data?.type === "order_status_update") {
+        console.log("📊 Order status update notification:", data);
+        onRefresh();
+
+        if (data?.message) {
+          Alert.alert("📊 ორდერის სტატუსი", data.message, [{ text: "OK" }]);
+        }
+      }
+
+      // 💰 Payment notifications
+      else if (data?.type === "payment_received") {
+        console.log("💰 Payment notification:", data);
+        Alert.alert(
+          "💰 გადახდა მიღებულია",
+          `ორდერი #${data.orderId || "Unknown"}: ${data.amount || "Unknown"}₾`,
+          [{ text: "OK" }]
+        );
+      }
+
+      // 📢 General announcements
+      else if (data?.type === "announcement") {
+        console.log("📢 Announcement notification:", data);
+        Alert.alert(
+          data.title || "შეტყობინება",
+          data.message || "ახალი შეტყობინება",
+          [{ text: "OK" }]
+        );
+      }
+
+      // 🔔 Default notification handler
+      else {
+        console.log("🔔 General notification received:", data);
+        // ზოგადი notification-ისთვისაც refresh გავაკეთოთ
+        onRefresh();
       }
     }
   }, [notification, lastNotificationId]);
@@ -348,21 +210,10 @@ const HomeScreen: React.FC = () => {
   // 🔔 REGISTER PUSH TOKEN WHEN READY
   useEffect(() => {
     if (expoPushToken && userId && apiToken) {
-      console.log("✅ HomeScreen push token ready:", expoPushToken);
+      console.log("✅ Push token ready:", expoPushToken);
       sendTokenToBackend(expoPushToken, userId);
     }
   }, [expoPushToken, userId, apiToken]);
-
-  useEffect(() => {
-    if (userIndicator === "active" && apiToken && userId) {
-      startOrderMonitoring();
-    } else {
-      stopOrderMonitoring();
-    }
-    return () => {
-      stopOrderMonitoring();
-    };
-  }, [userIndicator, apiToken, userId]);
 
   useEffect(() => {
     if (
@@ -691,6 +542,7 @@ const HomeScreen: React.FC = () => {
   }, [userEmail, location, apiToken, userIndicator]);
 
   const onRefresh = useCallback(async () => {
+    setRefreshing(true);
     await fetchDriverDetails();
 
     if (!apiToken || userIndicator !== "active") {
@@ -705,6 +557,7 @@ const HomeScreen: React.FC = () => {
       } = await supabase.auth.getUser();
 
       if (userError) {
+        setRefreshing(false);
         return;
       }
 
@@ -931,6 +784,18 @@ const HomeScreen: React.FC = () => {
                       }}
                     >
                       {mode === "active" ? "Active" : "Inactive"}
+                    </Text>
+                  </View>
+                  {/* 🔔 Push notification სტატუსი */}
+                  <View style={{ flexDirection: "row", marginTop: 4 }}>
+                    <Text>Notifications:</Text>
+                    <Text
+                      style={{
+                        color: expoPushToken ? "green" : "orange",
+                        marginLeft: 9,
+                      }}
+                    >
+                      {expoPushToken ? "Ready" : "Setting up..."}
                     </Text>
                   </View>
                 </UserTextInfo>

@@ -51,6 +51,12 @@ const HomeScreen: React.FC = () => {
   const [driverDetails, setDriverDetails] = useState<any>(null);
 
   const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
+
+  // 🔥 ახალი state ორდერების მონიტორინგისთვის
+  const [knownOrderIds, setKnownOrderIds] = useState<Set<string>>(new Set());
+  const [isOrderCheckingActive, setIsOrderCheckingActive] = useState(false);
+  const orderCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -79,69 +85,8 @@ const HomeScreen: React.FC = () => {
   const [paramsProcessed, setParamsProcessed] = useState(false);
   const [fetchUserDataInProgress, setFetchUserDataInProgress] = useState(false);
 
-  // 🔔 PUSH NOTIFICATIONS HOOK
   const { expoPushToken, notification, tokenError, tokenStatus } =
     usePushNotifications();
-
-  // 🔔 TEST NOTIFICATION FUNCTIONS
-  const sendTestLocalNotification = async () => {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "🚐 new order!",
-        body: "Tbilisi → Batumi (Test Order)",
-        data: {
-          type: "new_order",
-          orderId: "TEST_123",
-          pickup: "Tbilisi",
-          destination: "Batumi",
-          price: "50€",
-        },
-      },
-      trigger: null,
-    });
-  };
-
-  const sendTestPushNotification = async () => {
-    if (!expoPushToken) {
-      Alert.alert("❌ Error", "Push token not ready yet");
-      return;
-    }
-
-    try {
-      const message = {
-        to: expoPushToken,
-        sound: "default",
-        title: "🚐 New order!",
-        body: "Tbilisi → Batumi (Test Push)",
-        data: {
-          type: "new_order",
-          orderId: "PUSH_TEST_456",
-          pickup: "Tbilisi",
-          destination: "Batumi",
-          price: "75€",
-        },
-        priority: "high",
-        channelId: "default",
-      };
-
-      const response = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Accept-encoding": "gzip, deflate",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(message),
-      });
-
-      const responseData = await response.json();
-      console.log("✅ Test push sent:", responseData);
-      Alert.alert("🌐 Test Push", "Push notification sent successfully!");
-    } catch (error) {
-      console.error("❌ Error sending test push:", error);
-      Alert.alert("❌ Error", "Failed to send push notification");
-    }
-  };
 
   const sendTokenToBackend = async (token: string, driverId: string) => {
     try {
@@ -170,6 +115,175 @@ const HomeScreen: React.FC = () => {
       }
     } catch (error) {
       console.error("❌ Token registration error:", error);
+    }
+  };
+
+  const checkForNewOrders = async () => {
+    if (!apiToken || userIndicator !== "active" || !userId) {
+      return;
+    }
+
+    try {
+      console.log("🔍 Checking for new orders...");
+
+      const response = await fetch("https://api.thevanapp.com/api/paidorders", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error("❌ Failed to fetch orders:", response.status);
+        return;
+      }
+
+      const ordersData = await response.json();
+
+      if (!Array.isArray(ordersData) || ordersData.length === 0) {
+        return;
+      }
+
+      const newOrders = ordersData.filter(
+        (order: any) =>
+          order.type === "new_order" &&
+          order.order_status === "PENDING" &&
+          !knownOrderIds.has(order.id)
+      );
+
+      if (newOrders.length > 0) {
+        console.log(`🆕 Found ${newOrders.length} new orders:`, newOrders);
+
+        setKnownOrderIds((prev) => {
+          const newSet = new Set(prev);
+          newOrders.forEach((order: any) => newSet.add(order.id));
+          return newSet;
+        });
+
+        for (const order of newOrders) {
+          await sendNewOrderNotification(order);
+          await showNewOrderAlert(order);
+        }
+
+        processOrders(ordersData);
+      }
+    } catch (error) {
+      console.error("❌ Error checking for new orders:", error);
+    }
+  };
+
+  const sendNewOrderNotification = async (order: any) => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🚐 New Order Available!",
+          body: `${order.pickup_name || "Unknown"} → ${
+            order.destination_name || "Unknown"
+          }\nPrice: ${order.price || "Unknown"}₾`,
+          data: {
+            type: "new_order",
+            orderId: order.id,
+            pickup: order.pickup_name,
+            destination: order.destination_name,
+            price: order.price,
+          },
+        },
+        trigger: null,
+      });
+
+      if (expoPushToken) {
+        const message = {
+          to: expoPushToken,
+          sound: "default",
+          title: "🚐 New Order Available!",
+          body: `${order.pickup_name || "Unknown"} → ${
+            order.destination_name || "Unknown"
+          }\nPrice: ${order.price || "Unknown"}₾`,
+          data: {
+            type: "new_order",
+            orderId: order.id,
+            pickup: order.pickup_name,
+            destination: order.destination_name,
+            price: order.price,
+          },
+          priority: "high",
+          channelId: "default",
+        };
+
+        await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Accept-encoding": "gzip, deflate",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(message),
+        });
+      }
+
+      console.log("✅ New order notification sent for order:", order.id);
+    } catch (error) {
+      console.error("❌ Error sending new order notification:", error);
+    }
+  };
+
+  const showNewOrderAlert = async (order: any) => {
+    const pickup = order.pickup_name || "Unknown location";
+    const destination = order.destination_name || "Unknown destination";
+    const price = order.price || "Unknown";
+
+    Alert.alert(
+      "🚐 New Order Available!",
+      `Route: ${pickup} → ${destination}\nPrice: ${price}₾\n\nWould you like to accept this order?`,
+      [
+        {
+          text: "Decline",
+          style: "cancel",
+          onPress: () => {
+            console.log("❌ Order declined:", order.id);
+          },
+        },
+        {
+          text: "Accept",
+          style: "default",
+          onPress: () => {
+            console.log("✅ Order accepted:", order.id);
+            handleAccept(order.id);
+          },
+        },
+      ],
+      {
+        cancelable: false,
+      }
+    );
+  };
+
+  // 🔄 ორდერების მონიტორინგის დაწყება
+  const startOrderMonitoring = () => {
+    if (isOrderCheckingActive || !apiToken || userIndicator !== "active") {
+      return;
+    }
+
+    console.log("🚀 Starting order monitoring...");
+    setIsOrderCheckingActive(true);
+
+    // პირველი შემოწმება
+    checkForNewOrders();
+
+    // პერიოდული შემოწმება ყოველ 10 წამში
+    orderCheckIntervalRef.current = setInterval(() => {
+      checkForNewOrders();
+    }, 10000); // 10 seconds
+  };
+
+  // ⏹️ ორდერების მონიტორინგის შეჩერება
+  const stopOrderMonitoring = () => {
+    console.log("⏹️ Stopping order monitoring...");
+    setIsOrderCheckingActive(false);
+
+    if (orderCheckIntervalRef.current) {
+      clearInterval(orderCheckIntervalRef.current);
+      orderCheckIntervalRef.current = null;
     }
   };
 
@@ -202,7 +316,6 @@ const HomeScreen: React.FC = () => {
         console.log("📋 New order notification received:", data.orderId);
         setLastNotificationId(notificationId);
 
-        // Show in-app alert with better iOS compatibility
         setTimeout(() => {
           Alert.alert(
             "🚐 New order!",
@@ -239,6 +352,17 @@ const HomeScreen: React.FC = () => {
       sendTokenToBackend(expoPushToken, userId);
     }
   }, [expoPushToken, userId, apiToken]);
+
+  useEffect(() => {
+    if (userIndicator === "active" && apiToken && userId) {
+      startOrderMonitoring();
+    } else {
+      stopOrderMonitoring();
+    }
+    return () => {
+      stopOrderMonitoring();
+    };
+  }, [userIndicator, apiToken, userId]);
 
   useEffect(() => {
     if (
@@ -830,45 +954,6 @@ const HomeScreen: React.FC = () => {
                 )}
               </UserDetailsSection>
 
-              {__DEV__ && userIndicator === "active" && (
-                <TestNotificationSection>
-                  <TestSectionTitle>
-                    🧪 Push Notification Tests
-                  </TestSectionTitle>
-
-                  <TestButtonsContainer>
-                    <TestButton onPress={sendTestLocalNotification}>
-                      <TestButtonText>📱 Test Local</TestButtonText>
-                    </TestButton>
-
-                    <TestButton
-                      onPress={sendTestPushNotification}
-                      disabled={!expoPushToken}
-                      style={{ opacity: expoPushToken ? 1 : 0.5 }}
-                    >
-                      <TestButtonText>🌐 Test Push</TestButtonText>
-                    </TestButton>
-                  </TestButtonsContainer>
-
-                  <TokenDisplay>
-                    <Text style={{ fontSize: 10, color: "#666" }}>
-                      Status: {tokenStatus}
-                    </Text>
-                    <Text style={{ fontSize: 10, color: "#666" }}>
-                      Token:{" "}
-                      {expoPushToken
-                        ? expoPushToken.substring(0, 25) + "..."
-                        : "Loading..."}
-                    </Text>
-                    {tokenError && (
-                      <Text style={{ fontSize: 10, color: "red" }}>
-                        Error: {tokenError}
-                      </Text>
-                    )}
-                  </TokenDisplay>
-                </TestNotificationSection>
-              )}
-
               {userIndicator !== "active" && (
                 <>
                   <VerificationAlert>
@@ -1206,52 +1291,6 @@ const InfoText = styled.Text`
   color: #333333;
   font-weight: 500;
   flex: 1;
-`;
-
-// 🔔 TEST NOTIFICATION STYLED COMPONENTS
-const TestNotificationSection = styled.View`
-  background-color: #f8f9fa;
-  padding: 16px;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  border-width: 1px;
-  border-color: #e9ecef;
-`;
-
-const TestSectionTitle = styled.Text`
-  font-size: 14px;
-  font-weight: 700;
-  color: ${DriverModeColors.dark};
-  margin-bottom: 8px;
-`;
-
-const TestButtonsContainer = styled.View`
-  flex-direction: row;
-  gap: 8px;
-  margin-bottom: 8px;
-`;
-
-const TestButton = styled.TouchableOpacity`
-  flex: 1;
-  background-color: #007bff;
-  padding: 10px 16px;
-  border-radius: 8px;
-  align-items: center;
-  justify-content: center;
-`;
-
-const TestButtonText = styled.Text`
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-`;
-
-const TokenDisplay = styled.View`
-  background-color: #ffffff;
-  padding: 8px;
-  border-radius: 6px;
-  border-width: 1px;
-  border-color: #dee2e6;
 `;
 
 const VerificationAlert = styled.View`

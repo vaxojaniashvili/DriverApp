@@ -1,4 +1,6 @@
 node_modules/
+AuthKey_HDFG83AZ25.p8/
+AuthKey_HDFG83AZ25/
 .expo/
 dist/
 npm-debug.*

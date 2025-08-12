@@ -36,6 +36,7 @@ import PickupRadiusSelector from "@/components/homepage/pickup-radius/PickupRadi
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import Icon from "react-native-vector-icons/FontAwesome";
 
 const HomeScreen: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>("");
@@ -53,6 +54,7 @@ const HomeScreen: React.FC = () => {
 
   const [userIndicator, setUserIndicator] = useState<string | null>(null);
   const [driverDetails, setDriverDetails] = useState<any>(null);
+
   const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
 
   const router = useRouter();
@@ -74,6 +76,7 @@ const HomeScreen: React.FC = () => {
 
   const [location, setLocation] = useState<LocationData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const [locationSendError, setLocationSendError] = useState<string | null>(
     null
   );
@@ -95,12 +98,281 @@ const HomeScreen: React.FC = () => {
   );
   const [notificationQueue, setNotificationQueue] = useState<any[]>([]);
 
+  // 🧪 DEBUG STATE
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [permissionStatus, setPermissionStatus] = useState<string>("unknown");
+  const [notificationChannels, setNotificationChannels] = useState<any[]>([]);
+
+  // 🧪 ADD DEBUG LOG FUNCTION
+  const addDebugLog = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logMessage = `[${timestamp}] ${message}`;
+    console.log(`🔍 DEBUG: ${logMessage}`);
+    setDebugLogs((prev) => [logMessage, ...prev.slice(0, 20)]); // Keep last 20 logs
+  };
+
+  // 🧪 COMPREHENSIVE DEBUGGING FUNCTIONS
+  const debugNotificationSystem = async () => {
+    addDebugLog("🔍 Starting comprehensive notification debug...");
+
+    try {
+      // 1. შევამოწმოთ device info
+      const deviceInfo = {
+        isDevice: Device.isDevice,
+        deviceName: Device.deviceName,
+        platform: Platform.OS,
+        osVersion: Device.osVersion,
+        isDevelopment: __DEV__,
+      };
+      addDebugLog(`📱 Device Info: ${JSON.stringify(deviceInfo)}`);
+
+      // 2. შევამოწმოთ permissions
+      const permissions = await Notifications.getPermissionsAsync();
+      setPermissionStatus(permissions.status);
+      addDebugLog(`🔐 Current Permissions: ${JSON.stringify(permissions)}`);
+
+      // 3. შევამოწმოთ push token
+      const tokenInfo = {
+        hasToken: !!expoPushToken,
+        tokenStatus,
+        tokenError,
+        tokenPreview: expoPushToken
+          ? `${expoPushToken.substring(0, 20)}...`
+          : "NO TOKEN",
+      };
+      addDebugLog(`🔑 Push Token Info: ${JSON.stringify(tokenInfo)}`);
+
+      // 4. შევამოწმოთ notification channels (Android)
+      if (Platform.OS === "android") {
+        const channels = await Notifications.getNotificationChannelsAsync();
+        setNotificationChannels(channels);
+        addDebugLog(
+          `📢 Android Channels: ${JSON.stringify(
+            channels.map((c) => ({ id: c.id, importance: c.importance }))
+          )}`
+        );
+      }
+
+      // 5. შევამოწმოთ notification settings
+      const settings = await Notifications.getNotificationSettingsAsync();
+      addDebugLog(`⚙️ Notification Settings: ${JSON.stringify(settings)}`);
+
+      // 6. შევამოწმოთ app state
+      addDebugLog(`📱 App State: ${appState}`);
+
+      // 7. შევამოწმოთ user data
+      addDebugLog(
+        `👤 User Data: userId=${userId}, apiToken=${!!apiToken}, userEmail=${userEmail}`
+      );
+
+      // Alert-ით ვაჩვენოთ debug info
+      Alert.alert(
+        "🔍 Debug Info",
+        `Device: ${
+          Device.isDevice ? "✅ Real Device" : "❌ Simulator"
+        }\nToken: ${
+          expoPushToken ? "✅ Available" : "❌ Missing"
+        }\nStatus: ${tokenStatus}\nPermissions: ${
+          permissions.status
+        }\nPlatform: ${Platform.OS}\nApp State: ${appState}`,
+        [{ text: "Check Console for Details" }]
+      );
+    } catch (error) {
+      addDebugLog(`❌ Debug system error: ${error.message}`);
+      Alert.alert("❌ Debug Error", error.message);
+    }
+  };
+
+  // 🧪 LOCAL NOTIFICATION TEST
+  const sendLocalTestNotification = async () => {
+    try {
+      addDebugLog("📱 Starting local notification test...");
+
+      const result = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "📱 Local Test",
+          body: "ეს არის local notification test! თუ ეს დაინახეთ, local notifications მუშაობს!",
+          data: {
+            type: "local_test",
+            timestamp: new Date().toISOString(),
+          },
+        },
+        trigger: { seconds: 2 }, // 2 წამში გამოაგზავნოს
+      });
+
+      addDebugLog(`📱 Local notification scheduled with ID: ${result}`);
+
+      Alert.alert(
+        "📱 Local Test Scheduled",
+        "Local notification დაშედულდა 2 წამში. თუ ეს მოვიდა, permissions OK-ა! Check console for logs.",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      addDebugLog(`❌ Local notification error: ${error.message}`);
+      Alert.alert("❌ Local Test Error", error.message);
+    }
+  };
+
+  // 🔧 IMPROVED PERMISSION REQUEST
+  const requestPermissionsAgain = async () => {
+    try {
+      addDebugLog("🔐 Re-requesting permissions...");
+
+      const { status, ios, android } =
+        await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+            allowDisplayInCarPlay: true,
+            allowCriticalAlerts: true,
+            allowProvisional: true,
+            allowAnnouncements: true,
+          },
+          android: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+          },
+        });
+
+      setPermissionStatus(status);
+      addDebugLog(`🔐 New permission status: ${status}`);
+      addDebugLog(`🔐 iOS permissions: ${JSON.stringify(ios)}`);
+      addDebugLog(`🔐 Android permissions: ${JSON.stringify(android)}`);
+
+      if (status === "granted") {
+        Alert.alert(
+          "✅ Permissions Granted",
+          "თქვენ მისცით ნოტიფიკაციების ნებართვა!"
+        );
+      } else {
+        Alert.alert(
+          "❌ Permissions Denied",
+          "ნოტიფიკაციების ნებართვა არ არის მიცემული. გადადით Settings-ში და ჩართეთ:",
+          [
+            { text: "Cancel" },
+            {
+              text: "Open Settings",
+              onPress: () => Notifications.openSettingsAsync(),
+            },
+          ]
+        );
+      }
+    } catch (error) {
+      addDebugLog(`❌ Permission request error: ${error.message}`);
+      Alert.alert("❌ Permission Error", error.message);
+    }
+  };
+
+  // 🧪 STEP-BY-STEP PUSH TEST
+  const sendStepByStepTest = async () => {
+    if (!expoPushToken) {
+      addDebugLog("❌ No push token available for testing");
+      Alert.alert(
+        "❌ შეცდომა",
+        "Push token არ არის მზად. გაუშვით Debug System Info გადასაცადებლად."
+      );
+      return;
+    }
+
+    try {
+      addDebugLog(`📤 Starting step-by-step push notification test...`);
+      addDebugLog(`📤 Using token: ${expoPushToken.substring(0, 30)}...`);
+
+      // Step 1: Create message
+      const message = {
+        to: expoPushToken,
+        title: "🧪 Step Test",
+        body: "Step-by-step test notification - მუშაობს?",
+        sound: "default",
+        data: {
+          type: "step_test",
+          timestamp: new Date().toISOString(),
+          step: "manual_test",
+        },
+      };
+
+      addDebugLog(`📤 Message created: ${JSON.stringify(message, null, 2)}`);
+
+      // Step 2: Send request
+      addDebugLog("📤 Sending HTTP request to Expo push service...");
+
+      const response = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(message),
+      });
+
+      addDebugLog(`📤 Response status: ${response.status}`);
+      addDebugLog(
+        `📤 Response headers: ${JSON.stringify(
+          Object.fromEntries(response.headers.entries())
+        )}`
+      );
+
+      // Step 3: Parse response
+      const responseText = await response.text();
+      addDebugLog(`📤 Raw response: ${responseText}`);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+        addDebugLog(`📤 Parsed result: ${JSON.stringify(result, null, 2)}`);
+      } catch (parseError) {
+        addDebugLog(`❌ JSON parse error: ${parseError.message}`);
+        result = { error: "Invalid JSON response", response: responseText };
+      }
+
+      // Step 4: Analyze result
+      if (response.ok) {
+        if (result.data) {
+          addDebugLog(`✅ Push service accepted: ${result.data.status}`);
+
+          Alert.alert(
+            "✅ Sent Successfully",
+            `Status: ${result.data.status}\nMessage: ${
+              result.data.message || "N/A"
+            }\n\n🔍 Next steps:\n1. App background-ში გადაიყვანეთ\n2. დაელოდეთ 5-10 წამი\n3. Check logs in console`,
+            [{ text: "OK" }]
+          );
+        } else {
+          addDebugLog(
+            `⚠️ Unexpected response format: ${JSON.stringify(result)}`
+          );
+        }
+      } else {
+        addDebugLog(`❌ HTTP error: ${response.status}`);
+        Alert.alert(
+          "❌ HTTP Error",
+          `Status: ${response.status}\nResponse: ${responseText}`
+        );
+      }
+    } catch (error) {
+      addDebugLog(`❌ Network error: ${error.message}`);
+      Alert.alert("❌ Network Error", error.message);
+    }
+  };
+
+  // 🧪 CLEAR DEBUG LOGS
+  const clearDebugLogs = () => {
+    setDebugLogs([]);
+    addDebugLog("Debug logs cleared");
+  };
+
   // 📱 APP STATE LISTENER
   useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
+      addDebugLog(`📱 App state changed from ${appState} to ${nextAppState}`);
+
       if (appState.match(/inactive|background/) && nextAppState === "active") {
+        addDebugLog("📱 App has come to the foreground!");
         checkPendingNotifications();
       }
+
       setAppState(nextAppState);
     };
 
@@ -116,17 +388,26 @@ const HomeScreen: React.FC = () => {
     try {
       const pendingNotifications =
         await Notifications.getPresentedNotificationsAsync();
+      addDebugLog(`📨 Pending notifications: ${pendingNotifications.length}`);
+
       if (pendingNotifications.length > 0) {
-        onRefresh();
+        addDebugLog("🔄 Processing pending notifications...");
+        onRefresh(); // refresh orders
       }
     } catch (error) {
-      console.error("Error checking pending notifications:", error);
+      addDebugLog(`❌ Error checking pending notifications: ${error.message}`);
     }
   };
 
   // 🔔 PROCESS NOTIFICATIONS BY TYPE
   const processNotificationByType = (data: any, notification: any) => {
     const notificationType = data?.type || "general";
+
+    addDebugLog(
+      `🏷️ Processing ${notificationType} notification with data: ${JSON.stringify(
+        data
+      )}`
+    );
 
     switch (notificationType) {
       case "new_order":
@@ -154,10 +435,15 @@ const HomeScreen: React.FC = () => {
 
   // 📋 NEW ORDER NOTIFICATION
   const handleNewOrderNotification = (data: any, notification: any) => {
+    addDebugLog("📋 Handling new order notification");
+
+    // Auto-refresh orders after a short delay
     setTimeout(() => {
+      addDebugLog("🔄 Auto-refreshing orders for new order...");
       onRefresh();
     }, 500);
 
+    // Show alert after refresh
     setTimeout(() => {
       Alert.alert(
         "🚐 ახალი ორდერი!",
@@ -168,6 +454,7 @@ const HomeScreen: React.FC = () => {
           {
             text: "ნახვა",
             onPress: () => {
+              addDebugLog("User wants to view new order");
               onRefresh();
             },
           },
@@ -183,7 +470,9 @@ const HomeScreen: React.FC = () => {
 
   // 📊 ORDER STATUS UPDATE NOTIFICATION
   const handleOrderStatusNotification = (data: any, notification: any) => {
-    onRefresh();
+    addDebugLog("📊 Handling order status update");
+
+    onRefresh(); // Refresh to get updated status
 
     if (data?.message || notification.request.content.body) {
       Alert.alert(
@@ -196,6 +485,8 @@ const HomeScreen: React.FC = () => {
 
   // 💰 PAYMENT NOTIFICATION
   const handlePaymentNotification = (data: any, notification: any) => {
+    addDebugLog("💰 Handling payment notification");
+
     const amount = data.amount || "Unknown";
     const orderId = data.orderId || "Unknown";
 
@@ -208,7 +499,7 @@ const HomeScreen: React.FC = () => {
         {
           text: "დეტალების ნახვა",
           onPress: () => {
-            // Navigate to payment/earnings section
+            addDebugLog("User wants to view payment details");
           },
         },
         {
@@ -221,6 +512,8 @@ const HomeScreen: React.FC = () => {
 
   // 🧪 TEST NOTIFICATION HANDLER
   const handleTestNotification = (data: any, notification: any) => {
+    addDebugLog(`🧪 Handling test notification: ${data.type}`);
+
     const isManualTest = data.type === "manual_test";
     const isStepTest = data.type === "step_test";
 
@@ -233,7 +526,7 @@ const HomeScreen: React.FC = () => {
           : "🧪 Test Success!",
         `${
           isStepTest ? "Step test" : isManualTest ? "Manual test" : "Test"
-        } notification received! ✅ Notifications are working! 🎉`,
+        } notification received! ✅ Notifications are working! 🎉\n\nCheck console logs for details.`,
         [{ text: "Awesome! 🚀" }]
       );
     }, 500);
@@ -241,6 +534,8 @@ const HomeScreen: React.FC = () => {
 
   // 📢 ANNOUNCEMENT NOTIFICATION
   const handleAnnouncementNotification = (data: any, notification: any) => {
+    addDebugLog("📢 Handling announcement");
+
     Alert.alert(
       data.title || notification.request.content.title || "შეტყობინება",
       data.message || notification.request.content.body || "ახალი შეტყობინება",
@@ -250,8 +545,12 @@ const HomeScreen: React.FC = () => {
 
   // 🔔 GENERAL NOTIFICATION
   const handleGeneralNotification = (data: any, notification: any) => {
+    addDebugLog("🔔 Handling general notification");
+
+    // Always refresh for any notification
     onRefresh();
 
+    // Show notification if it has content
     if (
       notification.request.content.title ||
       notification.request.content.body
@@ -264,7 +563,7 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  // 🔔 NOTIFICATION HANDLING
+  // 🔔 IMPROVED NOTIFICATION HANDLING
   useEffect(() => {
     if (
       !notification ||
@@ -277,26 +576,40 @@ const HomeScreen: React.FC = () => {
     const notificationId = notification.request.identifier;
     const data = notification.request.content.data as any;
 
-    // Prevent duplicate notifications
+    addDebugLog(
+      `🔔 Processing notification: ID=${notificationId}, Type=${data?.type}, Title=${notification.request.content.title}`
+    );
+
+    // თავიდან ავიცილოთ duplicate notifications
     if (lastNotificationId === notificationId) {
+      addDebugLog("🔄 Duplicate notification ignored");
       return;
     }
 
     setLastNotificationId(notificationId);
+
+    // Add to notification queue for processing
     setNotificationQueue((prev) => [
       ...prev,
       { notification, timestamp: Date.now() },
     ]);
+
+    // Process notification based on type
     processNotificationByType(data, notification);
   }, [notification]);
 
-  // 🔔 REGISTER PUSH TOKEN
+  // 🔔 REGISTER PUSH TOKEN WITH BETTER ERROR HANDLING
   const sendTokenToBackend = async (token: string, driverId: string) => {
     if (!token || !driverId) {
+      addDebugLog("❌ Missing token or driverId for registration");
       return;
     }
 
     try {
+      addDebugLog(
+        `📤 Registering push token: driverId=${driverId}, platform=${Platform.OS}`
+      );
+
       const response = await fetch("https://api.thevanapp.com/api/push", {
         method: "POST",
         headers: {
@@ -319,22 +632,30 @@ const HomeScreen: React.FC = () => {
       }
 
       const result = await response.json();
-      console.log("Push token registered successfully");
+      addDebugLog(
+        `✅ Push token registered successfully: ${JSON.stringify(result)}`
+      );
     } catch (error) {
-      console.error("Token registration failed:", error.message);
+      addDebugLog(`❌ Token registration failed: ${error.message}`);
     }
   };
 
   // 🔔 REGISTER TOKEN WHEN READY
   useEffect(() => {
     if (expoPushToken && userId && apiToken) {
+      addDebugLog("✅ All requirements met for token registration");
       sendTokenToBackend(expoPushToken, userId);
+    } else {
+      addDebugLog(
+        `⏳ Waiting for token registration: hasToken=${!!expoPushToken}, hasUserId=${!!userId}, hasApiToken=${!!apiToken}`
+      );
     }
   }, [expoPushToken, userId, apiToken, tokenStatus]);
 
   // 🔔 TOKEN ERROR HANDLING
   useEffect(() => {
     if (tokenError) {
+      addDebugLog(`❌ Push token error: ${tokenError}`);
       Alert.alert(
         "ნოტიფიკაციების პრობლემა",
         `შეცდომა: ${tokenError}\n\nგთხოვთ დარეწმუნდეთ რომ ნოტიფიკაციები ჩართულია`,
@@ -342,6 +663,11 @@ const HomeScreen: React.FC = () => {
       );
     }
   }, [tokenError]);
+
+  // Initialize debug logging
+  useEffect(() => {
+    addDebugLog("🚀 HomeScreen initialized");
+  }, []);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -391,6 +717,7 @@ const HomeScreen: React.FC = () => {
     ])
   );
 
+  // Reset status update flag when user changes
   useEffect(() => {
     if (storeUser?.id) {
       setStatusUpdateCompleted(false);
@@ -428,9 +755,7 @@ const HomeScreen: React.FC = () => {
           id: driverInfo.id,
         } as DriverData);
       }
-    } catch (error) {
-      console.error("Error fetching driver details:", error);
-    }
+    } catch (error) {}
   };
 
   const fetchUserData = async () => {
@@ -454,6 +779,7 @@ const HomeScreen: React.FC = () => {
             setUserEmail(user.email || user.user_metadata.email || "");
             setPhoneNumber(user.phone || user.user_metadata.phone || "");
 
+            // Fetch user status
             const status = user.user_metadata?.status;
             if (status === "active" || status === "complete") {
               // Stay on homepage
@@ -462,9 +788,7 @@ const HomeScreen: React.FC = () => {
               return;
             }
           }
-        } catch (parseError) {
-          console.error("Parse error:", parseError);
-        }
+        } catch (parseError) {}
       }
 
       let session = storeSession;
@@ -523,7 +847,6 @@ const HomeScreen: React.FC = () => {
       setUserId(user?.id as any);
       await fetchDriverDetails();
     } catch (error) {
-      console.error("Error fetching user data:", error);
     } finally {
       setFetchUserDataInProgress(false);
     }
@@ -777,9 +1100,7 @@ const HomeScreen: React.FC = () => {
           if (userError || !user) {
             return;
           }
-        } catch (error) {
-          console.error("Error refreshing user data:", error);
-        }
+        } catch (error) {}
       };
 
       refreshUserData().then(() => {
@@ -810,15 +1131,14 @@ const HomeScreen: React.FC = () => {
       destination_name: order.destination_name || "",
       pickup_name: order.pickup_name || "",
     }));
-
     const ongoing = processedOrders.filter(
       (order) =>
         order.order_status !== "PENDING" &&
         order.order_status !== "COMPLETED" &&
         order.order_status !== "CANCELLED"
     );
-
     const active = ongoing.length > 0 ? ongoing[0] : null;
+
     const pendingOrders = processedOrders.filter(
       (order) => order.order_status === "PENDING"
     );
@@ -864,9 +1184,7 @@ const HomeScreen: React.FC = () => {
       }
 
       onRefresh();
-    } catch (error) {
-      console.error("Error accepting order:", error);
-    }
+    } catch (error) {}
   };
 
   return (
@@ -912,7 +1230,7 @@ const HomeScreen: React.FC = () => {
                       Status: <Text style={{ color: "green" }}>Completed</Text>
                     </Text>
                   )}
-                  <View style={{ flexDirection: "row", marginTop: 2 }}>
+                  <View style={{ flexDirection: "row" }}>
                     <Text>Driver:</Text>
                     <Text
                       style={{
@@ -952,7 +1270,11 @@ const HomeScreen: React.FC = () => {
               <View style={styles.userDetailsSection}>
                 <View style={styles.infoCard}>
                   <View style={styles.infoIcon}>
-                    <Text>{selectedCountryFlag}</Text>
+                    {selectedCountryFlag ? (
+                      <Text>{selectedCountryFlag}</Text>
+                    ) : (
+                      <Icon name="phone" size={20} color="green" />
+                    )}
                   </View>
                   <Text style={styles.infoText}>
                     {`+${phoneNumber}` || "No phone number"}
@@ -1082,6 +1404,71 @@ const HomeScreen: React.FC = () => {
               )}
             </View>
           </View>
+
+          {/* 🧪 COMPREHENSIVE DEBUG SECTION */}
+          {__DEV__ && (
+            <View style={styles.debugSection}>
+              <Text style={styles.debugSectionTitle}>
+                🔍 Debug & Testing Tools
+              </Text>
+
+              <View style={styles.debugButtonRow}>
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={debugNotificationSystem}
+                >
+                  <MaterialIcons name="bug-report" size={16} color="#FFF" />
+                  <Text style={styles.debugButtonText}>System Info</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.localTestButton}
+                  onPress={sendLocalTestNotification}
+                >
+                  <MaterialIcons name="phone-android" size={16} color="#FFF" />
+                  <Text style={styles.debugButtonText}>Local Test</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.debugButtonRow}>
+                <TouchableOpacity
+                  style={styles.permissionButton}
+                  onPress={requestPermissionsAgain}
+                >
+                  <MaterialIcons name="security" size={16} color="#FFF" />
+                  <Text style={styles.debugButtonText}>Permissions</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.stepTestButton}
+                  onPress={sendStepByStepTest}
+                >
+                  <MaterialIcons name="send" size={16} color="#FFF" />
+                  <Text style={styles.debugButtonText}>Step Test</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.clearLogsButton}
+                onPress={clearDebugLogs}
+              >
+                <MaterialIcons name="clear" size={16} color="#FFF" />
+                <Text style={styles.debugButtonText}>Clear Logs</Text>
+              </TouchableOpacity>
+
+              <View style={styles.debugInfo}>
+                <Text style={styles.debugInfoText}>
+                  Token: {expoPushToken ? "✅" : "❌"} | Status: {tokenStatus}
+                </Text>
+                <Text style={styles.debugInfoText}>
+                  Permissions: {permissionStatus} | App: {appState}
+                </Text>
+                <Text style={styles.debugInfoText}>
+                  Queue: {notificationQueue.length} | Logs: {debugLogs.length}
+                </Text>
+              </View>
+            </View>
+          )}
 
           {userIndicator === "active" && (
             <>
@@ -1424,6 +1811,118 @@ const styles = StyleSheet.create({
     height: Platform.OS === "android" ? 250 : 290,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
+  },
+
+  // 🧪 DEBUG STYLES
+  debugSection: {
+    width: "100%",
+    padding: 16,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
+  debugSectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 12,
+    color: "#333",
+    textAlign: "center",
+  },
+  debugButtonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  debugButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#6c757d",
+    padding: 10,
+    borderRadius: 6,
+    flex: 0.48,
+  },
+  localTestButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#28a745",
+    padding: 10,
+    borderRadius: 6,
+    flex: 0.48,
+  },
+  permissionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ffc107",
+    padding: 10,
+    borderRadius: 6,
+    flex: 0.48,
+  },
+  stepTestButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#007bff",
+    padding: 10,
+    borderRadius: 6,
+    flex: 0.48,
+  },
+  clearLogsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#dc3545",
+    padding: 10,
+    borderRadius: 6,
+    marginBottom: 12,
+  },
+  debugButtonText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "500",
+    marginLeft: 6,
+  },
+  debugInfo: {
+    backgroundColor: "#ffffff",
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#dee2e6",
+    marginBottom: 12,
+  },
+  debugInfoText: {
+    fontSize: 11,
+    color: "#6c757d",
+    marginBottom: 2,
+  },
+  debugLogsContainer: {
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#dee2e6",
+    maxHeight: 200,
+  },
+  debugLogsTitle: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#333",
+    padding: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#dee2e6",
+  },
+  debugLogsScroll: {
+    maxHeight: 160,
+  },
+  debugLogItem: {
+    fontSize: 10,
+    color: "#495057",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
 });
 

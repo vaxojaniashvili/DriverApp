@@ -41,8 +41,10 @@ export default function DriverSignUp() {
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  // Session management - ამოღებული tempSession logic
+  // Session management
   const [isRegistrationComplete, setIsRegistrationComplete] = useState(false);
+  const [isProcessingRegistration, setIsProcessingRegistration] =
+    useState(false);
 
   // Current registration step
   const [currentStep, setCurrentStep] = useState(1);
@@ -68,8 +70,93 @@ export default function DriverSignUp() {
 
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
+  // ✅ VALIDATION FUNCTIONS
+  const validatePassword = (password: string) => {
+    if (!password) {
+      setPasswordError("Password is required");
+      return false;
+    } else if (password.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return false;
+    } else if (password !== confirmPassword && confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
+  const validateConfirmPassword = (confirmPass: string) => {
+    if (!confirmPass) {
+      setPasswordError("Please confirm your password");
+      return false;
+    } else if (password !== confirmPass) {
+      setPasswordError("Passwords do not match");
+      return false;
+    }
+    setPasswordError("");
+    return true;
+  };
+
+  const validateName = (name: string) => {
+    if (!name) {
+      setNameError("Name is required");
+      return false;
+    } else if (name.length < 2) {
+      setNameError("Name must be at least 2 characters");
+      return false;
+    }
+    setNameError("");
+    return true;
+  };
+
+  const validateSurname = (surname: string) => {
+    if (!surname) {
+      setSurnameError("Surname is required");
+      return false;
+    } else if (surname.length < 2) {
+      setSurnameError("Surname must be at least 2 characters");
+      return false;
+    }
+    setSurnameError("");
+    return true;
+  };
+
+  const validatePhoneNumber = (phone: string) => {
+    if (contactMethod !== "phone") {
+      setPhoneNumberError("");
+      return true;
+    }
+
+    if (!phone) {
+      setPhoneNumberError("Phone number is required");
+      return false;
+    }
+
+    const cleanPhone = phone.replace(/[^\d+]/g, "");
+    const phoneRegex = /^[+]?[\d]{8,15}$/;
+
+    if (!phoneRegex.test(cleanPhone)) {
+      setPhoneNumberError("Invalid phone number format (8-15 digits)");
+      return false;
+    }
+
+    const digitsOnly = cleanPhone.replace(/[^\d]/g, "");
+    if (digitsOnly.length < 8) {
+      setPhoneNumberError("Phone number too short (minimum 8 digits)");
+      return false;
+    }
+
+    if (digitsOnly.length > 15) {
+      setPhoneNumberError("Phone number too long (maximum 15 digits)");
+      return false;
+    }
+
+    setPhoneNumberError("");
+    return true;
+  };
+
   useEffect(() => {
-    // Load session from AsyncStorage on component mount
     const load = async () => {
       await loadSessionFromStorage();
       setIsAuthLoading(false);
@@ -77,34 +164,31 @@ export default function DriverSignUp() {
     load();
   }, []);
 
-  // Check if user is already authenticated and redirect to driverVerification
+  // ✅ SIMPLIFIED session check - No automatic navigation
   useEffect(() => {
     if (isAuthLoading) return;
     const checkExistingSession = async () => {
       const currentState = useAuthStore.getState();
-      let indicator = null;
       let status = null;
       if (currentState.user) {
-        indicator =
-          currentState.user.indicator ||
-          currentState.user.user_metadata?.indicator;
         status =
           currentState.user.status || currentState.user.user_metadata?.status;
       }
-      console.log("[signUp] session:", currentState.session);
-      console.log("[signUp] user:", currentState.user);
+
+      console.log("[signUp] session:", !!currentState.session);
+      console.log("[signUp] user:", !!currentState.user);
       console.log("[signUp] status:", status);
-      // Only redirect if BOTH session and user exist
-      if (currentState.session && currentState.user) {
-        if (status === "active" || status === "complete") {
-          console.log("[signUp] Redirecting to homepage");
-          router.replace("/(tabs)/homepage");
-        } else {
-          console.log("[signUp] Redirecting to driverVerification");
-          router.replace("/driverVerification");
-        }
+
+      // Only redirect if BOTH session and user exist AND status is active
+      if (
+        currentState.session &&
+        currentState.user &&
+        (status === "active" || status === "complete")
+      ) {
+        console.log("[signUp] Redirecting to homepage");
+        router.replace("/(tabs)/homepage");
       } else {
-        console.log("[signUp] No session or user, staying on signUp");
+        console.log("[signUp] Staying on signUp");
       }
     };
     checkExistingSession();
@@ -125,87 +209,12 @@ export default function DriverSignUp() {
     }
   }, [timer, isVerifying]);
 
-  // Session listener - სრულიად გამორთული ვერიფიკაციის დროს
+  // ✅ DISABLED AUTH LISTENER - No automatic navigation
   useEffect(() => {
-    // ✅ ვერიფიკაციის დროს Auth Listener სრულიად გამორთული
-    if (isVerifying) {
-      console.log(
-        "Auth listener completely disabled - verification in progress"
-      );
-      return;
-    }
-
-    console.log("Auth listener active");
-    console.log("Current state - isContactVerified:", isContactVerified);
-    console.log("Current state - isVerifying:", isVerifying);
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.id);
-      console.log("isRegistrationComplete:", isRegistrationComplete);
-
-      // ✅ Session-ის შენახვა Zustand store-ში USER_UPDATED event-ის დროს
-      if (session && event === "USER_UPDATED") {
-        console.log(
-          "USER_UPDATED event detected, storing session in Zustand store"
-        );
-        setSession(session);
-        setUser(session.user);
-        console.log("Session stored in Zustand store from auth state change");
-
-        // ✅ ტესტი რომ დავრწმუნდეთ რომ session შენახულია
-        const testStore = useAuthStore.getState();
-        console.log("Zustand store test from auth state change:", {
-          hasSession: !!testStore.session,
-          hasUser: !!testStore.user,
-          userId: testStore.user?.id,
-        });
-      }
-
-      // ✅ USER_UPDATED event-ის დამატება რეგისტრაციის დასრულებისთვის
-      if (session && (isRegistrationComplete || event === "USER_UPDATED")) {
-        console.log(
-          "Registration complete or user updated, but navigation handled in completeRegistration"
-        );
-        console.log(
-          "Event:",
-          event,
-          "isRegistrationComplete:",
-          isRegistrationComplete
-        );
-        // ✅ Navigation მოხდება completeRegistration-ში params-ით
-        // router.replace("/homepage");
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
-  }, [isRegistrationComplete, isVerifying, isContactVerified]);
-
-  // ✅ Track isContactVerified state changes
-  useEffect(() => {
-    console.log("isContactVerified state changed to:", isContactVerified);
-  }, [isContactVerified]);
-
-  const validatePhoneNumber = (phone: string) => {
-    if (contactMethod === "phone") {
-      setPhoneNumberError("");
-      return true;
-    }
-
-    const phoneRegex = /^[+]?[\d\s()-]{6,20}$/;
-    if (!phone) {
-      setPhoneNumberError("Phone number is required");
-      return false;
-    } else if (!phoneRegex.test(phone)) {
-      setPhoneNumberError("Invalid phone number format");
-      return false;
-    }
-    setPhoneNumberError("");
-    return true;
-  };
+    console.log("Auth listener disabled to prevent automatic navigation");
+    // No auth state change listener to avoid multiple navigations
+    return;
+  }, []);
 
   const handleOtpChange = (text: string, index: number) => {
     if (/^\d*$/.test(text)) {
@@ -235,13 +244,12 @@ export default function DriverSignUp() {
     }
   };
 
-  // ვერიფიკაციის კოდის გაგზავნა
+  // ✅ SEND VERIFICATION CODE
   const sendVerificationCode = async () => {
     console.log("=== STARTING sendVerificationCode ===");
     console.log("Contact method:", contactMethod);
     console.log("Phone:", phoneNumber);
 
-    // ვალიდაცია
     const isPhoneValid = validatePhoneNumber(phoneNumber);
     if (!isPhoneValid) {
       console.log("Phone validation failed");
@@ -300,9 +308,9 @@ export default function DriverSignUp() {
     }
   };
 
-  // OTP-ს ვერიფიკაცია - სრული ლოგიკით
+  // ✅ VERIFY OTP - Updated flow
   const verifyOtp = async () => {
-    console.log("VERIFYOTP START");
+    console.log("=== STARTING OTP VERIFICATION ===");
     const otpValue = otpDigits.join("");
     console.log("OTP VALUE:", otpValue);
 
@@ -312,19 +320,17 @@ export default function DriverSignUp() {
       return;
     }
 
-    console.log("SETTING LOADING TRUE");
+    console.log("🔄 Starting verification process...");
     setLoading(true);
+    setIsProcessingRegistration(true);
 
     try {
-      console.log("IN TRY BLOCK - STARTING REAL VERIFICATION");
-      let verificationResult;
-
       const formattedPhone = phoneNumber.startsWith("+")
         ? phoneNumber
         : `${selectedCountry.dialCode}${phoneNumber}`;
 
       console.log("Verifying phone OTP:", otpValue);
-      verificationResult = await supabase.auth.verifyOtp({
+      const verificationResult = await supabase.auth.verifyOtp({
         phone: formattedPhone,
         token: otpValue,
         type: "sms",
@@ -337,40 +343,19 @@ export default function DriverSignUp() {
         throw verificationResult.error;
       }
 
-      console.log("REAL VERIFICATION SUCCESS, SETTING STATES");
-      console.log("Setting isContactVerified to true");
+      console.log("✅ OTP VERIFICATION SUCCESS");
       setIsContactVerified(true);
-      console.log("Setting isVerifying to false");
       setIsVerifying(false);
-      console.log("Clearing OTP digits");
       setOtpDigits(["", "", "", "", "", ""]);
 
-      // ✅ Session-ის შენახვა Zustand store-ში OTP verification-ის შემდეგ
+      // Session შენახვა
       if (verificationResult.data.session) {
-        console.log("Storing session in Zustand store after OTP verification");
+        console.log("📦 Storing session after OTP verification");
         setSession(verificationResult.data.session);
         setUser(verificationResult.data.user);
-        console.log("Session stored in Zustand store after OTP verification");
-
-        // ✅ ტესტი რომ დავრწმუნდეთ რომ session შენახულია
-        const testStore = useAuthStore.getState();
-        console.log("Zustand store test after OTP verification:", {
-          hasSession: !!testStore.session,
-          hasUser: !!testStore.user,
-          userId: testStore.user?.id,
-        });
       }
 
-      // ✅ აღარ ვაკეთებთ signOut - იუზერი რჩება ავტორიზებული
-      console.log("User verified successfully, staying logged in");
-      console.log("isContactVerified should now be true");
-
-      console.log("SHOWING ALERT");
-      Alert.alert(
-        "Success",
-        "Phone number verified successfully! Now you can complete your registration."
-      );
-
+      // API call
       try {
         const res = await fetch(
           "https://api.thevanapp.com/api/driver-details",
@@ -390,20 +375,16 @@ export default function DriverSignUp() {
             }),
           }
         );
-        if (!res.ok && res.status !== 409) {
-          throw new Error(`driver-details API error: ${res.status}`);
-        }
-        if (res.ok) {
-          console.log("driver-details API registration successful");
-        } else if (res.status === 409) {
-          console.log("driver-details API: user already exists (409)");
-        }
+        console.log("✅ API call completed");
       } catch (apiError) {
-        console.error("driver-details API registration error:", apiError);
+        console.error("API error:", apiError);
       }
-      // === END POST ===
+
+      // ✅ NOW COMPLETE REGISTRATION WITH PASSWORD
+      console.log("🔑 Starting password setting process...");
+      await completeRegistrationInternal(verificationResult.data.session);
     } catch (error) {
-      console.log("IN CATCH BLOCK:", error);
+      console.log("❌ VERIFICATION ERROR:", error);
       const errorMessage = (error as Error)?.message || "";
 
       if (
@@ -422,8 +403,145 @@ export default function DriverSignUp() {
       } else {
         Alert.alert("Error", `Failed to verify code: ${errorMessage}`);
       }
+
+      setLoading(false);
+      setIsProcessingRegistration(false);
+    }
+  };
+
+  // ✅ INTERNAL COMPLETE REGISTRATION
+  const completeRegistrationInternal = async (currentSession: any) => {
+    try {
+      console.log("=== STARTING PASSWORD SETTING ===");
+      console.log("Session exists:", !!currentSession);
+      console.log("Password length:", password?.length || 0);
+      console.log("Name:", name, "Surname:", surname);
+
+      // Validation
+      if (!password || password.length < 6) {
+        throw new Error(
+          "Password is required and must be at least 6 characters"
+        );
+      }
+
+      if (password !== confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+
+      if (!name || !surname) {
+        throw new Error("Name and surname are required");
+      }
+
+      if (!currentSession) {
+        throw new Error("No active session found");
+      }
+
+      // ✅ PASSWORD SETTING
+      console.log("🔑 Setting password...");
+      const { data: passwordData, error: passwordError } =
+        await supabase.auth.updateUser({
+          password: password,
+        });
+
+      if (passwordError) {
+        console.error("❌ Password update failed:", passwordError);
+        throw new Error(`Password setting failed: ${passwordError.message}`);
+      }
+
+      console.log("✅ PASSWORD SET SUCCESSFULLY!");
+
+      // ✅ USER METADATA UPDATE
+      console.log("📝 Updating user metadata...");
+      const userDataToUpdate = {
+        first_name: name,
+        last_name: surname,
+        full_name: `${name} ${surname}`,
+        phone: phoneNumber,
+        user_type: "driver",
+        status: "incomplete",
+      };
+
+      const { data: updateData, error: updateError } =
+        await supabase.auth.updateUser({
+          data: userDataToUpdate,
+        });
+
+      if (updateError) {
+        console.log("⚠️ Metadata update error:", updateError);
+      } else {
+        console.log("✅ User metadata updated successfully!");
+      }
+
+      // ✅ PASSWORD TEST
+      console.log("🧪 Testing password...");
+      try {
+        const testLogin = await supabase.auth.signInWithPassword({
+          phone: currentSession.user.phone,
+          password: password,
+        });
+
+        if (testLogin.error) {
+          console.log("⚠️ Password test failed:", testLogin.error.message);
+        } else {
+          console.log("✅ Password test successful!");
+        }
+      } catch (testError) {
+        console.log("⚠️ Password test exception:", testError);
+      }
+
+      // ✅ FINAL SUCCESS
+      setIsRegistrationComplete(true);
+
+      Alert.alert(
+        "Registration Complete!",
+        `Welcome ${name}!\n\nYour account has been created successfully.\nPhone: ${phoneNumber}\nPassword: Set ✅\n\nYou can now login with your phone number and password.`,
+        [
+          {
+            text: "Continue",
+            onPress: () => {
+              console.log("🚀 Navigating to driverVerification...");
+              router.replace("/driverVerification");
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("❌ Complete registration error:", error);
+      Alert.alert(
+        "Registration Error",
+        `Failed to complete registration: ${error.message}\n\nPlease try again.`
+      );
+
+      setIsVerifying(true);
+      setIsContactVerified(false);
     } finally {
-      console.log("IN FINALLY - SETTING LOADING FALSE");
+      console.log("🏁 Setting loading to false");
+      setLoading(false);
+      setIsProcessingRegistration(false);
+    }
+  };
+
+  // ✅ MANUAL COMPLETE REGISTRATION
+  const completeRegistration = async () => {
+    console.log("=== MANUAL completeRegistration CALL ===");
+
+    setLoading(true);
+
+    try {
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession();
+
+      if (!currentSession) {
+        throw new Error(
+          "No active session found. Please verify your contact first."
+        );
+      }
+
+      await completeRegistrationInternal(currentSession);
+    } catch (error) {
+      console.error("Manual complete registration error:", error);
+      Alert.alert("Error", error.message);
       setLoading(false);
     }
   };
@@ -474,7 +592,6 @@ export default function DriverSignUp() {
     }
   };
 
-  // ვერიფიკაციის გვერდიდან დაბრუნება
   const goBackToRegistration = () => {
     console.log("Going back to registration");
     setIsVerifying(false);
@@ -483,136 +600,6 @@ export default function DriverSignUp() {
     setCanResend(false);
   };
 
-  // ✅ ახალი მარტივი რეგისტრაცია - ნავიგაცია პირველად
-  const completeRegistration = async () => {
-    console.log(
-      "=== STARTING completeRegistration (Navigate First Version) ==="
-    );
-    console.log("isContactVerified:", isContactVerified);
-    console.log("Current step:", currentStep);
-    console.log("Loading state:", loading);
-
-    // Add logging before validation
-    console.log("phoneNumber before validation:", phoneNumber);
-    let finalPhoneNumber = phoneNumber;
-    if (!finalPhoneNumber) {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        finalPhoneNumber =
-          user?.phone ||
-          user?.user_metadata?.phone ||
-          user?.user_metadata?.temp_phone ||
-          "";
-        console.log("Fetched phone from Supabase user:", finalPhoneNumber);
-      } catch (err) {
-        console.error("Error fetching user for phone fallback:", err);
-      }
-    }
-
-    // Use finalPhoneNumber for validation and update
-    const isPhoneValid = validatePhoneNumber(finalPhoneNumber);
-    if (!isPhoneValid) {
-      console.log("Validation failed, showing alert");
-      Alert.alert("Error", "Please fill all required fields correctly.");
-      return;
-    }
-
-    // კონტაქტის ვერიფიკაციის შემოწმება
-    if (!isContactVerified) {
-      console.log("Contact not verified, showing alert");
-      Alert.alert("Error", `Please verify your ${contactMethod} first.`);
-      return;
-    }
-
-    console.log("COMPLETE REGISTRATION - SETTING LOADING TRUE");
-    setLoading(true);
-
-    try {
-      console.log("STEP 1: Getting current session...");
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
-
-      if (!currentSession) {
-        throw new Error("No active session found");
-      }
-
-      console.log("STEP 2: Current session found:", {
-        userId: currentSession?.user?.id,
-      });
-
-      // ✅ პირველად ნავიგაცია
-      console.log("STEP 3: Navigating to driverVerification FIRST...");
-      router.replace("/driverVerification");
-      console.log("STEP 4: Navigation command sent!");
-
-      // ✅ შემდეგ მონაცემების განახლება background-ში
-      console.log("STEP 5: Now updating user data in background...");
-
-      const userDataToUpdate = {
-        first_name: name,
-        last_name: surname,
-        full_name: `${name} ${surname}`,
-        phone: finalPhoneNumber,
-        user_type: "driver",
-        status: "incomplete",
-      };
-
-      console.log("STEP 6: Sending user data to updateUser...");
-      const { data: updateData, error: updateError } =
-        await supabase.auth.updateUser({
-          data: userDataToUpdate,
-        });
-
-      console.log("STEP 7: UpdateUser response:", { updateData, updateError });
-
-      if (updateError) {
-        console.error("User update error:", updateError);
-        // Don't throw, just log the error
-      } else {
-        console.log("STEP 8: User data updated successfully!");
-      }
-
-      // ✅ Session-ის შენახვა Zustand store-ში
-      console.log("STEP 9: Storing session in Zustand store...");
-      setSession(currentSession);
-      setUser(currentSession.user);
-      console.log("Session stored in Zustand store successfully");
-
-      // ✅ რეგისტრაცია დასრულებულია
-      console.log("STEP 10: Setting isRegistrationComplete to true");
-      setIsRegistrationComplete(true);
-
-      console.log("STEP 11: All background tasks completed!");
-    } catch (error) {
-      console.error("Registration error:", error);
-      const errorMessage = (error as Error)?.message || "";
-
-      if (
-        errorMessage.includes("JWT expired") ||
-        errorMessage.includes("Invalid JWT")
-      ) {
-        Alert.alert(
-          "Session Expired",
-          "Your verification session has expired. Please verify your contact method again."
-        );
-        setIsContactVerified(false);
-        setIsVerifying(true);
-      } else {
-        Alert.alert(
-          "Registration Error",
-          errorMessage || "Failed to complete registration. Please try again."
-        );
-      }
-    } finally {
-      console.log("COMPLETE REGISTRATION - SETTING LOADING FALSE");
-      setLoading(false);
-    }
-  };
-
-  // კონტაქტის მეთოდის შეცვლისას ვერიფიკაციის გაუქმება
   const handleContactMethodChange = (method: string) => {
     console.log("Contact method changing from", contactMethod, "to", method);
     console.log("Clearing verification state");
@@ -624,7 +611,6 @@ export default function DriverSignUp() {
     setTimer(60);
     setCanResend(false);
 
-    // შესაბამისი ველების გასუფთავება
     if (method === "phone") {
       setPhoneNumberError("");
     } else {
@@ -664,6 +650,17 @@ export default function DriverSignUp() {
           </LogoContainer>
 
           <FormContainer>
+            {/* ✅ LOADING OVERLAY FOR REGISTRATION PROCESS */}
+            {isProcessingRegistration && (
+              <ProcessingOverlay>
+                <ActivityIndicator size="large" color="#27ae60" />
+                <ProcessingText>Completing registration...</ProcessingText>
+                <ProcessingSubText>
+                  Setting up your account and password
+                </ProcessingSubText>
+              </ProcessingOverlay>
+            )}
+
             {isVerifying ? (
               <VerificationScreen
                 contactMethod={contactMethod}
@@ -680,51 +677,55 @@ export default function DriverSignUp() {
                 goBackToRegistration={goBackToRegistration}
               />
             ) : currentStep === 1 ? (
-              (() => {
-                return (
-                  <RegistrationForm
-                    name={name}
-                    surname={surname}
-                    phoneNumber={phoneNumber}
-                    COUNTRIES={COUNTRIES}
-                    selectedCountry={selectedCountry}
-                    setSelectedCountry={setSelectedCountry}
-                    password={password}
-                    confirmPassword={confirmPassword}
-                    contactMethod={contactMethod}
-                    loading={loading}
-                    showPassword={showPassword}
-                    showConfirmPassword={showConfirmPassword}
-                    nameError={nameError}
-                    surnameError={surnameError}
-                    phoneNumberError={phoneNumberError}
-                    passwordError={passwordError}
-                    isContactVerified={isContactVerified}
-                    setName={(text: any) => {
-                      setName(text);
-                      setStoreName(text);
-                    }}
-                    setSurname={(text: any) => {
-                      setSurname(text);
-                      setStoreSurname(text);
-                    }}
-                    setPhoneNumber={setPhoneNumber}
-                    setPassword={setPassword}
-                    setConfirmPassword={setConfirmPassword}
-                    setShowPassword={setShowPassword}
-                    setShowConfirmPassword={setShowConfirmPassword}
-                    validatePhoneNumber={validatePhoneNumber}
-                    sendVerificationCode={sendVerificationCode}
-                    completeRegistration={completeRegistration}
-                    Title={Title}
-                    NameSurnameRow={NameSurnameRow}
-                    NameInput={NameInput}
-                    SurnameInput={SurnameInput}
-                    StyledInput={StyledInput}
-                    StyledButton={StyledButton}
-                  />
-                );
-              })()
+              <RegistrationForm
+                name={name}
+                surname={surname}
+                phoneNumber={phoneNumber}
+                COUNTRIES={COUNTRIES}
+                selectedCountry={selectedCountry}
+                setSelectedCountry={setSelectedCountry}
+                password={password}
+                confirmPassword={confirmPassword}
+                contactMethod={contactMethod}
+                loading={loading}
+                showPassword={showPassword}
+                showConfirmPassword={showConfirmPassword}
+                nameError={nameError}
+                surnameError={surnameError}
+                phoneNumberError={phoneNumberError}
+                passwordError={passwordError}
+                isContactVerified={isContactVerified}
+                setName={(text: any) => {
+                  setName(text);
+                  setStoreName(text);
+                  validateName(text);
+                }}
+                setSurname={(text: any) => {
+                  setSurname(text);
+                  setStoreSurname(text);
+                  validateSurname(text);
+                }}
+                setPhoneNumber={setPhoneNumber}
+                setPassword={(text: any) => {
+                  setPassword(text);
+                  validatePassword(text);
+                }}
+                setConfirmPassword={(text: any) => {
+                  setConfirmPassword(text);
+                  validateConfirmPassword(text);
+                }}
+                setShowPassword={setShowPassword}
+                setShowConfirmPassword={setShowConfirmPassword}
+                validatePhoneNumber={validatePhoneNumber}
+                sendVerificationCode={sendVerificationCode}
+                completeRegistration={completeRegistration}
+                Title={Title}
+                NameSurnameRow={NameSurnameRow}
+                NameInput={NameInput}
+                SurnameInput={SurnameInput}
+                StyledInput={StyledInput}
+                StyledButton={StyledButton}
+              />
             ) : currentStep === 2 ? (
               <DocumentsScreen
                 loading={loading}
@@ -768,6 +769,35 @@ const FormContainer = styled.View`
   shadow-color: #000;
   shadow-offset: 0px 2px;
   margin-bottom: 20px;
+  position: relative;
+`;
+
+const ProcessingOverlay = styled.View`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.95);
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  border-radius: 15px;
+`;
+
+const ProcessingText = styled.Text`
+  font-size: 18px;
+  font-weight: bold;
+  color: #27ae60;
+  margin-top: 15px;
+  text-align: center;
+`;
+
+const ProcessingSubText = styled.Text`
+  font-size: 14px;
+  color: #7f8c8d;
+  margin-top: 5px;
+  text-align: center;
 `;
 
 const StyledInput = styled(Input)`

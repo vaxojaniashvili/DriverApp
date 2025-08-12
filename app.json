@@ -63,7 +63,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification_icon",
+          "icon": "./assets/images/notification_icon.png",
           "color": "#ffffff",
           "defaultChannel": "default",
           "sounds": ["./assets/sounds/notification.wav"]

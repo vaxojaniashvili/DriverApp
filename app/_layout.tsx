@@ -8,10 +8,14 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
-import * as Notifications from "expo-notifications";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { usePushNotifications } from "@/hooks/usePushNotifications";
+// Firebase და Notifications import
+import {
+  registerForPushNotifications,
+  addNotificationListeners,
+} from "../services/notificationService";
+import "../services/firebaseConfig"; // Firebase initialization
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -22,48 +26,51 @@ export default function RootLayout() {
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
-  // Push notifications setup
-  const { expoPushToken, notification } = usePushNotifications();
-
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
 
-  // Push token logging and backend registration
+  // Push Notifications Setup
   useEffect(() => {
-    if (expoPushToken) {
-      console.log("✅ Driver app ready with push token:", expoPushToken);
-      // Optionally store in AsyncStorage or Context for later use
-      // AsyncStorage.setItem('pushToken', expoPushToken);
-    }
-  }, [expoPushToken]);
+    const setupNotifications = async () => {
+      try {
+        // Driver ID - შეცვალე შენი authentication logic-ით
+        const driverId = "driver_12345"; // ეს უნდა მოიღო user authentication-იდან
 
-  // Handle notifications received while app is open
-  useEffect(() => {
-    if (notification && isValidNotification(notification)) {
-      console.log("🔔 New notification received:", notification);
+        // Register for push notifications
+        await registerForPushNotifications(driverId);
 
-      const data = notification.request.content.data;
-      if (
-        data &&
-        typeof data === "object" &&
-        "type" in data &&
-        data.type === "new_order"
-      ) {
-        console.log("📋 New order notification:", data.orderId);
-        // Could trigger a modal, sound, vibration, etc.
+        // Add notification listeners
+        const removeListeners = addNotificationListeners(
+          (notification) => {
+            console.log("📱 Notification received:", notification);
+            // აქ შეგიძლია notification handle-ი
+          },
+          (response) => {
+            console.log("👆 Notification tapped:", response);
+            // აქ შეგიძლია notification tap handle-ი
+          }
+        );
+
+        // Cleanup function
+        return removeListeners;
+      } catch (error) {
+        console.error("Error setting up notifications:", error);
       }
+    };
+
+    if (loaded) {
+      setupNotifications();
     }
-  }, [notification]);
+  }, [loaded]);
 
   if (!loaded) {
     return null;
   }
 
   const user = false;
-
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
@@ -91,16 +98,5 @@ export default function RootLayout() {
         <Stack.Screen name="+not-found" />
       </Stack>
     </ThemeProvider>
-  );
-}
-
-function isValidNotification(
-  notification: any
-): notification is Notifications.Notification {
-  return (
-    notification &&
-    typeof notification === "object" &&
-    notification.request &&
-    notification.request.content
   );
 }

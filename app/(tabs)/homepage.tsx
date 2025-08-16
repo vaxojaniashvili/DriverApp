@@ -6,11 +6,9 @@ import {
   ActivityIndicator,
   Text,
   Alert,
-  ScrollView,
   TouchableOpacity,
-  StyleSheet,
-  AppState,
 } from "react-native";
+import styled from "styled-components/native";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Drivermodecomponent from "@/components/homepage/driver-mode/driver-mode";
 import JobOfferComponent from "@/components/homepage/homepahe-orders/orders";
@@ -32,11 +30,12 @@ import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import JobSelectionComponent from "@/components/homepage/jobs-selection/JobSelection";
 import PickupRadiusSelector from "@/components/homepage/pickup-radius/PickupRadiusSelector";
 
-// 🔔 PUSH NOTIFICATIONS IMPORTS
-import { usePushNotifications } from "@/hooks/usePushNotifications";
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
-import Icon from "react-native-vector-icons/FontAwesome";
+// Push Notifications import
+import {
+  registerForPushNotifications,
+  addNotificationListeners,
+} from "../../services/notificationService";
+import { Icon } from "@rneui/themed";
 
 const HomeScreen: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>("");
@@ -56,9 +55,15 @@ const HomeScreen: React.FC = () => {
   const [driverDetails, setDriverDetails] = useState<any>(null);
 
   const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
-
   const router = useRouter();
   const params = useLocalSearchParams();
+
+  // Push Notifications state
+  const [notificationListeners, setNotificationListeners] = useState<
+    (() => void) | null
+  >(null);
+  const [pushTokenRegistered, setPushTokenRegistered] =
+    useState<boolean>(false);
 
   const { setMode, mode, setmyID, isAutomatic } =
     useAuthStore() as unknown as AuthStoreState;
@@ -85,590 +90,6 @@ const HomeScreen: React.FC = () => {
   const [paramsProcessed, setParamsProcessed] = useState(false);
   const [fetchUserDataInProgress, setFetchUserDataInProgress] = useState(false);
 
-  // 🔔 PUSH NOTIFICATIONS HOOK
-  const { expoPushToken, notification, tokenError, tokenStatus } =
-    usePushNotifications();
-
-  // 📱 APP STATE TRACKING
-  const [appState, setAppState] = useState(AppState.currentState);
-
-  // 🔔 NOTIFICATION HANDLING STATE
-  const [lastNotificationId, setLastNotificationId] = useState<string | null>(
-    null
-  );
-  const [notificationQueue, setNotificationQueue] = useState<any[]>([]);
-
-  // 🧪 DEBUG STATE
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const [permissionStatus, setPermissionStatus] = useState<string>("unknown");
-  const [notificationChannels, setNotificationChannels] = useState<any[]>([]);
-
-  // 🧪 ADD DEBUG LOG FUNCTION
-  const addDebugLog = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logMessage = `[${timestamp}] ${message}`;
-    console.log(`🔍 DEBUG: ${logMessage}`);
-    setDebugLogs((prev) => [logMessage, ...prev.slice(0, 20)]); // Keep last 20 logs
-  };
-
-  // 🧪 COMPREHENSIVE DEBUGGING FUNCTIONS
-  const debugNotificationSystem = async () => {
-    addDebugLog("🔍 Starting comprehensive notification debug...");
-
-    try {
-      // 1. შევამოწმოთ device info
-      const deviceInfo = {
-        isDevice: Device.isDevice,
-        deviceName: Device.deviceName,
-        platform: Platform.OS,
-        osVersion: Device.osVersion,
-        isDevelopment: __DEV__,
-      };
-      addDebugLog(`📱 Device Info: ${JSON.stringify(deviceInfo)}`);
-
-      // 2. შევამოწმოთ permissions
-      const permissions = await Notifications.getPermissionsAsync();
-      setPermissionStatus(permissions.status);
-      addDebugLog(`🔐 Current Permissions: ${JSON.stringify(permissions)}`);
-
-      // 3. შევამოწმოთ push token
-      const tokenInfo = {
-        hasToken: !!expoPushToken,
-        tokenStatus,
-        tokenError,
-        tokenPreview: expoPushToken
-          ? `${expoPushToken.substring(0, 20)}...`
-          : "NO TOKEN",
-      };
-      addDebugLog(`🔑 Push Token Info: ${JSON.stringify(tokenInfo)}`);
-
-      // 4. შევამოწმოთ notification channels (Android)
-      if (Platform.OS === "android") {
-        const channels = await Notifications.getNotificationChannelsAsync();
-        setNotificationChannels(channels);
-        addDebugLog(
-          `📢 Android Channels: ${JSON.stringify(
-            channels.map((c) => ({ id: c.id, importance: c.importance }))
-          )}`
-        );
-      }
-
-      // 5. შევამოწმოთ notification settings
-      const settings = await Notifications.getNotificationSettingsAsync();
-      addDebugLog(`⚙️ Notification Settings: ${JSON.stringify(settings)}`);
-
-      // 6. შევამოწმოთ app state
-      addDebugLog(`📱 App State: ${appState}`);
-
-      // 7. შევამოწმოთ user data
-      addDebugLog(
-        `👤 User Data: userId=${userId}, apiToken=${!!apiToken}, userEmail=${userEmail}`
-      );
-
-      // Alert-ით ვაჩვენოთ debug info
-      Alert.alert(
-        "🔍 Debug Info",
-        `Device: ${
-          Device.isDevice ? "✅ Real Device" : "❌ Simulator"
-        }\nToken: ${
-          expoPushToken ? "✅ Available" : "❌ Missing"
-        }\nStatus: ${tokenStatus}\nPermissions: ${
-          permissions.status
-        }\nPlatform: ${Platform.OS}\nApp State: ${appState}`,
-        [{ text: "Check Console for Details" }]
-      );
-    } catch (error) {
-      addDebugLog(`❌ Debug system error: ${error.message}`);
-      Alert.alert("❌ Debug Error", error.message);
-    }
-  };
-
-  // 🧪 LOCAL NOTIFICATION TEST
-  const sendLocalTestNotification = async () => {
-    try {
-      addDebugLog("📱 Starting local notification test...");
-
-      const result = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "📱 Local Test",
-          body: "ეს არის local notification test! თუ ეს დაინახეთ, local notifications მუშაობს!",
-          data: {
-            type: "local_test",
-            timestamp: new Date().toISOString(),
-          },
-        },
-        trigger: { seconds: 2 }, // 2 წამში გამოაგზავნოს
-      });
-
-      addDebugLog(`📱 Local notification scheduled with ID: ${result}`);
-
-      Alert.alert(
-        "📱 Local Test Scheduled",
-        "Local notification დაშედულდა 2 წამში. თუ ეს მოვიდა, permissions OK-ა! Check console for logs.",
-        [{ text: "OK" }]
-      );
-    } catch (error) {
-      addDebugLog(`❌ Local notification error: ${error.message}`);
-      Alert.alert("❌ Local Test Error", error.message);
-    }
-  };
-
-  // 🔧 IMPROVED PERMISSION REQUEST
-  const requestPermissionsAgain = async () => {
-    try {
-      addDebugLog("🔐 Re-requesting permissions...");
-
-      const { status, ios, android } =
-        await Notifications.requestPermissionsAsync({
-          ios: {
-            allowAlert: true,
-            allowBadge: true,
-            allowSound: true,
-            allowDisplayInCarPlay: true,
-            allowCriticalAlerts: true,
-            allowProvisional: true,
-            allowAnnouncements: true,
-          },
-          android: {
-            allowAlert: true,
-            allowBadge: true,
-            allowSound: true,
-          },
-        });
-
-      setPermissionStatus(status);
-      addDebugLog(`🔐 New permission status: ${status}`);
-      addDebugLog(`🔐 iOS permissions: ${JSON.stringify(ios)}`);
-      addDebugLog(`🔐 Android permissions: ${JSON.stringify(android)}`);
-
-      if (status === "granted") {
-        Alert.alert(
-          "✅ Permissions Granted",
-          "თქვენ მისცით ნოტიფიკაციების ნებართვა!"
-        );
-      } else {
-        Alert.alert(
-          "❌ Permissions Denied",
-          "ნოტიფიკაციების ნებართვა არ არის მიცემული. გადადით Settings-ში და ჩართეთ:",
-          [
-            { text: "Cancel" },
-            {
-              text: "Open Settings",
-              onPress: () => Notifications.openSettingsAsync(),
-            },
-          ]
-        );
-      }
-    } catch (error) {
-      addDebugLog(`❌ Permission request error: ${error.message}`);
-      Alert.alert("❌ Permission Error", error.message);
-    }
-  };
-
-  // 🧪 STEP-BY-STEP PUSH TEST
-  const sendStepByStepTest = async () => {
-    if (!expoPushToken) {
-      addDebugLog("❌ No push token available for testing");
-      Alert.alert(
-        "❌ შეცდომა",
-        "Push token არ არის მზად. გაუშვით Debug System Info გადასაცადებლად."
-      );
-      return;
-    }
-
-    try {
-      addDebugLog(`📤 Starting step-by-step push notification test...`);
-      addDebugLog(`📤 Using token: ${expoPushToken.substring(0, 30)}...`);
-
-      // Step 1: Create message
-      const message = {
-        to: expoPushToken,
-        title: "🧪 Step Test",
-        body: "Step-by-step test notification - მუშაობს?",
-        sound: "default",
-        data: {
-          type: "step_test",
-          timestamp: new Date().toISOString(),
-          step: "manual_test",
-        },
-      };
-
-      addDebugLog(`📤 Message created: ${JSON.stringify(message, null, 2)}`);
-
-      // Step 2: Send request
-      addDebugLog("📤 Sending HTTP request to Expo push service...");
-
-      const response = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(message),
-      });
-
-      addDebugLog(`📤 Response status: ${response.status}`);
-      addDebugLog(
-        `📤 Response headers: ${JSON.stringify(
-          Object.fromEntries(response.headers.entries())
-        )}`
-      );
-
-      // Step 3: Parse response
-      const responseText = await response.text();
-      addDebugLog(`📤 Raw response: ${responseText}`);
-
-      let result;
-      try {
-        result = JSON.parse(responseText);
-        addDebugLog(`📤 Parsed result: ${JSON.stringify(result, null, 2)}`);
-      } catch (parseError) {
-        addDebugLog(`❌ JSON parse error: ${parseError.message}`);
-        result = { error: "Invalid JSON response", response: responseText };
-      }
-
-      // Step 4: Analyze result
-      if (response.ok) {
-        if (result.data) {
-          addDebugLog(`✅ Push service accepted: ${result.data.status}`);
-
-          Alert.alert(
-            "✅ Sent Successfully",
-            `Status: ${result.data.status}\nMessage: ${
-              result.data.message || "N/A"
-            }\n\n🔍 Next steps:\n1. App background-ში გადაიყვანეთ\n2. დაელოდეთ 5-10 წამი\n3. Check logs in console`,
-            [{ text: "OK" }]
-          );
-        } else {
-          addDebugLog(
-            `⚠️ Unexpected response format: ${JSON.stringify(result)}`
-          );
-        }
-      } else {
-        addDebugLog(`❌ HTTP error: ${response.status}`);
-        Alert.alert(
-          "❌ HTTP Error",
-          `Status: ${response.status}\nResponse: ${responseText}`
-        );
-      }
-    } catch (error) {
-      addDebugLog(`❌ Network error: ${error.message}`);
-      Alert.alert("❌ Network Error", error.message);
-    }
-  };
-
-  // 🧪 CLEAR DEBUG LOGS
-  const clearDebugLogs = () => {
-    setDebugLogs([]);
-    addDebugLog("Debug logs cleared");
-  };
-
-  // 📱 APP STATE LISTENER
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-      addDebugLog(`📱 App state changed from ${appState} to ${nextAppState}`);
-
-      if (appState.match(/inactive|background/) && nextAppState === "active") {
-        addDebugLog("📱 App has come to the foreground!");
-        checkPendingNotifications();
-      }
-
-      setAppState(nextAppState);
-    };
-
-    const subscription = AppState.addEventListener(
-      "change",
-      handleAppStateChange
-    );
-    return () => subscription?.remove();
-  }, [appState]);
-
-  // 🔔 CHECK PENDING NOTIFICATIONS WHEN APP BECOMES ACTIVE
-  const checkPendingNotifications = async () => {
-    try {
-      const pendingNotifications =
-        await Notifications.getPresentedNotificationsAsync();
-      addDebugLog(`📨 Pending notifications: ${pendingNotifications.length}`);
-
-      if (pendingNotifications.length > 0) {
-        addDebugLog("🔄 Processing pending notifications...");
-        onRefresh(); // refresh orders
-      }
-    } catch (error) {
-      addDebugLog(`❌ Error checking pending notifications: ${error.message}`);
-    }
-  };
-
-  // 🔔 PROCESS NOTIFICATIONS BY TYPE
-  const processNotificationByType = (data: any, notification: any) => {
-    const notificationType = data?.type || "general";
-
-    addDebugLog(
-      `🏷️ Processing ${notificationType} notification with data: ${JSON.stringify(
-        data
-      )}`
-    );
-
-    switch (notificationType) {
-      case "new_order":
-        handleNewOrderNotification(data, notification);
-        break;
-      case "order_status_update":
-        handleOrderStatusNotification(data, notification);
-        break;
-      case "payment_received":
-        handlePaymentNotification(data, notification);
-        break;
-      case "announcement":
-        handleAnnouncementNotification(data, notification);
-        break;
-      case "manual_test":
-      case "step_test":
-      case "test":
-        handleTestNotification(data, notification);
-        break;
-      default:
-        handleGeneralNotification(data, notification);
-        break;
-    }
-  };
-
-  // 📋 NEW ORDER NOTIFICATION
-  const handleNewOrderNotification = (data: any, notification: any) => {
-    addDebugLog("📋 Handling new order notification");
-
-    // Auto-refresh orders after a short delay
-    setTimeout(() => {
-      addDebugLog("🔄 Auto-refreshing orders for new order...");
-      onRefresh();
-    }, 500);
-
-    // Show alert after refresh
-    setTimeout(() => {
-      Alert.alert(
-        "🚐 ახალი ორდერი!",
-        `ორდერი #${data.orderId || "Unknown"}\n${
-          notification.request.content.body || "დაემატა ახალი ორდერი"
-        }`,
-        [
-          {
-            text: "ნახვა",
-            onPress: () => {
-              addDebugLog("User wants to view new order");
-              onRefresh();
-            },
-          },
-          {
-            text: "OK",
-            style: "cancel",
-          },
-        ],
-        { cancelable: true }
-      );
-    }, 1000);
-  };
-
-  // 📊 ORDER STATUS UPDATE NOTIFICATION
-  const handleOrderStatusNotification = (data: any, notification: any) => {
-    addDebugLog("📊 Handling order status update");
-
-    onRefresh(); // Refresh to get updated status
-
-    if (data?.message || notification.request.content.body) {
-      Alert.alert(
-        "📊 ორდერის სტატუსი განახლდა",
-        data?.message || notification.request.content.body,
-        [{ text: "OK" }]
-      );
-    }
-  };
-
-  // 💰 PAYMENT NOTIFICATION
-  const handlePaymentNotification = (data: any, notification: any) => {
-    addDebugLog("💰 Handling payment notification");
-
-    const amount = data.amount || "Unknown";
-    const orderId = data.orderId || "Unknown";
-
-    Alert.alert(
-      "💰 გადახდა მიღებულია!",
-      `ორდერი #${orderId}: ${amount}₾\n${
-        notification.request.content.body || ""
-      }`,
-      [
-        {
-          text: "დეტალების ნახვა",
-          onPress: () => {
-            addDebugLog("User wants to view payment details");
-          },
-        },
-        {
-          text: "OK",
-          style: "cancel",
-        },
-      ]
-    );
-  };
-
-  // 🧪 TEST NOTIFICATION HANDLER
-  const handleTestNotification = (data: any, notification: any) => {
-    addDebugLog(`🧪 Handling test notification: ${data.type}`);
-
-    const isManualTest = data.type === "manual_test";
-    const isStepTest = data.type === "step_test";
-
-    setTimeout(() => {
-      Alert.alert(
-        isStepTest
-          ? "🧪 Step Test Success!"
-          : isManualTest
-          ? "🧪 Manual Test Success!"
-          : "🧪 Test Success!",
-        `${
-          isStepTest ? "Step test" : isManualTest ? "Manual test" : "Test"
-        } notification received! ✅ Notifications are working! 🎉\n\nCheck console logs for details.`,
-        [{ text: "Awesome! 🚀" }]
-      );
-    }, 500);
-  };
-
-  // 📢 ANNOUNCEMENT NOTIFICATION
-  const handleAnnouncementNotification = (data: any, notification: any) => {
-    addDebugLog("📢 Handling announcement");
-
-    Alert.alert(
-      data.title || notification.request.content.title || "შეტყობინება",
-      data.message || notification.request.content.body || "ახალი შეტყობინება",
-      [{ text: "OK" }]
-    );
-  };
-
-  // 🔔 GENERAL NOTIFICATION
-  const handleGeneralNotification = (data: any, notification: any) => {
-    addDebugLog("🔔 Handling general notification");
-
-    // Always refresh for any notification
-    onRefresh();
-
-    // Show notification if it has content
-    if (
-      notification.request.content.title ||
-      notification.request.content.body
-    ) {
-      Alert.alert(
-        notification.request.content.title || "შეტყობინება",
-        notification.request.content.body || "ახალი შეტყობინება",
-        [{ text: "OK" }]
-      );
-    }
-  };
-
-  // 🔔 IMPROVED NOTIFICATION HANDLING
-  useEffect(() => {
-    if (
-      !notification ||
-      typeof notification !== "object" ||
-      !notification.request
-    ) {
-      return;
-    }
-
-    const notificationId = notification.request.identifier;
-    const data = notification.request.content.data as any;
-
-    addDebugLog(
-      `🔔 Processing notification: ID=${notificationId}, Type=${data?.type}, Title=${notification.request.content.title}`
-    );
-
-    // თავიდან ავიცილოთ duplicate notifications
-    if (lastNotificationId === notificationId) {
-      addDebugLog("🔄 Duplicate notification ignored");
-      return;
-    }
-
-    setLastNotificationId(notificationId);
-
-    // Add to notification queue for processing
-    setNotificationQueue((prev) => [
-      ...prev,
-      { notification, timestamp: Date.now() },
-    ]);
-
-    // Process notification based on type
-    processNotificationByType(data, notification);
-  }, [notification]);
-
-  // 🔔 REGISTER PUSH TOKEN WITH BETTER ERROR HANDLING
-  const sendTokenToBackend = async (token: string, driverId: string) => {
-    if (!token || !driverId) {
-      addDebugLog("❌ Missing token or driverId for registration");
-      return;
-    }
-
-    try {
-      addDebugLog(
-        `📤 Registering push token: driverId=${driverId}, platform=${Platform.OS}`
-      );
-
-      const response = await fetch("https://api.thevanapp.com/api/push", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiToken}`,
-        },
-        body: JSON.stringify({
-          pushToken: token,
-          driverId: driverId,
-          platform: Platform.OS,
-          deviceName: Device.deviceName || "Unknown",
-          osVersion: Device.osVersion || "Unknown",
-          timestamp: new Date().toISOString(),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const result = await response.json();
-      addDebugLog(
-        `✅ Push token registered successfully: ${JSON.stringify(result)}`
-      );
-    } catch (error) {
-      addDebugLog(`❌ Token registration failed: ${error.message}`);
-    }
-  };
-
-  // 🔔 REGISTER TOKEN WHEN READY
-  useEffect(() => {
-    if (expoPushToken && userId && apiToken) {
-      addDebugLog("✅ All requirements met for token registration");
-      sendTokenToBackend(expoPushToken, userId);
-    } else {
-      addDebugLog(
-        `⏳ Waiting for token registration: hasToken=${!!expoPushToken}, hasUserId=${!!userId}, hasApiToken=${!!apiToken}`
-      );
-    }
-  }, [expoPushToken, userId, apiToken, tokenStatus]);
-
-  // 🔔 TOKEN ERROR HANDLING
-  useEffect(() => {
-    if (tokenError) {
-      addDebugLog(`❌ Push token error: ${tokenError}`);
-      Alert.alert(
-        "ნოტიფიკაციების პრობლემა",
-        `შეცდომა: ${tokenError}\n\nგთხოვთ დარეწმუნდეთ რომ ნოტიფიკაციები ჩართულია`,
-        [{ text: "OK" }]
-      );
-    }
-  }, [tokenError]);
-
-  // Initialize debug logging
-  useEffect(() => {
-    addDebugLog("🚀 HomeScreen initialized");
-  }, []);
-
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
@@ -687,6 +108,8 @@ const HomeScreen: React.FC = () => {
       setParamsProcessed(true);
       setFetchUserDataInProgress(true);
       fetchUserData();
+    } else if (!params.sessionData || !params.userData) {
+    } else {
     }
   }, [params, paramsProcessed, fetchUserDataInProgress]);
 
@@ -708,6 +131,7 @@ const HomeScreen: React.FC = () => {
       ) {
         setFetchUserDataInProgress(true);
         fetchUserData();
+      } else {
       }
     }, [
       params.sessionData,
@@ -723,6 +147,106 @@ const HomeScreen: React.FC = () => {
       setStatusUpdateCompleted(false);
     }
   }, [storeUser?.id]);
+
+  // 🚀 Push Notifications Setup
+  useEffect(() => {
+    const setupPushNotifications = async () => {
+      // Driver ID-ის მიღება - ყველა ვარიანტის ჩექ
+      let driverId = null;
+
+      if (driverDetails?.unique_id) {
+        driverId = driverDetails.indicator; // "DSD-001"
+      } else if (driverData?.id) {
+        driverId = driverData.id; // Database ID
+      } else if (userId) {
+        driverId = userId; // Supabase UUID
+      }
+
+      console.log("🚗 Driver ID for notifications:", driverId);
+      console.log("📋 Available IDs:", {
+        indicator: driverDetails?.indicator,
+        driverDataId: driverData?.id,
+        userId: userId,
+      });
+
+      if (!driverId || pushTokenRegistered) {
+        if (!driverId)
+          console.log("❌ No driver ID available for notifications");
+        return;
+      }
+
+      try {
+        console.log("🚀 Setting up push notifications...");
+
+        // Push notifications register
+        const token = await registerForPushNotifications(driverId);
+        console.log("✅ Push token registered:", token);
+        setPushTokenRegistered(true);
+
+        // Notification listeners
+        const removeListeners = addNotificationListeners(
+          (notification) => {
+            console.log("📱 Notification received:", notification);
+
+            // New Order Alert
+            Alert.alert(
+              "🚗 New Order Available!",
+              `${
+                notification.request.content.body ||
+                "You have a new ride request"
+              }`,
+              [
+                {
+                  text: "View Orders",
+                  onPress: () => {
+                    console.log("View orders pressed");
+                    // Refresh orders when notification comes
+                    onRefresh();
+                  },
+                },
+                { text: "OK" },
+              ]
+            );
+          },
+          (response) => {
+            console.log("👆 Notification tapped:", response);
+
+            // When user taps notification
+            Alert.alert("Opening Orders", "Loading your available orders...");
+
+            // Refresh and show orders
+            onRefresh();
+          }
+        );
+
+        setNotificationListeners(() => removeListeners);
+      } catch (error) {
+        console.error("💥 Notification setup error:", error);
+      }
+    };
+
+    // Only setup notifications when driver is active and has ID
+    if (
+      userIndicator === "active" &&
+      (driverDetails?.indicator || driverData?.id || userId) &&
+      !pushTokenRegistered
+    ) {
+      setupPushNotifications();
+    }
+
+    // Cleanup function
+    return () => {
+      if (notificationListeners) {
+        notificationListeners();
+      }
+    };
+  }, [
+    userIndicator,
+    driverDetails?.indicator,
+    driverData?.id,
+    userId,
+    pushTokenRegistered,
+  ]);
 
   const fetchDriverDetails = async () => {
     try {
@@ -742,6 +266,7 @@ const HomeScreen: React.FC = () => {
         const driverInfo = data[0];
         setFullname(driverInfo.name);
         setLastName(driverInfo.last_name);
+
         setDriverDetails(driverInfo);
         setUserIndicator(driverInfo.indicator || data[0].indicator);
 
@@ -754,6 +279,7 @@ const HomeScreen: React.FC = () => {
           plate: driverInfo.plate,
           id: driverInfo.id,
         } as DriverData);
+      } else {
       }
     } catch (error) {}
   };
@@ -789,6 +315,7 @@ const HomeScreen: React.FC = () => {
             }
           }
         } catch (parseError) {}
+      } else {
       }
 
       let session = storeSession;
@@ -837,6 +364,7 @@ const HomeScreen: React.FC = () => {
 
         const userEmailValue = user.email || user.user_metadata?.email || "";
         const phoneValue = user.phone || user.user_metadata?.phone || "";
+        const fullNameValue = user.user_metadata?.full_name || "";
 
         setUserEmail(userEmailValue);
         setPhoneNumber(phoneValue);
@@ -845,12 +373,15 @@ const HomeScreen: React.FC = () => {
       }
 
       setUserId(user?.id as any);
+
       await fetchDriverDetails();
     } catch (error) {
     } finally {
       setFetchUserDataInProgress(false);
     }
   };
+
+  useEffect(() => {}, [userEmail]);
 
   useEffect(() => {
     if (userEmail && apiToken && !driverData) {
@@ -929,6 +460,7 @@ const HomeScreen: React.FC = () => {
 
         if (currentDriver.id) {
           setmyID(currentDriver.id);
+        } else {
         }
       } catch (error) {
         setDriverData(null);
@@ -991,7 +523,6 @@ const HomeScreen: React.FC = () => {
   }, [userEmail, location, apiToken, userIndicator]);
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
     await fetchDriverDetails();
 
     if (!apiToken || userIndicator !== "active") {
@@ -1006,7 +537,6 @@ const HomeScreen: React.FC = () => {
       } = await supabase.auth.getUser();
 
       if (userError) {
-        setRefreshing(false);
         return;
       }
 
@@ -1187,16 +717,29 @@ const HomeScreen: React.FC = () => {
     } catch (error) {}
   };
 
+  const TestNotificationDisplay = () => (
+    <TestContainer>
+      <TestTitle>🧪 Push Notification Testing Data</TestTitle>
+      <TestSubtitle>✅ Push Token Status:</TestSubtitle>
+      <TestData>
+        {pushTokenRegistered
+          ? "✅ Registered Successfully"
+          : "❌ Not Registered"}
+      </TestData>
+
+      <TestSubtitle>🎯 firebase fcm token:</TestSubtitle>
+      <TestDataHighlight>tcm registration token</TestDataHighlight>
+    </TestContainer>
+  );
+
   return (
-    <View style={styles.container}>
-      <LinearGradient
+    <Container>
+      <GradientHeader
         colors={["#27ae60", "#1e8449"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.gradientHeader}
       />
-      <ScrollView
-        style={styles.scrollableContent}
+      <ScrollableContent
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -1206,290 +749,156 @@ const HomeScreen: React.FC = () => {
           />
         }
       >
-        <View style={styles.innerContainer}>
-          <View style={styles.header}>
-            <View style={styles.headerContent}>
-              <View style={styles.userInfoSection}>
-                <View style={styles.avatarContainer}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                      {fullname.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.userTextInfo}>
-                  <Text style={styles.userGreeting}>
+        <Innercontainer>
+          <Header>
+            <HeaderContent>
+              <UserInfoSection>
+                <AvatarContainer>
+                  <Avatar>{fullname.charAt(0).toUpperCase()}</Avatar>
+                </AvatarContainer>
+                <UserTextInfo>
+                  <UserGreeting>
                     Welcome, {fullname + " " + lastName}
-                  </Text>
+                  </UserGreeting>
                   {userIndicator !== "active" ? (
-                    <Text style={{ fontWeight: "500" }}>
+                    <Text style={{ fontWeight: 500 }}>
                       Status: <Text style={{ color: "red" }}>Incomplete</Text>
                     </Text>
                   ) : (
-                    <Text style={{ fontWeight: "500" }}>
+                    <Text style={{ fontWeight: 500 }}>
                       Status: <Text style={{ color: "green" }}>Completed</Text>
                     </Text>
                   )}
                   <View style={{ flexDirection: "row" }}>
                     <Text>Driver:</Text>
-                    <Text
-                      style={{
-                        color: mode === "active" ? "green" : "red",
-                        marginLeft: 9,
-                      }}
-                    >
-                      {mode === "active" ? "Active" : "Inactive"}
+                    <Text style={{ color: "red", marginLeft: 9 }}>
+                      Inactive
                     </Text>
                   </View>
+                </UserTextInfo>
+              </UserInfoSection>
 
-                  <View style={{ flexDirection: "row", marginTop: 4 }}>
-                    <Text>Notifications:</Text>
-                    <Text
-                      style={{
-                        color:
-                          tokenStatus === "success" && expoPushToken
-                            ? "green"
-                            : tokenStatus === "error"
-                            ? "red"
-                            : "orange",
-                        marginLeft: 9,
-                      }}
-                    >
-                      {tokenStatus === "success" && expoPushToken
-                        ? "✅ Ready"
-                        : tokenStatus === "error"
-                        ? "❌ Error"
-                        : tokenStatus === "loading"
-                        ? "⏳ Setting up..."
-                        : "⏳ Initializing..."}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.userDetailsSection}>
-                <View style={styles.infoCard}>
-                  <View style={styles.infoIcon}>
+              <UserDetailsSection>
+                <InfoCard>
+                  <InfoIcon>
                     {selectedCountryFlag ? (
                       <Text>{selectedCountryFlag}</Text>
                     ) : (
                       <Icon name="phone" size={20} color="green" />
                     )}
-                  </View>
-                  <Text style={styles.infoText}>
-                    {`+${phoneNumber}` || "No phone number"}
-                  </Text>
-                </View>
+                  </InfoIcon>
+                  <InfoText>{`+${phoneNumber}` || "No phone number"}</InfoText>
+                </InfoCard>
 
                 {driverData?.plate && userIndicator === "active" && (
-                  <View style={[styles.infoCard, { height: 50 }]}>
+                  <InfoCard style={{ height: 50 }}>
                     <View>
                       <FontAwesome5 name="car-alt" size={16} color="#666" />
                     </View>
                     <Text style={{ marginLeft: 20 }}>{driverData.plate}</Text>
-                  </View>
+                  </InfoCard>
                 )}
-              </View>
+              </UserDetailsSection>
 
               {userIndicator !== "active" && (
                 <>
-                  <View style={styles.verificationAlert}>
-                    <View style={styles.alertIcon}>
+                  <VerificationAlert>
+                    <AlertIcon>
                       <MaterialIcons name="warning" size={24} color="#F59E0B" />
-                    </View>
-                    <View style={styles.alertContent}>
-                      <Text style={styles.alertTitle}>
-                        Account verification is required.
-                      </Text>
-                      <Text style={styles.alertDescription}>
+                    </AlertIcon>
+                    <AlertContent>
+                      <AlertTitle>Account verification is required.</AlertTitle>
+                      <AlertDescription>
                         Please verify your account to get started.
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.verifyButton}
+                      </AlertDescription>
+                    </AlertContent>
+                  </VerificationAlert>
+                  <VerifyButton
                     onPress={() => router.push("/(tabs)/driverVerification")}
                   >
-                    <View style={styles.verifyButtonContent}>
-                      <Text style={styles.verifyButtonText}>Continue</Text>
+                    <VerifyButtonContent>
+                      <VerifyButtonText>Continue</VerifyButtonText>
                       <MaterialIcons
                         name="arrow-forward"
                         size={20}
                         color="#FFF"
                       />
-                    </View>
-                  </TouchableOpacity>
+                    </VerifyButtonContent>
+                  </VerifyButton>
                 </>
               )}
 
               {userIndicator === "active" && (
-                <View style={styles.statusSection}>
-                  <View
-                    style={[
-                      styles.statusCard,
-                      {
-                        backgroundColor:
-                          mode === "active" ? "#F0FDF4" : "#FEF2F2",
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.statusIndicator,
-                        {
-                          backgroundColor:
-                            mode === "active" ? "#10B981" : "#EF4444",
-                        },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.statusText,
-                        { color: mode === "active" ? "#059669" : "#DC2626" },
-                      ]}
-                    >
+                <StatusSection>
+                  <StatusCard active={mode === "active"}>
+                    <StatusIndicator active={mode === "active"} />
+                    <StatusText active={mode === "active"}>
                       {mode === "active" ? "ONLINE" : "OFFLINE"}
-                    </Text>
-                  </View>
+                    </StatusText>
+                  </StatusCard>
 
                   {errorMsg ? (
-                    <View
-                      style={[styles.locationCard, styles.locationCardError]}
-                    >
+                    <LocationCard theme="error">
                       <MaterialIcons
                         name="error-outline"
                         size={18}
                         color={DriverModeColors.danger}
                       />
-                      <Text
-                        style={[
-                          styles.locationCardText,
-                          styles.locationCardTextError,
-                        ]}
-                      >
+                      <LocationCardText theme="error">
                         {errorMsg}
-                      </Text>
-                    </View>
+                      </LocationCardText>
+                    </LocationCard>
                   ) : locationSendError ? (
-                    <View
-                      style={[styles.locationCard, styles.locationCardError]}
-                    >
+                    <LocationCard theme="error">
                       <MaterialIcons
                         name="error-outline"
                         size={18}
                         color={DriverModeColors.danger}
                       />
-                      <Text
-                        style={[
-                          styles.locationCardText,
-                          styles.locationCardTextError,
-                        ]}
-                      >
+                      <LocationCardText theme="error">
                         {locationSendError}
-                      </Text>
-                    </View>
+                      </LocationCardText>
+                    </LocationCard>
                   ) : location && userIndicator === "active" ? (
-                    <View style={styles.locationCard}>
+                    <LocationCard>
                       <MaterialIcons
                         name="location-on"
                         size={18}
                         color={DriverModeColors.success}
                       />
-                      <Text style={styles.locationCardText}>
+                      <LocationCardText>
                         Location tracking active
-                      </Text>
-                    </View>
+                      </LocationCardText>
+                    </LocationCard>
                   ) : null}
-                </View>
+                </StatusSection>
               )}
-            </View>
-          </View>
-
-          {/* 🧪 COMPREHENSIVE DEBUG SECTION */}
-          {__DEV__ && (
-            <View style={styles.debugSection}>
-              <Text style={styles.debugSectionTitle}>
-                🔍 Debug & Testing Tools
-              </Text>
-
-              <View style={styles.debugButtonRow}>
-                <TouchableOpacity
-                  style={styles.debugButton}
-                  onPress={debugNotificationSystem}
-                >
-                  <MaterialIcons name="bug-report" size={16} color="#FFF" />
-                  <Text style={styles.debugButtonText}>System Info</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.localTestButton}
-                  onPress={sendLocalTestNotification}
-                >
-                  <MaterialIcons name="phone-android" size={16} color="#FFF" />
-                  <Text style={styles.debugButtonText}>Local Test</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.debugButtonRow}>
-                <TouchableOpacity
-                  style={styles.permissionButton}
-                  onPress={requestPermissionsAgain}
-                >
-                  <MaterialIcons name="security" size={16} color="#FFF" />
-                  <Text style={styles.debugButtonText}>Permissions</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.stepTestButton}
-                  onPress={sendStepByStepTest}
-                >
-                  <MaterialIcons name="send" size={16} color="#FFF" />
-                  <Text style={styles.debugButtonText}>Step Test</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={styles.clearLogsButton}
-                onPress={clearDebugLogs}
-              >
-                <MaterialIcons name="clear" size={16} color="#FFF" />
-                <Text style={styles.debugButtonText}>Clear Logs</Text>
-              </TouchableOpacity>
-
-              <View style={styles.debugInfo}>
-                <Text style={styles.debugInfoText}>
-                  Token: {expoPushToken ? "✅" : "❌"} | Status: {tokenStatus}
-                </Text>
-                <Text style={styles.debugInfoText}>
-                  Permissions: {permissionStatus} | App: {appState}
-                </Text>
-                <Text style={styles.debugInfoText}>
-                  Queue: {notificationQueue.length} | Logs: {debugLogs.length}
-                </Text>
-              </View>
-            </View>
-          )}
+            </HeaderContent>
+          </Header>
 
           {userIndicator === "active" && (
             <>
-              <View style={styles.modeContainer}>
+              {/* 🧪 Test Notification Display */}
+              <TestNotificationDisplay />
+
+              <ModeContainer>
                 <Drivermodecomponent />
-              </View>
-              <View style={styles.modeContainer}>
+              </ModeContainer>
+              <ModeContainer>
                 <JobSelectionComponent />
-              </View>
+              </ModeContainer>
 
               {userIndicator === "active" && isAutomatic && (
-                <View style={styles.modeContainer}>
+                <ModeContainer>
                   <PickupRadiusSelector />
-                </View>
+                </ModeContainer>
               )}
 
               {userIndicator === "active" &&
                 isAutomatic &&
                 ongoingOrders.length > 0 && (
-                  <View style={styles.jobsContainer}>
-                    <Text style={styles.sectionTitle}>Ongoing Orders</Text>
+                  <JobsContainer>
+                    <SectionTitle>Ongoing Orders</SectionTitle>
                     {ongoingOrders.map((order) => (
                       <JobOfferComponent
                         key={order.id}
@@ -1497,21 +906,19 @@ const HomeScreen: React.FC = () => {
                         onAccept={() => {}}
                       />
                     ))}
-                  </View>
+                  </JobsContainer>
                 )}
 
               {userIndicator === "active" && !isAutomatic && (
-                <View style={styles.jobsContainer}>
-                  <Text style={styles.sectionTitle}>Available Orders</Text>
+                <JobsContainer>
+                  <SectionTitle>Available Orders</SectionTitle>
                   {loadingData ? (
                     <>
                       <ActivityIndicator
                         size="large"
                         color={DriverModeColors.primary}
                       />
-                      <Text style={styles.loadingText}>
-                        Loading your jobs...
-                      </Text>
+                      <LoadingText>Loading your jobs...</LoadingText>
                     </>
                   ) : orders && orders.length > 0 ? (
                     orders.map((order: OrderData) => (
@@ -1522,408 +929,391 @@ const HomeScreen: React.FC = () => {
                       />
                     ))
                   ) : (
-                    <Text style={styles.noJobsText}>
+                    <NoJobsText>
                       No available Orders at the moment. Pull down to refresh.
-                    </Text>
+                    </NoJobsText>
                   )}
-                </View>
+                </JobsContainer>
               )}
 
               {userIndicator === "active" &&
                 isAutomatic &&
                 ongoingOrders.length === 0 && (
-                  <Text style={styles.noOngoingJobsText}>
+                  <NoOngoingJobsText>
                     No available ongoing Orders at the moment. Pull down to
                     refresh.
-                  </Text>
+                  </NoOngoingJobsText>
                 )}
 
               {userIndicator !== "active" && (
-                <Text
-                  style={[styles.noJobsText, { marginTop: 20, color: "#666" }]}
-                >
+                <NoJobsText style={{ marginTop: 20, color: "#666" }}>
                   You are currently offline. Go online to see available orders.
-                </Text>
+                </NoJobsText>
               )}
             </>
           )}
 
           {userIndicator !== "active" && (
-            <Text style={[styles.noJobsText, { marginTop: 20, color: "red" }]}>
+            <NoJobsText style={{ marginTop: 20, color: "red" }}>
               Please verify your account to start accepting orders
-            </Text>
+            </NoJobsText>
           )}
-        </View>
-      </ScrollView>
-    </View>
+        </Innercontainer>
+      </ScrollableContent>
+    </Container>
   );
 };
 
-// STYLES
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: DriverModeColors.light,
-  },
-  scrollableContent: {
-    flex: 1,
-    width: "100%",
-  },
-  innerContainer: {
-    alignItems: "center",
-    width: "100%",
-    justifyContent: "flex-start",
-    paddingTop:
-      Platform.OS === "android"
-        ? StatusBar.currentHeight
-          ? StatusBar.currentHeight + 8
-          : 8
-        : 65,
-    paddingHorizontal: 12,
-  },
-  header: {
-    width: "100%",
-    padding: 18,
-    backgroundColor: DriverModeColors.cardBg,
-    borderRadius: 20,
-    marginBottom: 16,
-    elevation: 2,
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    borderWidth: 0.5,
-    borderColor: "rgba(255, 255, 255, 0.8)",
-  },
-  headerContent: {},
-  userInfoSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  avatarContainer: {
-    marginRight: 16,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    backgroundColor: "#27ae60",
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    color: "#ffffff",
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  userTextInfo: {
-    flex: 1,
-  },
-  userGreeting: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: DriverModeColors.dark,
-    marginBottom: 4,
-  },
-  userDetailsSection: {
-    marginBottom: 20,
-  },
-  infoCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8f9fa",
-    padding: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  infoIcon: {
-    marginRight: 10,
-    width: 24,
-    height: 24,
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  infoText: {
-    fontSize: 14,
-    color: "#333333",
-    fontWeight: "500",
-    flex: 1,
-  },
-  verificationAlert: {
-    flexDirection: "row",
-    backgroundColor: "#fff7ed",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#fed7aa",
-  },
-  alertIcon: {
-    marginRight: 12,
-    paddingTop: 2,
-  },
-  alertContent: {
-    flex: 1,
-  },
-  alertTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#c05621",
-    marginBottom: 4,
-  },
-  alertDescription: {
-    fontSize: 14,
-    color: "#92400e",
-    lineHeight: 20,
-  },
-  verifyButton: {
-    backgroundColor: "#27ae60",
-    padding: 16,
-    borderRadius: 16,
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  verifyButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  verifyButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-    marginRight: 8,
-  },
-  statusSection: {
-    gap: 10,
-  },
-  statusCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
-  statusIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  locationCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F0FDF4",
-    padding: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
-  locationCardError: {
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FECACA",
-  },
-  locationCardText: {
-    color: "#059669",
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 8,
-  },
-  locationCardTextError: {
-    color: "#DC2626",
-  },
-  modeContainer: {
-    width: "100%",
-    padding: 16,
-    backgroundColor: "white",
-    borderRadius: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    borderWidth: 0.5,
-    borderColor: "rgba(255, 255, 255, 0.8)",
-  },
-  jobsContainer: {
-    width: "100%",
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: DriverModeColors.dark,
-    marginBottom: 14,
-    width: "100%",
-    paddingHorizontal: 2,
-    letterSpacing: -0.3,
-  },
-  noJobsText: {
-    fontSize: 14,
-    color: "green",
-    textAlign: "center",
-    padding: 24,
-    borderRadius: 16,
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    borderWidth: 0.5,
-    borderColor: "rgba(255, 255, 255, 0.35)",
-  },
-  noOngoingJobsText: {
-    fontSize: 14,
-    color: "green",
-    textAlign: "center",
-    padding: 20,
-    borderRadius: 16,
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    borderWidth: 0.5,
-    borderColor: "rgba(255, 255, 255, 0.35)",
-  },
-  loadingText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: DriverModeColors.darkGray,
-    marginTop: 12,
-    textAlign: "center",
-  },
-  gradientHeader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: Platform.OS === "android" ? 250 : 290,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-  },
-
-  // 🧪 DEBUG STYLES
-  debugSection: {
-    width: "100%",
-    padding: 16,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e9ecef",
-  },
-  debugSectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 12,
-    color: "#333",
-    textAlign: "center",
-  },
-  debugButtonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  debugButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#6c757d",
-    padding: 10,
-    borderRadius: 6,
-    flex: 0.48,
-  },
-  localTestButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#28a745",
-    padding: 10,
-    borderRadius: 6,
-    flex: 0.48,
-  },
-  permissionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ffc107",
-    padding: 10,
-    borderRadius: 6,
-    flex: 0.48,
-  },
-  stepTestButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#007bff",
-    padding: 10,
-    borderRadius: 6,
-    flex: 0.48,
-  },
-  clearLogsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#dc3545",
-    padding: 10,
-    borderRadius: 6,
-    marginBottom: 12,
-  },
-  debugButtonText: {
-    color: "#FFF",
-    fontSize: 12,
-    fontWeight: "500",
-    marginLeft: 6,
-  },
-  debugInfo: {
-    backgroundColor: "#ffffff",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#dee2e6",
-    marginBottom: 12,
-  },
-  debugInfoText: {
-    fontSize: 11,
-    color: "#6c757d",
-    marginBottom: 2,
-  },
-  debugLogsContainer: {
-    backgroundColor: "#ffffff",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#dee2e6",
-    maxHeight: 200,
-  },
-  debugLogsTitle: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "#333",
-    padding: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#dee2e6",
-  },
-  debugLogsScroll: {
-    maxHeight: 160,
-  },
-  debugLogItem: {
-    fontSize: 10,
-    color: "#495057",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-  },
-});
-
 export default HomeScreen;
+
+// Styled components
+const Container = styled.View`
+  flex: 1;
+  background-color: ${DriverModeColors.light};
+`;
+
+const ScrollableContent = styled.ScrollView`
+  flex: 1;
+  width: 100%;
+`;
+
+const Innercontainer = styled.View`
+  align-items: center;
+  width: 100%;
+  justify-content: flex-start;
+  padding-top: ${Platform.OS === "android"
+    ? StatusBar.currentHeight
+      ? StatusBar.currentHeight + 8
+      : 8
+    : 65}px;
+  padding-horizontal: 12px;
+`;
+
+const Header = styled.View`
+  width: 100%;
+  padding: 18px;
+  background-color: ${DriverModeColors.cardBg};
+  border-radius: 20px;
+  margin-bottom: 16px;
+  elevation: 2;
+  shadow-opacity: 0.22;
+  shadow-radius: 8px;
+  shadow-color: #000;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.8);
+`;
+
+const UserGreeting = styled.Text`
+  font-size: 20px;
+  font-weight: 700;
+  color: ${DriverModeColors.dark};
+  margin-bottom: 4px;
+`;
+
+const ModeContainer = styled.View`
+  width: 100%;
+  padding: 16px;
+  background-color: white;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  elevation: 2;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  shadow-color: #000;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.8);
+`;
+
+const SectionTitle = styled.Text`
+  font-size: 18px;
+  font-weight: 700;
+  color: ${DriverModeColors.dark};
+  margin-bottom: 14px;
+  width: 100%;
+  padding-horizontal: 2px;
+  letter-spacing: -0.3px;
+`;
+
+const JobsContainer = styled.View`
+  width: 100%;
+  margin-bottom: 24px;
+`;
+
+const NoJobsText = styled.Text`
+  font-size: 14px;
+  color: green;
+  text-align: center;
+  padding: 24px;
+  border-radius: 16px;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.35);
+`;
+
+const NoOngoingJobsText = styled.Text`
+  font-size: 14px;
+  color: green;
+  text-align: center;
+  padding: 20px;
+  border-radius: 16px;
+  shadow-opacity: 0.12;
+  shadow-radius: 8px;
+  shadow-offset: 0px 3px;
+  border-width: 0.5px;
+  border-color: rgba(255, 255, 255, 0.35);
+`;
+
+const LoadingText = styled.Text`
+  font-size: 14px;
+  font-weight: 500;
+  color: ${DriverModeColors.darkGray};
+  margin-top: 12px;
+`;
+
+const GradientHeader = styled(LinearGradient)`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: ${Platform.OS === "android" ? "250px" : "290px"};
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+`;
+
+const HeaderContent = styled.View``;
+
+const UserInfoSection = styled.View`
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 20px;
+`;
+
+const AvatarContainer = styled.View`
+  margin-right: 16px;
+`;
+
+const Avatar = styled.Text`
+  width: 56px;
+  height: 56px;
+  background-color: #27ae60;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+  border-radius: 28px;
+  text-align: center;
+  line-height: 56px;
+`;
+
+const UserTextInfo = styled.View`
+  flex: 1;
+`;
+
+const UserDetailsSection = styled.View`
+  margin-bottom: 20px;
+`;
+
+const InfoCard = styled.View`
+  flex-direction: row;
+  align-items: center;
+  background-color: #f8f9fa;
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+`;
+
+const InfoIcon = styled.View`
+  margin-right: 10px;
+  width: 24px;
+  height: 24px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const InfoText = styled.Text`
+  font-size: 14px;
+  color: #333333;
+  font-weight: 500;
+  flex: 1;
+`;
+
+const VerificationAlert = styled.View`
+  flex-direction: row;
+  background-color: #fff7ed;
+  padding: 16px;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  border-width: 1px;
+  border-color: #fed7aa;
+`;
+
+const AlertIcon = styled.View`
+  margin-right: 12px;
+  padding-top: 2px;
+`;
+
+const AlertContent = styled.View`
+  flex: 1;
+`;
+
+const AlertTitle = styled.Text`
+  font-size: 16px;
+  font-weight: 600;
+  color: #c05621;
+  margin-bottom: 4px;
+`;
+
+const AlertDescription = styled.Text`
+  font-size: 14px;
+  color: #92400e;
+  line-height: 20px;
+`;
+
+const VerifyButton = styled.TouchableOpacity`
+  background-color: #27ae60;
+  padding: 16px;
+  border-radius: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  active-opacity: 0.8;
+`;
+
+const VerifyButtonContent = styled.View`
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+`;
+
+const VerifyButtonText = styled.Text`
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-right: 8px;
+`;
+
+const StatusSection = styled.View`
+  gap: 10px;
+`;
+
+const StatusCard = styled.View<StatusProps>`
+  flex-direction: row;
+  align-items: center;
+  background-color: ${(props) => (props.active ? "#F0FDF4" : "#FEF2F2")};
+  padding: 12px 16px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: ${(props) => (props.active ? "#BBF7D0" : "#FECACA")};
+`;
+
+const StatusIndicator = styled.View<StatusProps>`
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: ${(props) => (props.active ? "#10B981" : "#EF4444")};
+  margin-right: 8px;
+`;
+
+const StatusText = styled.Text<StatusProps>`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${(props) => (props.active ? "#059669" : "#DC2626")};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const LocationCard = styled.View<ThemeProps>`
+  flex-direction: row;
+  align-items: center;
+  background-color: ${(props) =>
+    props.theme === "error" ? "#FEF2F2" : "#F0FDF4"};
+  padding: 12px 16px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: ${(props) => (props.theme === "error" ? "#FECACA" : "#BBF7D0")};
+`;
+
+const LocationCardText = styled.Text<ThemeProps>`
+  color: ${(props) => (props.theme === "error" ? "#DC2626" : "#059669")};
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 8px;
+`;
+
+// 🧪 Test Component Styles
+const TestContainer = styled.View`
+  width: 100%;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  border-width: 2px;
+  border-color: #007bff;
+  border-style: dashed;
+`;
+
+const TestTitle = styled.Text`
+  font-size: 16px;
+  font-weight: bold;
+  color: #007bff;
+  margin-bottom: 8px;
+`;
+
+const TestSubtitle = styled.Text`
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+`;
+
+const TestButton = styled.TouchableOpacity`
+  background-color: #007bff;
+  padding: 12px;
+  border-radius: 8px;
+  align-items: center;
+  margin-top: 8px;
+`;
+
+const TestButtonText = styled.Text`
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+`;
+
+const TestData = styled.Text`
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-width: 1px;
+  border-color: #ddd;
+`;
+
+const TestDataHighlight = styled.Text`
+  font-size: 14px;
+  color: #007bff;
+  background-color: #e3f2fd;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-width: 2px;
+  border-color: #007bff;
+  font-weight: bold;
+`;
+
+const TestInstructions = styled.Text`
+  font-size: 12px;
+  color: #666;
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 4px;
+  line-height: 18px;
+  border-left-width: 3px;
+  border-left-color: #28a745;
+`;

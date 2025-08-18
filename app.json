@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ivexinio.thevanappdriverapp",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "config": {
         "googleMapsApiKey": "AIzaSyDehqBa4oYIB8IbD6z07_X8hU9Q9BhW-9Y"
       },

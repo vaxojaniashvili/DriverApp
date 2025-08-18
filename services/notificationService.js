@@ -11,33 +11,68 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Replace your registerForPushNotifications function with this:
+
 export async function registerForPushNotifications(driverId) {
+  console.log(
+    "🔍 Starting registerForPushNotifications with driverId:",
+    driverId
+  );
+
   if (!Device.isDevice) {
+    console.log("❌ Must use physical device for Push Notifications");
     alert("Must use physical device for Push Notifications");
-    return;
+    return null; // Changed from return; to return null;
   }
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
+  try {
+    // Added try-catch wrapper
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    console.log("📱 Existing notification permission status:", existingStatus);
 
-  if (existingStatus !== "granted") {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
+    if (existingStatus !== "granted") {
+      console.log("🔔 Requesting notification permissions...");
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+      console.log("📱 New permission status:", status);
+    }
+
+    if (finalStatus !== "granted") {
+      console.log("❌ Failed to get push notification permissions");
+      alert("Failed to get push token!");
+      return null; // Changed from return; to return null;
+    }
+
+    console.log("🚀 Getting device push token...");
+
+    // Firebase device token
+    const deviceToken = await Notifications.getDevicePushTokenAsync();
+    console.log("📋 Device Token Result:", deviceToken);
+    console.log("📋 Device Token Type:", typeof deviceToken);
+    console.log("📋 Device Token Data:", deviceToken?.data);
+    console.log("📋 Device Token Type (data):", typeof deviceToken?.data);
+
+    const tokenData = deviceToken?.data;
+
+    if (!tokenData) {
+      // Added null check
+      console.log("❌ No device token received");
+      return null;
+    }
+
+    console.log("✅ Device Token received:", tokenData);
+
+    // Backend-ზე გაგზავნა
+    await savePushTokenToBackend(tokenData, driverId);
+
+    return tokenData; // Changed from deviceToken.data to tokenData
+  } catch (error) {
+    // Added error handling
+    console.error("💥 Error in registerForPushNotifications:", error);
+    return null;
   }
-
-  if (finalStatus !== "granted") {
-    alert("Failed to get push token!");
-    return;
-  }
-
-  // Firebase device token
-  const deviceToken = await Notifications.getDevicePushTokenAsync();
-  console.log("Device Token:", deviceToken.data);
-
-  // Backend-ზე გაგზავნა
-  await savePushTokenToBackend(deviceToken.data, driverId);
-
-  return deviceToken.data;
 }
 
 export async function savePushTokenToBackend(pushToken, driverId) {

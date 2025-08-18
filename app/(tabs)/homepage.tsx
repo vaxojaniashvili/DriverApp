@@ -65,6 +65,8 @@ const HomeScreen: React.FC = () => {
   const [pushTokenRegistered, setPushTokenRegistered] =
     useState<boolean>(false);
 
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
+
   const { setMode, mode, setmyID, isAutomatic } =
     useAuthStore() as unknown as AuthStoreState;
   const modeRef = useRef<"active" | "off" | "break">(mode);
@@ -151,11 +153,20 @@ const HomeScreen: React.FC = () => {
   // 🚀 Push Notifications Setup
   useEffect(() => {
     const setupPushNotifications = async () => {
+      console.log("🔍 Starting setupPushNotifications...");
+      console.log("📊 Current states:", {
+        userIndicator,
+        pushTokenRegistered,
+        userId,
+        driverDataId: driverData?.id,
+        driverDetailsIndicator: driverDetails?.indicator,
+      });
+
       // Driver ID-ის მიღება - ყველა ვარიანტის ჩექ
       let driverId = null;
 
       if (driverDetails?.unique_id) {
-        driverId = driverDetails.indicator; // "DSD-001"
+        driverId = driverDetails.unique_id; // "DSD-001"
       } else if (driverData?.id) {
         driverId = driverData.id; // Database ID
       } else if (userId) {
@@ -170,8 +181,11 @@ const HomeScreen: React.FC = () => {
       });
 
       if (!driverId || pushTokenRegistered) {
-        if (!driverId)
+        if (!driverId) {
           console.log("❌ No driver ID available for notifications");
+        } else {
+          console.log("⚠️ Push token already registered, skipping...");
+        }
         return;
       }
 
@@ -181,7 +195,17 @@ const HomeScreen: React.FC = () => {
         // Push notifications register
         const token = await registerForPushNotifications(driverId);
         console.log("✅ Push token registered:", token);
-        setPushTokenRegistered(true);
+        console.log("🔍 Token type:", typeof token);
+        console.log("🔍 Token length:", token ? token.length : 0);
+
+        // Save token to state for display
+        if (token) {
+          setFcmToken(token);
+          setPushTokenRegistered(true);
+          console.log("💾 Token saved to state successfully");
+        } else {
+          console.log("❌ No token received from registerForPushNotifications");
+        }
 
         // Notification listeners
         const removeListeners = addNotificationListeners(
@@ -727,8 +751,28 @@ const HomeScreen: React.FC = () => {
           : "❌ Not Registered"}
       </TestData>
 
-      <TestSubtitle>🎯 firebase fcm token:</TestSubtitle>
-      <TestDataHighlight>tcm registration token</TestDataHighlight>
+      <TestSubtitle>🎯 Firebase FCM Token:</TestSubtitle>
+      <TestDataHighlight>
+        {fcmToken ? fcmToken : "Token not available yet..."}
+      </TestDataHighlight>
+
+      {/* Debugging Information */}
+      <TestSubtitle>🔍 Debug Info:</TestSubtitle>
+      <TestData>User Indicator: {userIndicator || "Not set"}</TestData>
+      <TestData>
+        Push Token Registered: {pushTokenRegistered ? "Yes" : "No"}
+      </TestData>
+      <TestData>
+        Driver ID Available:{" "}
+        {driverDetails?.unique_id || driverData?.id || userId ? "Yes" : "No"}
+      </TestData>
+
+      {fcmToken && (
+        <TestInstructions>
+          💡 Use this token to send push notifications via Firebase Console or
+          API
+        </TestInstructions>
+      )}
     </TestContainer>
   );
 

@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Text,
   Alert,
+  TouchableOpacity,
 } from "react-native";
 import styled from "styled-components/native";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -29,6 +30,13 @@ import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import JobSelectionComponent from "@/components/homepage/jobs-selection/JobSelection";
 import PickupRadiusSelector from "@/components/homepage/pickup-radius/PickupRadiusSelector";
 
+// Push Notifications import
+import {
+  registerForPushNotifications,
+  addNotificationListeners,
+} from "../../services/notificationService";
+import { Icon } from "@rneui/themed";
+
 const HomeScreen: React.FC = () => {
   const [userEmail, setUserEmail] = useState<string>("");
   const [phoneNumber, setPhoneNumber] = useState<number>();
@@ -49,6 +57,15 @@ const HomeScreen: React.FC = () => {
   const [ongoingOrders, setOngoingOrders] = useState<OrderData[]>([]);
   const router = useRouter();
   const params = useLocalSearchParams();
+
+  // Push Notifications state
+  const [notificationListeners, setNotificationListeners] = useState<
+    (() => void) | null
+  >(null);
+  const [pushTokenRegistered, setPushTokenRegistered] =
+    useState<boolean>(false);
+
+  const [fcmToken, setFcmToken] = useState<string | null>(null);
 
   const { setMode, mode, setmyID, isAutomatic } =
     useAuthStore() as unknown as AuthStoreState;
@@ -133,6 +150,128 @@ const HomeScreen: React.FC = () => {
     }
   }, [storeUser?.id]);
 
+  // 🚀 Push Notifications Setup
+  useEffect(() => {
+    const setupPushNotifications = async () => {
+      console.log("🔍 Starting setupPushNotifications...");
+      console.log("📊 Current states:", {
+        userIndicator,
+        pushTokenRegistered,
+        userId,
+        driverDataId: driverData?.id,
+        driverDetailsIndicator: driverDetails?.indicator,
+      });
+
+      // Driver ID-ის მიღება - ყველა ვარიანტის ჩექ
+      let driverId = null;
+
+      if (driverDetails?.unique_id) {
+        driverId = driverDetails.unique_id; // "DSD-001"
+      } else if (driverData?.id) {
+        driverId = driverData.id; // Database ID
+      } else if (userId) {
+        driverId = userId; // Supabase UUID
+      }
+
+      console.log("🚗 Driver ID for notifications:", driverId);
+      console.log("📋 Available IDs:", {
+        indicator: driverDetails?.indicator,
+        driverDataId: driverData?.id,
+        userId: userId,
+      });
+
+      if (!driverId || pushTokenRegistered) {
+        if (!driverId) {
+          console.log("❌ No driver ID available for notifications");
+        } else {
+          console.log("⚠️ Push token already registered, skipping...");
+        }
+        return;
+      }
+
+      try {
+        console.log("🚀 Setting up push notifications...");
+
+        // Push notifications register
+        const token = await registerForPushNotifications(driverId);
+        console.log("✅ Push token registered:", token);
+        console.log("🔍 Token type:", typeof token);
+        console.log("🔍 Token length:", token ? token.length : 0);
+
+        // Save token to state for display
+        if (token) {
+          setFcmToken(token);
+          setPushTokenRegistered(true);
+          console.log("💾 Token saved to state successfully");
+        } else {
+          console.log("❌ No token received from registerForPushNotifications");
+        }
+
+        // Notification listeners
+        const removeListeners = addNotificationListeners(
+          (notification) => {
+            console.log("📱 Notification received:", notification);
+
+            // New Order Alert
+            Alert.alert(
+              "🚗 New Order Available!",
+              `${
+                notification.request.content.body ||
+                "You have a new ride request"
+              }`,
+              [
+                {
+                  text: "View Orders",
+                  onPress: () => {
+                    console.log("View orders pressed");
+                    // Refresh orders when notification comes
+                    onRefresh();
+                  },
+                },
+                { text: "OK" },
+              ]
+            );
+          },
+          (response) => {
+            console.log("👆 Notification tapped:", response);
+
+            // When user taps notification
+            Alert.alert("Opening Orders", "Loading your available orders...");
+
+            // Refresh and show orders
+            onRefresh();
+          }
+        );
+
+        setNotificationListeners(() => removeListeners);
+      } catch (error) {
+        console.error("💥 Notification setup error:", error);
+      }
+    };
+
+    // Only setup notifications when driver is active and has ID
+    if (
+      userIndicator === "active" &&
+      (driverDetails?.indicator || driverData?.id || userId) &&
+      !pushTokenRegistered
+    ) {
+      setupPushNotifications();
+    }
+
+    // Cleanup function
+    return () => {
+      if (notificationListeners) {
+        notificationListeners();
+      }
+    };
+  }, [
+    userIndicator,
+    driverDetails?.indicator,
+    driverData?.id,
+    userId,
+    pushTokenRegistered,
+  ]);
+
   const fetchDriverDetails = async () => {
     try {
       const response = await fetch(
@@ -189,7 +328,6 @@ const HomeScreen: React.FC = () => {
             setUserId(user?.id as any);
             setUserEmail(user.email || user.user_metadata.email || "");
             setPhoneNumber(user.phone || user.user_metadata.phone || "");
-            // setFullname(user.user_metadata.full_name || "");
 
             // Fetch user status
             const status = user.user_metadata?.status;
@@ -213,7 +351,6 @@ const HomeScreen: React.FC = () => {
         setUserId(user?.id as any);
         setUserEmail(user.email || user.user_metadata.email || "");
         setPhoneNumber(user.phone || user.user_metadata.phone || "");
-        // setFullname(user.user_metadata.full_name || "");
       } else {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) =>
@@ -249,14 +386,12 @@ const HomeScreen: React.FC = () => {
         setApiToken(session.access_token);
         setUserId(user?.id as any);
 
-        // ✅ Set user data properly
         const userEmailValue = user.email || user.user_metadata?.email || "";
         const phoneValue = user.phone || user.user_metadata?.phone || "";
         const fullNameValue = user.user_metadata?.full_name || "";
 
         setUserEmail(userEmailValue);
         setPhoneNumber(phoneValue);
-        // setFullname(fullNameValue);
 
         await fetchDriverDetails();
       }
@@ -272,7 +407,6 @@ const HomeScreen: React.FC = () => {
 
   useEffect(() => {}, [userEmail]);
 
-  // ✅ Only call fetchDriverDetails once when userEmail and apiToken are available
   useEffect(() => {
     if (userEmail && apiToken && !driverData) {
       fetchDriverDetails();
@@ -507,7 +641,6 @@ const HomeScreen: React.FC = () => {
       return false;
     }
   }, [apiToken, userIndicator]);
-  // Modify your useFocusEffect to also fetch user data
 
   useFocusEffect(
     useCallback(() => {
@@ -521,8 +654,6 @@ const HomeScreen: React.FC = () => {
           if (userError || !user) {
             return;
           }
-
-          // setFullname(user.user_metadata.full_name || "");
         } catch (error) {}
       };
 
@@ -537,6 +668,7 @@ const HomeScreen: React.FC = () => {
       return () => {};
     }, [onRefresh, apiToken, userIndicator])
   );
+
   const processOrders = (ordersData: any[]) => {
     if (!Array.isArray(ordersData)) {
       setOrders([]);
@@ -609,6 +741,41 @@ const HomeScreen: React.FC = () => {
     } catch (error) {}
   };
 
+  const TestNotificationDisplay = () => (
+    <TestContainer>
+      <TestTitle>🧪 Push Notification Testing Data</TestTitle>
+      <TestSubtitle>✅ Push Token Status:</TestSubtitle>
+      <TestData>
+        {pushTokenRegistered
+          ? "✅ Registered Successfully"
+          : "❌ Not Registered"}
+      </TestData>
+
+      <TestSubtitle>🎯 Firebase FCM Token:</TestSubtitle>
+      <TestDataHighlight>
+        {fcmToken ? fcmToken : "Token not available yet..."}
+      </TestDataHighlight>
+
+      {/* Debugging Information */}
+      <TestSubtitle>🔍 Debug Info:</TestSubtitle>
+      <TestData>User Indicator: {userIndicator || "Not set"}</TestData>
+      <TestData>
+        Push Token Registered: {pushTokenRegistered ? "Yes" : "No"}
+      </TestData>
+      <TestData>
+        Driver ID Available:{" "}
+        {driverDetails?.unique_id || driverData?.id || userId ? "Yes" : "No"}
+      </TestData>
+
+      {fcmToken && (
+        <TestInstructions>
+          💡 Use this token to send push notifications via Firebase Console or
+          API
+        </TestInstructions>
+      )}
+    </TestContainer>
+  );
+
   return (
     <Container>
       <GradientHeader
@@ -658,7 +825,11 @@ const HomeScreen: React.FC = () => {
               <UserDetailsSection>
                 <InfoCard>
                   <InfoIcon>
-                    <Text>{selectedCountryFlag}</Text>
+                    {selectedCountryFlag ? (
+                      <Text>{selectedCountryFlag}</Text>
+                    ) : (
+                      <Icon name="phone" size={20} color="green" />
+                    )}
                   </InfoIcon>
                   <InfoText>{`+${phoneNumber}` || "No phone number"}</InfoText>
                 </InfoCard>
@@ -751,6 +922,9 @@ const HomeScreen: React.FC = () => {
 
           {userIndicator === "active" && (
             <>
+              {/* 🧪 Test Notification Display */}
+              <TestNotificationDisplay />
+
               <ModeContainer>
                 <Drivermodecomponent />
               </ModeContainer>
@@ -836,7 +1010,7 @@ const HomeScreen: React.FC = () => {
 
 export default HomeScreen;
 
-// Styled components remain the same as in original code
+// Styled components
 const Container = styled.View`
   flex: 1;
   background-color: ${DriverModeColors.light};
@@ -936,6 +1110,7 @@ const NoOngoingJobsText = styled.Text`
   border-width: 0.5px;
   border-color: rgba(255, 255, 255, 0.35);
 `;
+
 const LoadingText = styled.Text`
   font-size: 14px;
   font-weight: 500;
@@ -952,6 +1127,7 @@ const GradientHeader = styled(LinearGradient)`
   border-bottom-left-radius: 16px;
   border-bottom-right-radius: 16px;
 `;
+
 const HeaderContent = styled.View``;
 
 const UserInfoSection = styled.View`
@@ -1110,4 +1286,78 @@ const LocationCardText = styled.Text<ThemeProps>`
   font-size: 14px;
   font-weight: 500;
   margin-left: 8px;
+`;
+
+// 🧪 Test Component Styles
+const TestContainer = styled.View`
+  width: 100%;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  border-width: 2px;
+  border-color: #007bff;
+  border-style: dashed;
+`;
+
+const TestTitle = styled.Text`
+  font-size: 16px;
+  font-weight: bold;
+  color: #007bff;
+  margin-bottom: 8px;
+`;
+
+const TestSubtitle = styled.Text`
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+`;
+
+const TestButton = styled.TouchableOpacity`
+  background-color: #007bff;
+  padding: 12px;
+  border-radius: 8px;
+  align-items: center;
+  margin-top: 8px;
+`;
+
+const TestButtonText = styled.Text`
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+`;
+
+const TestData = styled.Text`
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-width: 1px;
+  border-color: #ddd;
+`;
+
+const TestDataHighlight = styled.Text`
+  font-size: 14px;
+  color: #007bff;
+  background-color: #e3f2fd;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-width: 2px;
+  border-color: #007bff;
+  font-weight: bold;
+`;
+
+const TestInstructions = styled.Text`
+  font-size: 12px;
+  color: #666;
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 4px;
+  line-height: 18px;
+  border-left-width: 3px;
+  border-left-color: #28a745;
 `;

@@ -13,8 +13,12 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-target 'DriverApp' do
+target 'TheVanAppDriver' do
   use_expo_modules!
+
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'FirebaseCoreInternal', :modular_headers => true
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
     config_command = ['node', '-e', "process.argv=['', '', 'config'];require('@react-native-community/cli').run()"];

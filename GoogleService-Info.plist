@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyAgUJVdVjWDTiPTI0lgwt5Yo8J0Z-M_nr4</string>
+	<key>GCM_SENDER_ID</key>
+	<string>991708575200</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.ivexinio.thevanappdriverapp</string>
+	<key>PROJECT_ID</key>
+	<string>thevanapp-a4a59</string>
+	<key>STORAGE_BUCKET</key>
+	<string>thevanapp-a4a59.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:991708575200:ios:8b6c8883e4b0785e576785</string>
+</dict>
+</plist>

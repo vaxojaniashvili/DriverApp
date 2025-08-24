@@ -10,7 +10,6 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
-
 import { useColorScheme } from "@/hooks/useColorScheme";
 // Firebase და Notifications import
 import {
@@ -18,9 +17,9 @@ import {
   addNotificationListeners,
 } from "../services/notificationService";
 import "../services/firebaseConfig"; // Firebase initialization
-
 // Firebase messaging import
 import messaging from "@react-native-firebase/messaging";
+import { supabase } from "@/infrastructure/db/supabase";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -97,12 +96,37 @@ export default function RootLayout() {
     }
   }, []);
 
-  // Push Notifications Setup
   useEffect(() => {
     const setupNotifications = async () => {
+      const fetchUserData = async () => {
+        try {
+          const {
+            data: { user },
+            error,
+          } = await supabase.auth.getUser();
+
+          if (error) {
+            console.error("Supabase getUser error:", error);
+            return null;
+          }
+
+          return user;
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          return null;
+        }
+      };
+
+      const user = await fetchUserData();
+
       try {
-        // Driver ID - შეცვალე შენი authentication logic-ით
-        const driverId = "d2d9c7ea-213d-4dee-8aaf-a55a163b75ce"; // ეს უნდა მოიღო user authentication-იდან
+        const driverId = user?.id || "d2d9c7ea-213d-4dee-8aaf-a55a163b75ce";
+
+        if (!user) {
+          console.log(
+            "User not logged in. Using fallback ID for push notification registration."
+          );
+        }
 
         // Register for push notifications
         await registerForPushNotifications(driverId);
@@ -135,7 +159,6 @@ export default function RootLayout() {
     return null;
   }
 
-  const user = false;
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>

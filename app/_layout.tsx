@@ -8,6 +8,8 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
+import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 // Firebase და Notifications import
@@ -17,8 +19,16 @@ import {
 } from "../services/notificationService";
 import "../services/firebaseConfig"; // Firebase initialization
 
+// Firebase messaging import
+import messaging from "@react-native-firebase/messaging";
+
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Firebase background message handler (app-ის გარეთ უნდა იყოს)
+messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+  console.log("Message handled in the background!", remoteMessage);
+});
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -32,12 +42,67 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  // Firebase Message Handlers
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      const setupFirebaseHandlers = () => {
+        // Foreground message handler
+        const unsubscribeForeground = messaging().onMessage(
+          async (remoteMessage) => {
+            console.log("Foreground FCM message received!", remoteMessage);
+
+            // Show local notification when app is in foreground
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: remoteMessage.notification?.title || "New Message",
+                body:
+                  remoteMessage.notification?.body || "You have a new message",
+                data: remoteMessage.data,
+                sound: true,
+              },
+              trigger: null,
+            });
+          }
+        );
+
+        // Notification opened app from background
+        const unsubscribeNotificationOpened =
+          messaging().onNotificationOpenedApp((remoteMessage) => {
+            console.log(
+              "Notification opened app from background:",
+              remoteMessage
+            );
+          });
+
+        // Check if app was opened from notification (cold start)
+        messaging()
+          .getInitialNotification()
+          .then((remoteMessage) => {
+            if (remoteMessage) {
+              console.log(
+                "App opened from notification (cold start):",
+                remoteMessage
+              );
+            }
+          });
+
+        return () => {
+          unsubscribeForeground();
+          unsubscribeNotificationOpened();
+        };
+      };
+
+      const cleanup = setupFirebaseHandlers();
+      return cleanup;
+    }
+  }, []);
+
   // Push Notifications Setup
   useEffect(() => {
     const setupNotifications = async () => {
       try {
         // Driver ID - შეცვალე შენი authentication logic-ით
-        const driverId = "driver_12345"; // ეს უნდა მოიღო user authentication-იდან
+        const driverId = "d2d9c7ea-213d-4dee-8aaf-a55a163b75ce"; // ეს უნდა მოიღო user authentication-იდან
 
         // Register for push notifications
         await registerForPushNotifications(driverId);
@@ -45,11 +110,11 @@ export default function RootLayout() {
         // Add notification listeners
         const removeListeners = addNotificationListeners(
           (notification) => {
-            console.log("📱 Notification received:", notification);
+            console.log("Notification received:", notification);
             // აქ შეგიძლია notification handle-ი
           },
           (response) => {
-            console.log("👆 Notification tapped:", response);
+            console.log("Notification tapped:", response);
             // აქ შეგიძლია notification tap handle-ი
           }
         );

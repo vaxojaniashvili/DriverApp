@@ -21,7 +21,9 @@
         "googleMapsApiKey": "AIzaSyDehqBa4oYIB8IbD6z07_X8hU9Q9BhW-9Y"
       },
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -67,7 +69,9 @@
           "icon": "./assets/images/notification_icon.png",
           "color": "#ffffff",
           "defaultChannel": "default",
-          "sounds": ["./assets/sounds/notification.wav"]
+          "sounds": [
+            "./assets/sounds/notification.wav"
+          ]
         }
       ]
     ],
@@ -85,6 +89,7 @@
       "eas": {
         "projectId": "af101e84-7fa6-46eb-bc1d-beb8833d3de7"
       }
-    }
+    },
+    "owner": "vaxojaniashvili"
   }
 }

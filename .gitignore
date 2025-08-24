@@ -1,4 +1,3 @@
-# თენი არსებული კონტენტი
 node_modules/
 AuthKey_HDFG83AZ25.p8/
 AuthKey_HDFG83AZ25/
@@ -16,16 +15,18 @@ web-build/
 # macOS
 .DS_Store
 
-# API Keys და Environment Variables
+# API Keys და Environment Variables (შესწორებულია)
 .env
 .env.local
 .env.production
 .env.staging
-*.json
-google-services.json
-GoogleService-Info.plist
-firebase-config.js
-firebase.json
+# ❌ წაშალეთ *.json ხაზი
+# 👇 დაამატეთ ხაზები იმ კონკრეტული JSON ფაილებისთვის, რომლებიც უნდა იგნორირდეს
+/firebase.json
+/GoogleService-Info.plist
+/google-services.json
+# თუ გაქვთ, დაამატეთ .npmrc
+.npmrc
 
 # @generated expo-cli sync-2b81b286409207a5da26e14c78851eb30d8ccbdb
 expo-env.d.ts

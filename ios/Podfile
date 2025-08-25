@@ -9,8 +9,8 @@ ENV['EX_DEV_CLIENT_NETWORK_INSPECTOR'] = podfile_properties['EX_DEV_CLIENT_NETWO
 
 platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
-# 👇 დაამატეთ ეს ხაზი! ის გლობალურად ჩართავს მოდულურ სათაურებს ყველა Pod-ისთვის.
-use_modular_headers! 
+# ❌ Comment out global use_modular_headers! to fix ReactCommon redefinition
+# use_modular_headers! 
 
 install! 'cocoapods',
   :deterministic_uuids => false
@@ -39,7 +39,11 @@ target 'TheVanAppDriver' do
   pod 'react-native-google-maps', path: File.dirname(`node --print "require.resolve('react-native-maps/package.json')"`)
 # @generated end react-native-maps
 
-  # (წაშალეთ ის ხაზები, რომლებიც ხელით დაამატეთ: pod 'GoogleUtilities', :modular_headers => true და pod 'FirebaseCoreInternal', :modular_headers => true)
+  # ✅ Add selective modular headers for Firebase dependencies only
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'FirebaseCoreInternal', :modular_headers => true
+  pod 'FirebaseInstallations', :modular_headers => true
 
   config = use_native_modules!(config_command)
 

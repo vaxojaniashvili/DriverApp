@@ -6,34 +6,59 @@ import {
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import "react-native-reanimated";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "@/hooks/useColorScheme";
-// Firebase და Notifications import
 import {
   registerForPushNotifications,
   addNotificationListeners,
 } from "../services/notificationService";
-import "../services/firebaseConfig"; // Firebase initialization
-// Firebase messaging import
-import messaging from "@react-native-firebase/messaging";
 import { supabase } from "@/infrastructure/db/supabase";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-// Firebase background message handler (app-ის გარეთ უნდა იყოს)
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-  console.log("Message handled in the background!", remoteMessage);
-});
-
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [firebaseInitialized, setFirebaseInitialized] = useState(false);
   const [loaded] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
   });
+
+  // Firebase initialization
+  useEffect(() => {
+    const initializeFirebase = async () => {
+      try {
+        const { firebase } = require("@react-native-firebase/app");
+
+        if (firebase.apps.length === 0) {
+          await firebase.initializeApp();
+          console.log("Firebase initialized successfully");
+        } else {
+          console.log("Firebase already initialized");
+        }
+
+        // Initialize messaging after Firebase app is ready
+        const messaging = require("@react-native-firebase/messaging").default;
+
+        // Set background message handler
+        messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+          console.log("Message handled in the background!", remoteMessage);
+        });
+
+        setFirebaseInitialized(true);
+      } catch (error) {
+        console.error("Firebase initialization error:", error);
+        setFirebaseInitialized(true); // Continue without Firebase
+      }
+    };
+
+    initializeFirebase();
+  }, []);
 
   useEffect(() => {
     if (loaded) {
@@ -41,16 +66,19 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  // Firebase Message Handlers
+  // Firebase Message Handlers - only after Firebase is initialized
   useEffect(() => {
-    if (Platform.OS === "android") {
-      const setupFirebaseHandlers = () => {
+    if (!firebaseInitialized) return;
+
+    const setupFirebaseHandlers = async () => {
+      try {
+        const messaging = require("@react-native-firebase/messaging").default;
+
         // Foreground message handler
         const unsubscribeForeground = messaging().onMessage(
           async (remoteMessage) => {
             console.log("Foreground FCM message received!", remoteMessage);
 
-            // Show local notification when app is in foreground
             await Notifications.scheduleNotificationAsync({
               content: {
                 title: remoteMessage.notification?.title || "New Message",
@@ -89,12 +117,17 @@ export default function RootLayout() {
           unsubscribeForeground();
           unsubscribeNotificationOpened();
         };
-      };
+      } catch (error) {
+        console.error("Firebase handlers setup error:", error);
+        return () => {}; // Empty cleanup function
+      }
+    };
 
-      const cleanup = setupFirebaseHandlers();
-      return cleanup;
-    }
-  }, []);
+    const cleanup = setupFirebaseHandlers();
+    return () => {
+      cleanup.then((cleanupFn) => cleanupFn && cleanupFn());
+    };
+  }, [firebaseInitialized]);
 
   useEffect(() => {
     const setupNotifications = async () => {
@@ -104,12 +137,10 @@ export default function RootLayout() {
             data: { user },
             error,
           } = await supabase.auth.getUser();
-
           if (error) {
             console.error("Supabase getUser error:", error);
             return null;
           }
-
           return user;
         } catch (error) {
           console.error("Error fetching user data:", error);
@@ -128,63 +159,61 @@ export default function RootLayout() {
           );
         }
 
-        // Register for push notifications
         await registerForPushNotifications(driverId);
 
-        // Add notification listeners
         const removeListeners = addNotificationListeners(
           (notification) => {
             console.log("Notification received:", notification);
-            // აქ შეგიძლია notification handle-ი
           },
           (response) => {
             console.log("Notification tapped:", response);
-            // აქ შეგიძლია notification tap handle-ი
           }
         );
 
-        // Cleanup function
         return removeListeners;
       } catch (error) {
         console.error("Error setting up notifications:", error);
       }
     };
 
-    if (loaded) {
+    if (loaded && firebaseInitialized) {
       setupNotifications();
     }
-  }, [loaded]);
+  }, [loaded, firebaseInitialized]);
 
   if (!loaded) {
     return null;
   }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen
-          name="index"
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="signUp"
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="(tabs)"
-          options={{
-            headerShown: false,
-            gestureEnabled: false,
-          }}
-        />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <StatusBar style="light" backgroundColor="#22c55e" />
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen
+            name="index"
+            options={{
+              headerShown: false,
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="signUp"
+            options={{
+              headerShown: false,
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              headerShown: false,
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

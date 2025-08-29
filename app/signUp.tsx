@@ -18,6 +18,10 @@ import { COUNTRIES } from "@/components/Countries";
 import { VerificationScreen } from "@/components/register/ VerificationScreen";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/infrastructure/store/store";
+import {
+  registerForPushNotifications,
+  addNotificationListeners,
+} from "@/services/notificationService";
 
 export default function DriverSignUp() {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -40,6 +44,8 @@ export default function DriverSignUp() {
   const otpInputRefs = useRef<(React.RefObject<any> | null)[]>([]);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+
+  const [fcmToken, setFcmToken] = useState(null);
 
   // Session management
   const [isRegistrationComplete, setIsRegistrationComplete] = useState(false);
@@ -216,6 +222,42 @@ export default function DriverSignUp() {
     return;
   }, []);
 
+  // FCM Token Setup
+  useEffect(() => {
+    const setupFCMToken = async () => {
+      console.log("Setting up FCM token for driver registration...");
+
+      try {
+        // Driver ID-ის მიღება registration-ის დროს
+        let driverId = null;
+
+        if (phoneNumber) {
+          driverId = phoneNumber; // Registration phase-ში phone number-ით
+        } else if (name && surname) {
+          driverId = `${name}-${surname}`; // ან name-surname combination-ით
+        }
+
+        if (driverId) {
+          console.log("Registering FCM token with driver ID:", driverId);
+
+          const token = await registerForPushNotifications(driverId);
+
+          if (token) {
+            setFcmToken(token);
+            console.log("FCM token registered successfully:", token);
+          }
+        }
+      } catch (error) {
+        console.error("FCM token setup error:", error);
+      }
+    };
+
+    // Registration complete-ის შემდეგ setup-ი
+    if (isRegistrationComplete && (phoneNumber || (name && surname))) {
+      setupFCMToken();
+    }
+  }, [isRegistrationComplete, phoneNumber, name, surname]);
+
   const handleOtpChange = (text: string, index: number) => {
     if (/^\d*$/.test(text)) {
       const newOtpDigits = [...otpDigits];
@@ -372,6 +414,7 @@ export default function DriverSignUp() {
               plate: "DSD-001",
               phone: phoneNumber || "123",
               email: "test",
+              oken: fcmToken || null,
             }),
           }
         );
@@ -500,7 +543,6 @@ export default function DriverSignUp() {
             text: "Continue",
             onPress: () => {
               console.log("🚀 Navigating to driverVerification...");
-              router.replace("/driverVerification");
             },
           },
         ]

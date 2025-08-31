@@ -511,10 +511,11 @@ const HomeScreen: React.FC = () => {
           lng: location.longitude,
         },
         status: modeRef.current,
+        token: fcmToken || null,
       };
 
       const response = await fetch("https://api.thevanapp.com/api/driver-loc", {
-        method: "POST",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiToken}`,
@@ -741,41 +742,6 @@ const HomeScreen: React.FC = () => {
     } catch (error) {}
   };
 
-  const TestNotificationDisplay = () => (
-    <TestContainer>
-      <TestTitle>🧪 Push Notification Testing Data</TestTitle>
-      <TestSubtitle>✅ Push Token Status:</TestSubtitle>
-      <TestData>
-        {pushTokenRegistered
-          ? "✅ Registered Successfully"
-          : "❌ Not Registered"}
-      </TestData>
-
-      <TestSubtitle>🎯 Firebase FCM Token:</TestSubtitle>
-      <TestDataHighlight>
-        {fcmToken ? fcmToken : "Token not available yet..."}
-      </TestDataHighlight>
-
-      {/* Debugging Information */}
-      <TestSubtitle>🔍 Debug Info:</TestSubtitle>
-      <TestData>User Indicator: {userIndicator || "Not set"}</TestData>
-      <TestData>
-        Push Token Registered: {pushTokenRegistered ? "Yes" : "No"}
-      </TestData>
-      <TestData>
-        Driver ID Available:{" "}
-        {driverDetails?.unique_id || driverData?.id || userId ? "Yes" : "No"}
-      </TestData>
-
-      {fcmToken && (
-        <TestInstructions>
-          💡 Use this token to send push notifications via Firebase Console or
-          API
-        </TestInstructions>
-      )}
-    </TestContainer>
-  );
-
   return (
     <Container>
       <GradientHeader
@@ -922,9 +888,6 @@ const HomeScreen: React.FC = () => {
 
           {userIndicator === "active" && (
             <>
-              {/* 🧪 Test Notification Display */}
-              <TestNotificationDisplay />
-
               <ModeContainer>
                 <Drivermodecomponent />
               </ModeContainer>
@@ -1286,78 +1249,4 @@ const LocationCardText = styled.Text<ThemeProps>`
   font-size: 14px;
   font-weight: 500;
   margin-left: 8px;
-`;
-
-// 🧪 Test Component Styles
-const TestContainer = styled.View`
-  width: 100%;
-  padding: 16px;
-  background-color: #f8f9fa;
-  border-radius: 16px;
-  margin-bottom: 16px;
-  border-width: 2px;
-  border-color: #007bff;
-  border-style: dashed;
-`;
-
-const TestTitle = styled.Text`
-  font-size: 16px;
-  font-weight: bold;
-  color: #007bff;
-  margin-bottom: 8px;
-`;
-
-const TestSubtitle = styled.Text`
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 4px;
-`;
-
-const TestButton = styled.TouchableOpacity`
-  background-color: #007bff;
-  padding: 12px;
-  border-radius: 8px;
-  align-items: center;
-  margin-top: 8px;
-`;
-
-const TestButtonText = styled.Text`
-  color: white;
-  font-weight: 600;
-  font-size: 14px;
-`;
-
-const TestData = styled.Text`
-  font-size: 14px;
-  color: #333;
-  background-color: #fff;
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  border-width: 1px;
-  border-color: #ddd;
-`;
-
-const TestDataHighlight = styled.Text`
-  font-size: 14px;
-  color: #007bff;
-  background-color: #e3f2fd;
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  border-width: 2px;
-  border-color: #007bff;
-  font-weight: bold;
-`;
-
-const TestInstructions = styled.Text`
-  font-size: 12px;
-  color: #666;
-  background-color: #f8f9fa;
-  padding: 10px;
-  border-radius: 6px;
-  margin-top: 4px;
-  line-height: 18px;
-  border-left-width: 3px;
-  border-left-color: #28a745;
 `;

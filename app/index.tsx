@@ -189,10 +189,6 @@ export default function Auth() {
         console.error("Authentication error:", error.message);
 
         if (error.message.includes("Invalid login credentials")) {
-          Alert.alert(
-            "Login Failed",
-            `Credentials don't match.\n\nTrying with phone: ${identifier}\nStored in database: 918683815829\n\nPlease try:\n• 918683815829\n• +918683815829`
-          );
         } else if (error.message.includes("Email not confirmed")) {
           Alert.alert(
             "Email Not Verified",

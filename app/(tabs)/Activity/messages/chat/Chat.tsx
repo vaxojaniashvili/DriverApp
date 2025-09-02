@@ -19,7 +19,7 @@ import {
 } from "react-native";
 import io from "socket.io-client";
 
-export function Chat({ route }) {
+export function Chat({ route }: any) {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [messages, setMessages] = useState([]);
@@ -28,6 +28,7 @@ export function Chat({ route }) {
   const [isLoading, setIsLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState([]);
   const [onlineCount, setOnlineCount] = useState(0);
+  const [isOrderChat, setIsOrderChat] = useState(false);
   const flatListRef = useRef(null);
   const socketRef = useRef<any>(null);
   const typingTimeoutRef = useRef(null);
@@ -38,12 +39,21 @@ export function Chat({ route }) {
     driverId,
     driverInfo,
     customerInfo,
+    customerId,
     orderId,
     room: chatRoom,
+    chatType, // ← ახალი parameter order chat-ისთვის
   } = params;
 
   const ROOM_NAME = chatRoom || `order_${orderId}` || `chat_${messageId}`;
   const DRIVER_NAME = driverInfo?.name || `Driver_${driverId}`;
+
+  // Order Chat detection
+  useEffect(() => {
+    const isOrderChatType = chatType === "order_chat" || orderId;
+    setIsOrderChat(isOrderChatType);
+    console.log("Chat Type:", isOrderChatType ? "Order Chat" : "Regular Chat");
+  }, [chatType, orderId]);
 
   useEffect(() => {
     initializeSocket();
@@ -68,6 +78,10 @@ export function Chat({ route }) {
       clearTimeout(typingTimeoutRef.current);
     }
     if (socketRef.current) {
+      // Order chat-ისთვის leave event
+      if (isOrderChat) {
+        socketRef.current.emit("leave_order_chat");
+      }
       socketRef.current.disconnect();
       socketRef.current = null;
     }
@@ -75,8 +89,12 @@ export function Chat({ route }) {
 
   const initializeSocket = () => {
     try {
-      socketRef.current = io("https://api.thevanapp.com", {
-        transports: ["websocket", "polling"],
+      const SERVER_URL = __DEV__
+        ? "http://localhost:8000"
+        : "https://api.thevanapp.com";
+
+      socketRef.current = io(SERVER_URL, {
+        transports: ["polling", "websocket"], // ← polling first!
         timeout: 10000,
         forceNew: true,
         query: {
@@ -102,20 +120,33 @@ export function Chat({ route }) {
           },
         });
 
-        // Join chat room
-        socketRef.current.emit("join", {
-          username: DRIVER_NAME,
-          room: ROOM_NAME,
-        });
+        // Join appropriate chat type
+        if (isOrderChat && orderId && customerId && driverId) {
+          console.log("Joining Order Chat:", { orderId, customerId, driverId });
+          // Order Chat join
+          socketRef.current.emit("join_order_chat", {
+            orderId: orderId,
+            customerId: customerId,
+            driverId: driverId,
+            userRole: "driver",
+          });
+        } else {
+          console.log("Joining Regular Chat:", ROOM_NAME);
+          // Regular chat join
+          socketRef.current.emit("join", {
+            username: DRIVER_NAME,
+            room: ROOM_NAME,
+          });
 
-        // Load chat history
-        socketRef.current.emit("load_chat_history", {
-          room: ROOM_NAME,
-          limit: 50,
-        });
+          // Load regular chat history
+          socketRef.current.emit("load_chat_history", {
+            room: ROOM_NAME,
+            limit: 50,
+          });
 
-        // Get online users
-        socketRef.current.emit("get_online_users", ROOM_NAME);
+          // Get online users for regular chat
+          socketRef.current.emit("get_online_users", ROOM_NAME);
+        }
       });
 
       socketRef.current.on("disconnect", (reason) => {
@@ -130,27 +161,15 @@ export function Chat({ route }) {
         Alert.alert("კავშირის შეცდომა", "ვერ მოხერხდა სერვერთან დაკავშირება");
       });
 
-      // Message events
-      socketRef.current.on("receive_message", (data) => {
-        const newMessage = {
-          id: data.id || Date.now().toString() + Math.random(),
-          text: data.message,
-          timestamp: formatTime(data.timestamp),
-          isOwn: data.username === DRIVER_NAME,
-          username: data.username,
-          socketId: data.socketId,
-        };
-
-        setMessages((prevMessages) => {
-          const exists = prevMessages.find((msg) => msg.id === newMessage.id);
-          if (exists) return prevMessages;
-          return [...prevMessages, newMessage];
-        });
-
-        setTimeout(() => scrollToEnd(), 100);
+      // ← ORDER CHAT EVENTS
+      socketRef.current.on("order_chat_joined", (data) => {
+        console.log("✅ Order chat joined:", data);
+        setIsLoading(false);
+        // Optional: show success message
       });
 
-      socketRef.current.on("chat_history", (history) => {
+      socketRef.current.on("order_chat_history", (history) => {
+        console.log("📜 Order chat history received:", history);
         if (Array.isArray(history)) {
           const formattedHistory = history.map((msg) => ({
             id: msg.id?.toString() || Date.now().toString() + Math.random(),
@@ -166,6 +185,47 @@ export function Chat({ route }) {
         setIsLoading(false);
       });
 
+      // ← REGULAR CHAT EVENTS
+      socketRef.current.on("chat_history", (history) => {
+        console.log("📜 Regular chat history received:", history);
+        if (Array.isArray(history)) {
+          const formattedHistory = history.map((msg) => ({
+            id: msg.id?.toString() || Date.now().toString() + Math.random(),
+            text: msg.message,
+            timestamp: formatTime(msg.timestamp),
+            isOwn: msg.username === DRIVER_NAME,
+            username: msg.username,
+            isSystem: msg.username === "System",
+          }));
+          setMessages(formattedHistory);
+          setTimeout(() => scrollToEnd(), 500);
+        }
+        setIsLoading(false);
+      });
+
+      // Message events (works for both chat types)
+      socketRef.current.on("receive_message", (data) => {
+        console.log("📩 Message received:", data);
+        const newMessage = {
+          id: data.id || Date.now().toString() + Math.random(),
+          text: data.message,
+          timestamp: formatTime(data.timestamp),
+          isOwn: data.username === DRIVER_NAME,
+          username: data.username,
+          socketId: data.socketId,
+          orderId: data.orderId || null,
+          userRole: data.userRole || null,
+        };
+
+        setMessages((prevMessages) => {
+          const exists = prevMessages.find((msg) => msg.id === newMessage.id);
+          if (exists) return prevMessages;
+          return [...prevMessages, newMessage];
+        });
+
+        setTimeout(() => scrollToEnd(), 100);
+      });
+
       socketRef.current.on("user_joined", (data) => {
         const systemMessage = {
           id: Date.now().toString() + "_join",
@@ -175,7 +235,9 @@ export function Chat({ route }) {
           username: "System",
         };
         setMessages((prev) => [...prev, systemMessage]);
-        socketRef.current.emit("get_online_users", ROOM_NAME);
+        if (!isOrderChat) {
+          socketRef.current.emit("get_online_users", ROOM_NAME);
+        }
       });
 
       socketRef.current.on("user_left", (data) => {
@@ -187,7 +249,9 @@ export function Chat({ route }) {
           username: "System",
         };
         setMessages((prev) => [...prev, systemMessage]);
-        socketRef.current.emit("get_online_users", ROOM_NAME);
+        if (!isOrderChat) {
+          socketRef.current.emit("get_online_users", ROOM_NAME);
+        }
       });
 
       socketRef.current.on("user_typing", (data) => {
@@ -212,7 +276,7 @@ export function Chat({ route }) {
       });
 
       socketRef.current.on("error", (error) => {
-        console.log("Socket error:", error);
+        console.log("❌ Socket error:", error);
         Alert.alert("შეცდომა", error.message || "სოკეტის შეცდომა");
       });
     } catch (error) {
@@ -252,9 +316,10 @@ export function Chat({ route }) {
 
     const messageText = inputText.trim();
 
+    // Send message (works for both chat types)
     socketRef.current.emit("send_message", {
       message: messageText,
-      room: ROOM_NAME,
+      room: isOrderChat ? undefined : ROOM_NAME, // order chat doesn't need room parameter
     });
 
     setInputText("");
@@ -262,7 +327,7 @@ export function Chat({ route }) {
     // Stop typing indicator
     socketRef.current.emit("typing", {
       isTyping: false,
-      room: ROOM_NAME,
+      room: isOrderChat ? undefined : ROOM_NAME,
     });
   };
 
@@ -274,7 +339,7 @@ export function Chat({ route }) {
     // Send typing indicator
     socketRef.current.emit("typing", {
       isTyping: text.length > 0,
-      room: ROOM_NAME,
+      room: isOrderChat ? undefined : ROOM_NAME,
     });
 
     // Clear previous timeout
@@ -287,7 +352,7 @@ export function Chat({ route }) {
       if (socketRef.current) {
         socketRef.current.emit("typing", {
           isTyping: false,
-          room: ROOM_NAME,
+          room: isOrderChat ? undefined : ROOM_NAME,
         });
       }
     }, 2000);
@@ -359,7 +424,9 @@ export function Chat({ route }) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>ჩატის ჩატვირთვა...</Text>
+        <Text style={styles.loadingText}>
+          {isOrderChat ? "Order Chat ჩატვირთვა..." : "ჩატის ჩატვირთვა..."}
+        </Text>
       </SafeAreaView>
     );
   }
@@ -393,14 +460,25 @@ export function Chat({ route }) {
                 ]}
               />
               <Text style={styles.onlineStatus}>
-                {isConnected ? `ონლაინ (${onlineCount})` : "ოფლაინ"}
+                {isConnected
+                  ? `ონლაინ ${!isOrderChat ? `(${onlineCount})` : ""}`
+                  : "ოფლაინ"}
               </Text>
             </View>
             {orderId && (
-              <Text style={styles.orderInfo}>შეკვეთა #{orderId}</Text>
+              <Text style={styles.orderInfo}>
+                {isOrderChat ? `🚗 შეკვეთა #${orderId}` : `შეკვეთა #${orderId}`}
+              </Text>
             )}
           </View>
         </View>
+
+        {/* Chat Type Indicator */}
+        {isOrderChat && (
+          <View style={styles.chatTypeIndicator}>
+            <Text style={styles.chatTypeText}>Order Chat</Text>
+          </View>
+        )}
 
         {/* Connection Status */}
         {!isConnected && (
@@ -426,9 +504,17 @@ export function Chat({ route }) {
           onContentSizeChange={scrollToEnd}
           ListEmptyComponent={() => (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>ჩატი ცარიელია</Text>
+              <Ionicons
+                name={isOrderChat ? "car-outline" : "chatbubble-outline"}
+                size={48}
+                color="#E0E0E0"
+              />
+              <Text style={styles.emptyText}>
+                {isOrderChat ? "Order Chat ცარიელია" : "ჩატი ცარიელია"}
+              </Text>
               <Text style={styles.emptySubText}>
                 დაწყებეთ საუბარი {userName}-თან
+                {isOrderChat && ` შეკვეთა #${orderId}-ის შესახებ`}
               </Text>
             </View>
           )}
@@ -443,7 +529,11 @@ export function Chat({ route }) {
             value={inputText}
             onChangeText={handleTyping}
             placeholder={
-              isConnected ? "Type a message..." : "კავშირი გაწყვეტილია..."
+              isConnected
+                ? isOrderChat
+                  ? "წერეთ შეკვეთის შესახებ..."
+                  : "Type a message..."
+                : "კავშირი გაწყვეტილია..."
             }
             placeholderTextColor={isConnected ? "#999" : "#CCC"}
             multiline
@@ -504,194 +594,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Messages List Styles
-  searchContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    marginTop: -15,
-  },
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F8F9FA",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: "#000000",
-    paddingVertical: 4,
-  },
-  tabsContainer: {
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-  },
-  tabsScrollView: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  tabItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: "#F8F9FA",
-  },
-  activeTabItem: {
-    backgroundColor: "#28c76f",
-  },
-  tabLabel: {
-    fontSize: 14,
-    color: "#8E8E93",
-    marginLeft: 6,
-    fontWeight: "500",
-  },
-  activeTabLabel: {
-    color: "white",
-    fontWeight: "600",
-  },
-  messagesList: {
-    flex: 1,
-  },
-  messageItem: {
-    flexDirection: "row",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    backgroundColor: "#FFFFFF",
-  },
-  archivedMessageItem: {
-    backgroundColor: "#F8F9FA",
-    opacity: 0.7,
-  },
-  avatarContainer: {
-    position: "relative",
-    marginRight: 12,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  groupBadge: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    backgroundColor: "#007AFF",
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
-  archiveBadge: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    backgroundColor: "#8E8E93",
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-  },
-  messageContent: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  messageHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  nameContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#000000",
-  },
-  archivedText: {
-    color: "#8E8E93",
-  },
-  favoriteButton: {
-    marginLeft: 8,
-    padding: 4,
-  },
-  time: {
-    fontSize: 12,
-    color: "#8E8E93",
-  },
-  messageFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: "#8E8E93",
-    flex: 1,
-    marginRight: 8,
-  },
-  unreadBadge: {
-    backgroundColor: "#FF3B30",
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 6,
-  },
-  unreadText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  orderInfo: {
-    fontSize: 11,
-    color: "#007AFF",
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 100,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#8E8E93",
-    marginTop: 16,
-    textAlign: "center",
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: "#999",
-    marginTop: 8,
-    textAlign: "center",
-  },
-
   // Chat Screen Styles
   chatContainer: {
     flex: 1,
@@ -740,11 +642,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#4CAF50",
   },
+  orderInfo: {
+    fontSize: 11,
+    color: "#007AFF",
+    marginTop: 2,
+    fontWeight: "500",
+  },
+  chatTypeIndicator: {
+    backgroundColor: "#E3F2FD",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  chatTypeText: {
+    fontSize: 10,
+    color: "#1976D2",
+    fontWeight: "600",
+  },
   connectionError: {
     padding: 8,
   },
 
   // Messages in Chat
+  messagesList: {
+    flex: 1,
+  },
   messagesContainer: {
     paddingVertical: 16,
     paddingBottom: Platform.OS === "android" ? 80 : 16,
@@ -829,6 +752,27 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  // Empty State
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#8E8E93",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: "#999",
+    marginTop: 8,
+    textAlign: "center",
+    paddingHorizontal: 32,
+  },
+
   // Typing Indicator
   typingContainer: {
     paddingHorizontal: 15,
@@ -905,4 +849,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
 export default Chat;

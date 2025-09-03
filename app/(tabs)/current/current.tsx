@@ -75,13 +75,22 @@ const OrderScreen = () => {
   ];
 
   const handleChatPress = (order: any) => {
+    console.log("Opening Order Chat for order:", order.id);
+
     router.push({
-      pathname: "/(tabs)/Activity/activity",
+      pathname: "/(tabs)/Activity/messages/chat/Chat",
       params: {
         orderId: order.id,
-        customerEmail: order.email,
-        customerPhone: "+995568930229",
-        type: "messages",
+        customerId: order.customer_id || order.user_id, // customer ID API response-ის მიხედვით
+        driverId: my_id,
+        userName: order.customer_name || order.email || "Customer",
+        customerInfo: JSON.stringify({
+          name: order.customer_name || order.email,
+          email: order.email,
+          phone: order.phone || "+995568930229",
+          avatar: order.customer_avatar || null,
+        }),
+        chatType: "order_chat", // Order Chat-ის მაჩვენებელი
       },
     });
   };
@@ -97,6 +106,7 @@ const OrderScreen = () => {
       },
     });
   };
+
   const getOrders = async () => {
     if (!my_id || !apiToken) return;
 
@@ -362,6 +372,18 @@ const OrderScreen = () => {
               </DetailItem>
             </OrderDetailsRow>
 
+            {/* ← Chat ღილაკი Order-ისთვის */}
+            <ChatButtonContainer>
+              <ChatButton onPress={() => handleChatPress(activeOrder)}>
+                <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
+                <ChatButtonText>Chat with Customer</ChatButtonText>
+              </ChatButton>
+              <SupportButton onPress={() => handleSupportPress(activeOrder)}>
+                <Ionicons name="help-circle" size={20} color="#007AFF" />
+                <SupportButtonText>Support</SupportButtonText>
+              </SupportButton>
+            </ChatButtonContainer>
+
             {activeOrder.order_status !== "COMPLETED" && (
               <OrderDetails
                 activeOrder={activeOrder}
@@ -572,6 +594,54 @@ const DetailSeparator = styled.View`
   margin-top: 5px;
 `;
 
+/* ← ახალი Chat და Support ღილაკების Styles */
+const ChatButtonContainer = styled.View`
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 10px;
+`;
+
+const ChatButton = styled.TouchableOpacity`
+  flex: 1;
+  background-color: #007aff;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 10px;
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.1;
+  shadow-radius: 3px;
+  elevation: 2;
+`;
+
+const ChatButtonText = styled.Text`
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  margin-left: 8px;
+`;
+
+const SupportButton = styled.TouchableOpacity`
+  flex: 1;
+  background-color: #f0f8ff;
+  border: 1px solid #007aff;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 10px;
+`;
+
+const SupportButtonText = styled.Text`
+  color: #007aff;
+  font-weight: 600;
+  font-size: 14px;
+  margin-left: 8px;
+`;
+
 const DeliveryStepsContainer = styled.View`
   margin-bottom: 20px;
 `;
@@ -587,7 +657,7 @@ const StepIconContainer = styled.View`
   width: 32px;
   height: 32px;
   border-radius: 16px;
-  background-color: ${(props) =>
+  background-color: ${(props: any) =>
     props.isCompleted ? "#4CAF50" : props.isCurrent ? "#2196F3" : "#EEEEEE"};
   justify-content: center;
   align-items: center;
@@ -596,9 +666,9 @@ const StepIconContainer = styled.View`
 
 const StepLabel = styled.Text`
   font-size: 14px;
-  color: ${(props) =>
+  color: ${(props: any) =>
     props.isCompleted ? "#4CAF50" : props.isCurrent ? "#2196F3" : "#999999"};
-  font-weight: ${(props) =>
+  font-weight: ${(props: any) =>
     props.isCompleted || props.isCurrent ? "bold" : "normal"};
 `;
 
@@ -608,7 +678,8 @@ const StepConnector = styled.View`
   top: 32px;
   width: 2px;
   height: 20px;
-  background-color: ${(props) => (props.isCompleted ? "#4CAF50" : "#EEEEEE")};
+  background-color: ${(props: any) =>
+    props.isCompleted ? "#4CAF50" : "#EEEEEE"};
 `;
 
 const MainActionButton = styled.TouchableOpacity`

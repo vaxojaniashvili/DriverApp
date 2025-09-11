@@ -372,7 +372,7 @@ const OrderScreen = () => {
               </DetailItem>
             </OrderDetailsRow>
 
-            {/* ← Chat ღილაკი Order-ისთვის */}
+            {/* ← Chat ღილაკი Order-ისთვის
             <ChatButtonContainer>
               <ChatButton onPress={() => handleChatPress(activeOrder)}>
                 <Ionicons name="chatbubble-ellipses" size={20} color="#fff" />
@@ -382,7 +382,7 @@ const OrderScreen = () => {
                 <Ionicons name="help-circle" size={20} color="#007AFF" />
                 <SupportButtonText>Support</SupportButtonText>
               </SupportButton>
-            </ChatButtonContainer>
+            </ChatButtonContainer> */}
 
             {activeOrder.order_status !== "COMPLETED" && (
               <OrderDetails

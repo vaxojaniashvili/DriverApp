@@ -17,49 +17,57 @@ const PrivacyAndSecurity = () => {
       icon: "shield-checkmark",
       iconColor: "#28c76f",
       bgColor: "#e7f9f0",
+      route: "/settings/privacyInnerScreens/PrivacyPolicy",
     },
     {
       id: 2,
-      title: "Data Security",
-      description: "Understand how we keep your data secure and encrypted.",
-      icon: "lock-closed",
-      iconColor: "#4361ee",
-      bgColor: "#e9f5ff",
-    },
-    {
-      id: 3,
-      title: "Terms of Service",
+      title: "Terms & Conditions",
       description: "Read our terms of use and legal conditions.",
       icon: "document-text",
       iconColor: "#ff9f43",
       bgColor: "#fff4de",
+      route: "/settings/privacyInnerScreens/TermsConditions",
+    },
+    {
+      id: 3,
+      title: "Copyright",
+      description: "Read our copyright.",
+      icon: "alert",
+      iconColor: "#ff9f43",
+      bgColor: "#fff4de",
+      route: "/settings/privacyInnerScreens/CopyRight",
     },
     {
       id: 4,
-      title: "Account Settings",
-      description: "Manage your account preferences and security options.",
-      icon: "settings",
-      iconColor: "#7367f0",
-      bgColor: "#f0eeff",
+      title: "Location information",
+      description: "Read our location informations.",
+      icon: "location",
+      iconColor: "#ff9f43",
+      bgColor: "#fff4de",
+      route: "/settings/privacyInnerScreens/LocationInfo",
     },
     {
       id: 5,
-      title: "Data Deletion Request",
-      description: "Request to delete your account and personal data.",
-      icon: "trash",
+      title: "Risk Acknowledgement",
+      description: "Risk Acknowledgement & Customer Responsibilities.",
+      icon: "eye",
+      iconColor: "#7367f0",
+      bgColor: "#f0eeff",
+      route: "/settings/privacyInnerScreens/AccountInfo",
+    },
+    {
+      id: 6,
+      title: "Trademark",
+      description: "Trademark & Branding Use Guidelines.",
+      icon: "book",
       iconColor: "#ea5455",
       bgColor: "#fff2f2",
+      route: "/settings/privacyInnerScreens/UserDataDelete",
     },
   ];
 
-  const handleSectionPress = (id) => {
-    const links = {
-      1: "https://www.thevanapp.com/privacy",
-      2: "https://www.thevanapp.com/security",
-      3: "https://www.thevanapp.com/terms",
-      4: "https://www.thevanapp.com/account",
-      5: "https://www.thevanapp.com/delete-account",
-    };
+  const handleSectionPress = (section) => {
+    router.push(section.route);
   };
 
   return (
@@ -82,7 +90,7 @@ const PrivacyAndSecurity = () => {
             <SectionCard
               key={section.id}
               activeOpacity={0.7}
-              onPress={() => handleSectionPress(section.id)}
+              onPress={() => handleSectionPress(section)}
             >
               <IconContainer style={{ backgroundColor: section.bgColor }}>
                 <Ionicons

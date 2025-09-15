@@ -21,7 +21,7 @@ export async function registerForPushNotifications(driverId) {
 
   if (!Device.isDevice) {
     console.log("❌ Must use physical device for Push Notifications");
-    alert("Must use physical device for Push Notifications");
+    // alert("Must use physical device for Push Notifications");
     return null; // Changed from return; to return null;
   }
 

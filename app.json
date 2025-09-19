@@ -21,9 +21,7 @@
         "googleMapsApiKey": "AIzaSyDehqBa4oYIB8IbD6z07_X8hU9Q9BhW-9Y"
       },
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
@@ -60,6 +58,14 @@
       [
         "expo-location",
         {
+          "locationAlwaysAndWhenInUsePermission": "Allow TheVanApp Driver to use your location.",
+          "locationWhenInUsePermission": "Your desired text here",
+          "locationAlwaysPermission": "Allow TheVanApp Driver to use your location."
+        }
+      ],
+      [
+        "expo-location",
+        {
           "locationAlwaysAndWhenInUsePermission": "Allow TheVanApp to use your location."
         }
       ],
@@ -69,9 +75,7 @@
           "icon": "./assets/images/notification_icon.png",
           "color": "#ffffff",
           "defaultChannel": "default",
-          "sounds": [
-            "./assets/sounds/notification.wav"
-          ]
+          "sounds": ["./assets/sounds/notification.wav"]
         }
       ]
     ],

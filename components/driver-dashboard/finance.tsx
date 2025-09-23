@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "styled-components/native";
 import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
 
 const FinanceDetails = () => {
   const items = [
@@ -25,38 +26,39 @@ const FinanceDetails = () => {
   ];
 
   return (
-    <Container>
-      <SectionHeader>
-        <SectionTitle>Recent Earnings</SectionTitle>
-      </SectionHeader>
+    // <Container>
+    //   <SectionHeader>
+    //     <SectionTitle>Recent Earnings</SectionTitle>
+    //   </SectionHeader>
 
-      <ItemsContainer>
-        {items.map((item, index) => (
-          <Item key={index} isLast={index === items.length - 1}>
-            <ItemLeftSection>
-              <IconContainer>
-                <Ionicons name="calendar-outline" size={20} color="#28c76f" />
-              </IconContainer>
-              <ItemDetails>
-                <ItemLabel>{item.label}</ItemLabel>
-                <ItemInfo>
-                  {item.orders} • {item.date}
-                </ItemInfo>
-              </ItemDetails>
-            </ItemLeftSection>
+    //   <ItemsContainer>
+    //     {items.map((item, index) => (
+    //       <Item key={index} isLast={index === items.length - 1}>
+    //         <ItemLeftSection>
+    //           <IconContainer>
+    //             <Ionicons name="calendar-outline" size={20} color="#28c76f" />
+    //           </IconContainer>
+    //           <ItemDetails>
+    //             <ItemLabel>{item.label}</ItemLabel>
+    //             <ItemInfo>
+    //               {item.orders} • {item.date}
+    //             </ItemInfo>
+    //           </ItemDetails>
+    //         </ItemLeftSection>
 
-            <ItemRightSection>
-              <AmountText>{item.amount}</AmountText>
-            </ItemRightSection>
-          </Item>
-        ))}
-      </ItemsContainer>
+    //         <ItemRightSection>
+    //           <AmountText>{item.amount}</AmountText>
+    //         </ItemRightSection>
+    //       </Item>
+    //     ))}
+    //   </ItemsContainer>
 
-      <TotalRow>
-        <TotalLabel>Quarter total:</TotalLabel>
-        <TotalAmount>$3,295</TotalAmount>
-      </TotalRow>
-    </Container>
+    //   <TotalRow>
+    //     <TotalLabel>Quarter total:</TotalLabel>
+    //     <TotalAmount>$3,295</TotalAmount>
+    //   </TotalRow>
+    // </Container>
+    <View></View>
   );
 };
 

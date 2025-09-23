@@ -10,7 +10,7 @@ import { useAuthStore } from "@/infrastructure/store/store";
 
 const Settings = () => {
   const insets = useSafeAreaInsets();
-  const { logout: storeLogout } = useAuthStore(); // ვასახელებთ 'storeLogout'-ად, რათა არ მოხდეს კონფლიქტი
+  const { logout: storeLogout } = useAuthStore();
 
   const {
     session: storeSession,

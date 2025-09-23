@@ -8,7 +8,7 @@ import Messages from "./messages/Messages";
 import ActivitySupport from "@/components/ActivitySupport";
 import { useLocalSearchParams } from "expo-router";
 
-const Activity = ({ route }) => {
+const Activity = ({ route }: any) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState("notifications");
   const [activeFilter, setActiveFilter] = useState("all");
@@ -17,62 +17,62 @@ const Activity = ({ route }) => {
     useLocalSearchParams();
   // console.log("orderId",orderId);
 
-  const notifications = [
-    {
-      id: 1,
-      type: "trip_request",
-      title: "New Trip Request",
-      message: "Passenger waiting at Tbilisi Mall",
-      time: "2 min ago",
-      icon: "car-outline",
-      color: "#28c76f",
-      unread: true,
-      isGroup: false,
-    },
-    {
-      id: 2,
-      type: "payment",
-      title: "Payment Received",
-      message: "25₾ - Trip #1234",
-      time: "15 min ago",
-      icon: "card-outline",
-      color: "#00a8ff",
-      unread: true,
-      isGroup: false,
-    },
-    {
-      id: 3,
-      type: "rating",
-      title: "New Rating",
-      message: "5 stars - 'Excellent driver!'",
-      time: "1 hour ago",
-      icon: "star-outline",
-      color: "#ffa502",
-      unread: false,
-      isGroup: false,
-    },
-    {
-      id: 4,
-      type: "system",
-      title: "System Update",
-      message: "New app version available",
-      time: "3 hours ago",
-      icon: "download-outline",
-      color: "#8854d0",
-      unread: false,
-      isGroup: true,
-    },
-    {
-      id: 5,
-      type: "promo",
-      title: "Special Offer",
-      message: "Get 20% bonus on weekends",
-      time: "1 day ago",
-      icon: "gift-outline",
-      color: "#ff6b6b",
-      unread: false,
-      isGroup: true,
-    },
+  const notifications: any[] = [
+    // {
+    //   id: 1,
+    //   type: "trip_request",
+    //   title: "New Trip Request",
+    //   message: "Passenger waiting at Tbilisi Mall",
+    //   time: "2 min ago",
+    //   icon: "car-outline",
+    //   color: "#28c76f",
+    //   unread: true,
+    //   isGroup: false,
+    // },
+    // {
+    //   id: 2,
+    //   type: "payment",
+    //   title: "Payment Received",
+    //   message: "25₾ - Trip #1234",
+    //   time: "15 min ago",
+    //   icon: "card-outline",
+    //   color: "#00a8ff",
+    //   unread: true,
+    //   isGroup: false,
+    // },
+    // {
+    //   id: 3,
+    //   type: "rating",
+    //   title: "New Rating",
+    //   message: "5 stars - 'Excellent driver!'",
+    //   time: "1 hour ago",
+    //   icon: "star-outline",
+    //   color: "#ffa502",
+    //   unread: false,
+    //   isGroup: false,
+    // },
+    // {
+    //   id: 4,
+    //   type: "system",
+    //   title: "System Update",
+    //   message: "New app version available",
+    //   time: "3 hours ago",
+    //   icon: "download-outline",
+    //   color: "#8854d0",
+    //   unread: false,
+    //   isGroup: true,
+    // },
+    // {
+    //   id: 5,
+    //   type: "promo",
+    //   title: "Special Offer",
+    //   message: "Get 20% bonus on weekends",
+    //   time: "1 day ago",
+    //   icon: "gift-outline",
+    //   color: "#ff6b6b",
+    //   unread: false,
+    //   isGroup: true,
+    // },
   ];
 
   const mainTabs = [

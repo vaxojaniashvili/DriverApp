@@ -62,7 +62,7 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow TheVanApp Driver to use your location.",
-          "locationWhenInUsePermission": "Your desired text here",
+          "locationWhenInUsePermission": "We use your location to show nearby drivers and calculate pickup times",
           "locationAlwaysPermission": "Allow TheVanApp Driver to use your location."
         }
       ],

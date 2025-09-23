@@ -10,38 +10,83 @@ import { useAuthStore } from "@/infrastructure/store/store";
 
 const Settings = () => {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuthStore();
+  const { logout: storeLogout } = useAuthStore(); // ვასახელებთ 'storeLogout'-ად, რათა არ მოხდეს კონფლიქტი
 
-  async function handleLogout() {
+  const {
+    session: storeSession,
+    user: storeUser,
+    loadSessionFromStorage,
+    setSession: setStoreSession,
+    setUser: setStoreUser,
+    selectedCountryFlag,
+  } = useAuthStore();
+
+  const handleLogout = async () => {
     try {
-      // Logout from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) {
         Alert.alert("Logout Error", error.message);
         return;
       }
 
-      // Clear session from Zustand store and AsyncStorage
-      await logout();
+      await storeLogout();
 
-      // Navigate to signup page
       router.replace("/signUp");
     } catch (error) {
       console.error("Logout error:", error);
       Alert.alert("Logout Error", "Failed to logout. Please try again.");
     }
-  }
+  };
 
   const handleDeactivateAccount = () => {
     Alert.alert(
-      "Deactivate Account",
+      "Account Deactivation",
       "Are you sure you want to deactivate your account?",
       [
-        { text: "Cancel", style: "cancel" },
+        {
+          text: "Cancel",
+          onPress: () => console.log("Account deactivation cancelled"),
+          style: "cancel",
+        },
         {
           text: "Deactivate",
-          style: "destructive",
-          onPress: () => console.log("Account deactivated"),
+          onPress: async () => {
+            try {
+              const response = await fetch(
+                `https://api.thevanapp.com/api/admin-driver/drivers/${storeUser.id}`,
+                {
+                  method: "DELETE",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+
+              if (response.ok) {
+                alert("Account deactivated successfully!");
+                await handleLogout();
+              } else {
+                const errorData = await response.json();
+                console.error("API Error:", errorData);
+                console.error("Response status:", response.status);
+
+                if (response.status === 404) {
+                  alert("Account not found or endpoint not available.");
+                } else if (response.status === 401) {
+                  alert("Unauthorized. Please check your authentication.");
+                } else {
+                  alert(
+                    `Failed to deactivate account: ${
+                      errorData.error || errorData.message || "Unknown error"
+                    }`
+                  );
+                }
+              }
+            } catch (error) {
+              console.error("Network/Runtime Error:", error);
+              alert("Failed to deactivate account.");
+            }
+          },
         },
       ]
     );

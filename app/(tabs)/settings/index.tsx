@@ -40,8 +40,8 @@ const Settings = () => {
 
   const handleDeactivateAccount = () => {
     Alert.alert(
-      "Account Deactivation",
-      "Are you sure you want to deactivate your account?",
+      "Account Deletion",
+      "Are you sure you want to delete your account?",
       [
         {
           text: "Cancel",
@@ -49,7 +49,7 @@ const Settings = () => {
           style: "cancel",
         },
         {
-          text: "Deactivate",
+          text: "Delete",
           onPress: async () => {
             try {
               const response = await fetch(
@@ -115,7 +115,7 @@ const Settings = () => {
       onPress: () => router.push("settings/privace"),
     },
     {
-      label: "Deactivate Account",
+      label: "Delete Account",
       icon: "close-circle",
       color: "#ffffff",
       bgColor: "#e74c3c",
@@ -170,6 +170,8 @@ const Settings = () => {
                       ? "Control data usage and privacy"
                       : option.label === "Contact Support"
                       ? "Get help with any issues"
+                      : option.label === "Delete Account"
+                      ? "All personal data (name, phone and etc..) will be permanently deleted"
                       : "Remove your account permanently"}
                   </OptionSubtext>
                 </OptionTextContainer>

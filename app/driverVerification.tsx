@@ -129,7 +129,6 @@ export default function DriverVerificationScreen() {
         user.user_metadata?.first_name ||
         "";
       console.log("[driverVerification] resolved full name:", userFullName);
-      // setName(userFullName);
       setTimeout(() => {
         console.log("[driverVerification] name state after set:", userFullName);
       }, 0);
@@ -490,7 +489,7 @@ export default function DriverVerificationScreen() {
               last_name: name.split(" ").slice(1).join(" ") || "",
               full_name: name,
               phone: phone,
-              status: "active", // ← ეს მნიშვნელოვანია
+              status: "active",
               email_verified: true,
               van_option: vanOption,
             },
@@ -521,11 +520,9 @@ export default function DriverVerificationScreen() {
         );
       }
 
-      // ✅ თუ ორივე წარმატებულია - Store-ს განახლება
       if (apiSuccess && supabaseSuccess) {
-        // ✅ Store-ში verification-ის complete-ება
         const verificationData = {
-          indicator: "active",
+          indicator: "inactive",
           id: userId,
           van_option: vanOption,
           name,
@@ -544,7 +541,6 @@ export default function DriverVerificationScreen() {
 
         console.log("✅ Store updated, user is now verified");
 
-        // Clear Form Data
         setName("");
         setEmail("");
         setStreetAddress1("");
@@ -557,11 +553,10 @@ export default function DriverVerificationScreen() {
         setPlateLetters("");
         setPlateNumbers("");
 
-        // ✅ Navigation homepage-ზე (Store-ის მეშვეობით homepage უკვე იცის რომ user verified არის)
         console.log(
           "[handleSubmit] Navigating to homepage - user verified in store"
         );
-        router.replace("/(tabs)/homepage"); // replace იქნება უკეთესი
+        router.replace("/(tabs)/homepage");
       } else {
         MyToast("ვერიფიკაცია ვერ დასრულდა სრულად");
       }

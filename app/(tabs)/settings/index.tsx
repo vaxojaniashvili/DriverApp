@@ -31,7 +31,7 @@ const Settings = () => {
 
       await storeLogout();
 
-      router.replace("/signUp");
+      router.replace("/");
     } catch (error) {
       console.error("Logout error:", error);
       Alert.alert("Logout Error", "Failed to logout. Please try again.");

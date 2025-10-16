@@ -817,24 +817,12 @@ const HomeScreen: React.FC = () => {
                       <MaterialIcons name="warning" size={24} color="#F59E0B" />
                     </AlertIcon>
                     <AlertContent>
-                      <AlertTitle>Account verification is required.</AlertTitle>
+                      <AlertTitle>Your account is verifing</AlertTitle>
                       <AlertDescription>
-                        Please verify your account to get started.
+                        administrators verifing your account
                       </AlertDescription>
                     </AlertContent>
                   </VerificationAlert>
-                  <VerifyButton
-                    onPress={() => router.push("/(tabs)/driverVerification")}
-                  >
-                    <VerifyButtonContent>
-                      <VerifyButtonText>Continue</VerifyButtonText>
-                      <MaterialIcons
-                        name="arrow-forward"
-                        size={20}
-                        color="#FFF"
-                      />
-                    </VerifyButtonContent>
-                  </VerifyButton>
                 </>
               )}
 
@@ -962,7 +950,7 @@ const HomeScreen: React.FC = () => {
 
           {userIndicator !== "active" && (
             <NoJobsText style={{ marginTop: 20, color: "red" }}>
-              Please verify your account to start accepting orders
+              when admins submit your account you can use fully functions
             </NoJobsText>
           )}
         </Innercontainer>

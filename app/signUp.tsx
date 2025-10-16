@@ -170,33 +170,33 @@ export default function DriverSignUp() {
     load();
   }, []);
 
-  // ✅ SIMPLIFIED session check - No automatic navigation
   useEffect(() => {
     if (isAuthLoading) return;
+
     const checkExistingSession = async () => {
-      const currentState = useAuthStore.getState();
-      let status = null;
-      if (currentState.user) {
-        status =
-          currentState.user.status || currentState.user.user_metadata?.status;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      console.log("[signUp] Supabase session exists:", !!session);
+
+      if (!session) {
+        console.log("[signUp] No active session - staying on signup");
+        return;
       }
 
-      console.log("[signUp] session:", !!currentState.session);
-      console.log("[signUp] user:", !!currentState.user);
-      console.log("[signUp] status:", status);
+      const status = session.user?.user_metadata?.status;
 
-      // Only redirect if BOTH session and user exist AND status is active
-      if (
-        currentState.session &&
-        currentState.user &&
-        (status === "active" || status === "complete")
-      ) {
+      console.log("[signUp] Active session found with status:", status);
+
+      if (status === "active" || status === "complete") {
         console.log("[signUp] Redirecting to homepage");
         router.replace("/(tabs)/homepage");
       } else {
-        console.log("[signUp] Staying on signUp");
+        console.log("[signUp] Session incomplete - staying on signup");
       }
     };
+
     checkExistingSession();
   }, [isAuthLoading]);
 
